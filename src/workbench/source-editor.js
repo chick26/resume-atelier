@@ -1,6 +1,6 @@
 const { Notice, Scope } = require("obsidian");
 const { editableBody, withEditedBody } = require("../resume/markdown");
-const { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold, replaceSourceSelection } = require("../editor/formatting");
+const { changeSourceIndent, continueSourceList, toggleSourceBold, replaceSourceSelection } = require("../editor/formatting");
 const { copySourceText, runWithNotice } = require("./dom");
 const { SourceRecoveryModal, PhotoPicker } = require("./modals");
 const { avatarEdit } = require("../resume/avatar");
@@ -19,7 +19,7 @@ class SourceEditor {
     const pane = this.sourcePane = parent.createDiv({ cls: "resume-layout-source" });
     pane.hidden = true;
     const header = pane.createDiv({ cls: "resume-layout-source-header" });
-    const tools = header.createDiv({ cls: "resume-layout-source-tools", attr: { role: "group", "aria-label": this.t("formatSource") } });
+    const tools = header.createDiv({ cls: "resume-layout-source-tools", attr: { role: "group", "aria-label": this.t("editorActions") } });
     const info = header.createDiv({ cls: "resume-layout-source-info" });
     this.sourceStatus = info.createSpan({ cls: "resume-layout-source-status", attr: { role: "status" } });
     this.retrySourceSave = info.createEl("button", { text: this.t("retry"), attr: { "aria-label": this.t("retrySave") } });
@@ -35,9 +35,9 @@ class SourceEditor {
     const loadLatest = this.sourceConflict.createEl("button", { text: this.t("discardAndReload"), cls: "mod-warning" });
     loadLatest.addEventListener("click", () => void this.resolveSourceConflict(false));
     const field = this.sourceField = pane.createEl("textarea", {
-      attr: { "aria-label": this.t("sourceLabel"), spellcheck: "false", autocapitalize: "off", autocomplete: "off" },
+      attr: { "aria-label": this.t("sourceLabel"), "aria-keyshortcuts": "Meta+B Control+B", spellcheck: "false", autocapitalize: "off", autocomplete: "off" },
     });
-    this.toolbar = mountSourceTools(this, pane, tools, info, field);
+    this.toolbar = mountSourceTools(this, pane, tools, field);
     field.addEventListener("input", event => {
       const photo = this.edit?.lastPhotoChange;
       const undo = event.inputType === "historyUndo";
@@ -65,9 +65,7 @@ class SourceEditor {
     const scope = new Scope(this.app.scope);
     scope.register(["Mod"], "B", event => {
       if (event.isComposing || field.ownerDocument.activeElement !== field) return;
-      const context = sourceEditorContext(field);
-      if (!context.bold) return;
-      toggleSourceBold(field, context);
+      if (!toggleSourceBold(field)) return;
       this.toolbar.update();
       return false;
     });
@@ -216,6 +214,7 @@ class SourceEditor {
 
   markSourceConflict(edit) {
     edit.conflicted = true;
+    this.toolbar.update();
     this.sourceField.ownerDocument.defaultView.clearTimeout(edit.saveTimer);
     this.setSourceStatus("sourceConflict", "conflict");
   }

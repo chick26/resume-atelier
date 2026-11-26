@@ -31,6 +31,8 @@ Click **Open Resume Atelier** in the left ribbon, or right-click a folder and ch
 3. To add a vault image, choose **Customize → Add photo** or use **Photo** beside the editor. After picking the image, keep typing. Click the portrait or **Photo** to change its ratio and corners. Press **Esc** to return to your text.
 4. Choose **A4** or **US Letter** and inspect the page labels. A standalone `---` with blank lines adds a manual break. **Export PDF** opens Obsidian’s native dialog. From the original note’s menu, select the same paper, portrait, 100% scale, no filename title and no extra margins.
 
+While editing Markdown, use `⌘B` or `Ctrl+B` for bold, `Enter` to continue a list, and `Tab` or `Shift+Tab` to change indentation. In older résumés, placing the cursor inside an HTML entry header such as `<div alt="entry-title">` reveals **Edit entry** for the role and date.
+
 Save an example in your vault to try the layouts. [English · Letter timeline](examples/sample-resume.en.md) · [中文 · A4 双栏](examples/sample-resume.zh.md)
 
 ## 简体中文
@@ -55,6 +57,8 @@ Save an example in your vault to try the layouts. [English · Letter timeline](e
 2. 在「版式」选「双栏现代」或「经历时间轴」。双栏会尝试把技能等栏目放进侧栏。在「栏目」可移回主栏、把列表显示为标签，或隐藏本次投递用不到的栏目。收起面板后顶栏仍会提醒已隐藏几栏。
 3. 在「微调 → 添加头像」或正文工具栏的「头像」选库内图片，选完即可接着打字。点纸面照片或工具栏「头像」就能调比例、圆角。按 `Esc` 回到正文。
 4. 选 A4 或 US Letter 后查看纸面页标。前后各留空行的 `---` 表示手动分页。「导出 PDF」打开 Obsidian 原生窗口。从原笔记菜单导出时，选相同纸张、纵向、100% 缩放，关闭文件名标题，附加页边距选「无」。
+
+编辑时用 `⌘B` 或 `Ctrl+B` 加粗，`Enter` 续写列表，`Tab` 和 `Shift+Tab` 调整缩进。早期简历有时用 `<div alt="entry-title">` 包住职位和日期。把光标放到这样的旧经历头里，编辑栏会多出「编辑条目」。
 
 把示例保存到自己的库后即可试排。[中文 · A4 双栏](examples/sample-resume.zh.md) · [English · Letter 时间轴](examples/sample-resume.en.md)
 

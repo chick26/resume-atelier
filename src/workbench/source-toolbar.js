@@ -1,11 +1,7 @@
 const { Notice, setIcon } = require("obsidian");
-const { iconButton } = require("./dom");
 const { mountPhotoControls } = require("./photo-controls");
 const { headerPhoto } = require("../resume/avatar");
-const {
-  SOURCE_ENTRY_SEPARATOR, replaceSourceSelection, sourceEditorContext, sourceEntryTarget, sourceEntryMarkup,
-  toggleSourceBold, toggleSourceList, toggleSourceHeading,
-} = require("../editor/formatting");
+const { legacyEntryAt, updateLegacyEntry, replaceSourceSelection } = require("../editor/formatting");
 
 function createSourcePopovers(pane, register) {
   let opened;
@@ -53,43 +49,19 @@ function createSourcePopovers(pane, register) {
   };
 }
 
-function mountSourceTools(editor, pane, tools, info, field) {
+function mountSourceTools(editor, pane, tools, field) {
   const { t, view } = editor;
   const popovers = createSourcePopovers(pane, cleanup => view.register(cleanup));
-  const group = () => tools.createDiv({ cls: "resume-layout-source-group" });
-  const addFormat = (parent, symbol, label, run, withText = false) => {
-    const button = parent.createEl("button", {
-      type: "button", cls: "resume-layout-source-format",
-      attr: { "aria-label": label, "aria-pressed": "false" },
-    });
-    setIcon(button.createSpan({ attr: { "aria-hidden": "true" } }), symbol);
-    if (withText) button.createSpan({ cls: "resume-layout-source-caption", text: label });
-    button.addEventListener("click", () => {
-      const context = sourceEditorContext(field);
-      if (button.disabled || !context.canFormat || (run === toggleSourceBold && !context.bold)) return;
-      popovers.close();
-      field.focus({ preventScroll: true });
-      run(field, context);
-      updateTools();
-    });
-    return button;
-  };
-  const text = group();
-  const bold = addFormat(text, "bold", t("bold"), toggleSourceBold);
-  bold.setAttribute("aria-keyshortcuts", "Meta+B Control+B");
-  const list = addFormat(text, "list", t("list"), toggleSourceList);
-  const heading = addFormat(group(), "heading-2", t("section"), toggleSourceHeading, true);
-  const entry = group().createEl("button", {
-    type: "button", cls: "resume-layout-source-entry-button", attr: { "aria-expanded": "false", "aria-haspopup": "dialog" },
-  });
-  const entryIcon = entry.createSpan({ cls: "resume-layout-source-entry-icon", attr: { "aria-hidden": "true" } });
-  const entryLabel = entry.createSpan();
-  setIcon(entry.createSpan({ cls: "resume-layout-source-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
-  createSourceEntryPopover(pane, entry, field, popovers, { t, view, updateTools });
+  const photo = tools.createEl("button", { attr: { type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" } });
+  setIcon(photo.createSpan({ attr: { "aria-hidden": "true" } }), "image");
+  photo.createSpan({ text: t("photo") });
+  photo.addEventListener("click", openPhoto);
 
-  const photo = iconButton(tools, "image", t("photo"), () => openPhoto());
-  photo.setAttribute("aria-haspopup", "dialog");
-  photo.setAttribute("aria-expanded", "false");
+  const entry = tools.createEl("button", {
+    text: t("editEntry"), attr: { type: "button", "aria-expanded": "false", "aria-haspopup": "dialog" },
+  });
+  entry.hidden = true;
+  mountLegacyEntryEditor(pane, entry, field, popovers, editor);
   const photoPanel = pane.createDiv({ cls: "resume-layout-source-popover resume-layout-photo-popover", attr: { role: "dialog", "aria-label": t("photo") } });
   photoPanel.hidden = true;
   const photoControls = mountPhotoControls(photoPanel, view);
@@ -116,65 +88,18 @@ function mountSourceTools(editor, pane, tools, info, field) {
     popovers.close();
     field.focus({ preventScroll: true });
   });
-  const help = iconButton(info, "circle-help", t("editorShortcuts"), () => {
-    if (!helpPanel.hidden) return popovers.close();
-    popovers.show(helpPanel, help);
-    helpPanel.focus({ preventScroll: true });
-  });
-  help.addClass("resume-layout-source-help");
-  help.setAttribute("aria-expanded", "false");
-  help.setAttribute("aria-haspopup", "dialog");
-  const helpPanel = pane.createDiv({
-    cls: "resume-layout-source-popover resume-layout-source-help-panel", attr: { role: "dialog", "aria-label": t("editorShortcuts"), tabindex: "-1" },
-  });
-  helpPanel.hidden = true;
-  const shortcuts = helpPanel.createEl("dl");
-  for (const [key, action] of [
-    ["⌘B / Ctrl+B", "bold"], ["Enter", "continueList"], ["Tab", "indent"], [t("clickPreview"), "jumpToSource"],
-  ]) {
-    shortcuts.createEl("dt").createEl("kbd", { text: key });
-    shortcuts.createEl("dd", { text: t(action) });
-  }
-  helpPanel.addEventListener("keydown", event => {
-    if (event.key !== "Escape") return;
-    event.preventDefault();
-    event.stopPropagation();
-    popovers.close();
-    help.focus({ preventScroll: true });
-  });
-
-  const update = (button, active, title, disabled) => {
-    button.disabled = disabled;
-    button.setAttribute("aria-pressed", String(active));
-    button.title = title;
-  };
   function updateTools() {
-    if (!editor.edit) return;
-    photo.disabled = field.readOnly || !!editor.edit.conflicted;
-    const context = sourceEditorContext(field);
-    const isBold = !!context.bold?.span;
-    const isList = !!context.list;
-    const isHeading = context.heading?.[1] === "##";
-    update(bold, isBold, t("boldShortcut", { action: t(isBold ? "unbold" : "bold") }), !context.bold);
-    update(list, isList, isList ? t("removeList") : t("makeBulletList"), !context.canFormat);
-    update(heading, isHeading, isHeading ? t("removeSectionFormat") : t("makeSection"), !context.canFormat);
-    const editing = !!(context.entry?.fields || context.headingFields?.right || context.headingFields?.subtitle);
-    const label = editing ? t("editEntry") : t("entry");
-    if (entryLabel.textContent !== label) {
-      entryLabel.setText(label);
-      setIcon(entryIcon, editing ? "pencil" : "calendar-range");
-    }
-    entry.disabled = !context.canUseEntry;
-    entry.toggleClass("is-current-entry", editing);
-    entry.title = editing ? t("editEntryHelp") : context.subheading ? t("addDateHelp") : t("insertEntry");
+    photo.disabled = !editor.edit || field.readOnly || !!editor.edit.conflicted;
+    entry.hidden = photo.disabled || !legacyEntryAt(field)?.fields;
   }
   return { update: updateTools, close: popovers.close, openPhoto, updatePhoto: photoControls.update };
 }
 
-function createSourceEntryPopover(pane, button, field, popovers, { t, view, updateTools }) {
+function mountLegacyEntryEditor(pane, button, field, popovers, editor) {
+  const { t, view } = editor;
   const form = pane.createEl("form", {
     cls: "resume-layout-source-popover resume-layout-source-entry resume-layout-modal-form",
-    attr: { role: "dialog", "aria-label": t("entry") },
+    attr: { role: "dialog", "aria-label": t("editEntry") },
   });
   form.hidden = true;
   const fields = form.createDiv({ cls: "resume-layout-source-entry-fields" });
@@ -193,7 +118,7 @@ function createSourceEntryPopover(pane, button, field, popovers, { t, view, upda
   const previewRight = preview.createSpan({ cls: "resume-layout-entry-preview-date" });
   const actions = form.createDiv({ cls: "resume-layout-source-entry-actions" });
   const cancel = actions.createEl("button", { text: t("cancel"), attr: { type: "button" } });
-  const submit = actions.createEl("button", { cls: "mod-cta", text: t("insert"), attr: { type: "submit" } });
+  const submit = actions.createEl("button", { cls: "mod-cta", text: t("update"), attr: { type: "submit" } });
   let target;
   const close = () => {
     popovers.close();
@@ -202,20 +127,27 @@ function createSourceEntryPopover(pane, button, field, popovers, { t, view, upda
   const updatePreview = () => {
     const detail = subtitle.value.trim();
     previewTitle.setText(title.value.trim());
-    previewSubtitle.setText(detail ? `${target?.separator ?? SOURCE_ENTRY_SEPARATOR} ${detail}` : "");
+    previewSubtitle.setText(detail ? `${target?.separator ?? "·"} ${detail}` : "");
     previewRight.setText(right.value.trim());
     submit.disabled = !title.value.trim();
   };
   button.addEventListener("click", () => {
     if (!form.hidden) return close();
-    const range = sourceEntryTarget(field, sourceEditorContext(field));
-    if (!range) return;
-    target = { ...range, snapshot: field.value };
-    title.value = range.title ?? "";
-    subtitle.value = range.subtitle ?? "";
-    right.value = range.right ?? "";
+    const range = legacyEntryAt(field);
+    if (!editor.edit || field.readOnly || editor.edit.conflicted || !range?.fields) return;
+    const decoder = field.ownerDocument.createElement("textarea");
+    const decode = text => {
+      decoder.innerHTML = text;
+      return decoder.value.trim();
+    };
+    target = {
+      ...range, edit: editor.edit, snapshot: field.value, separator: range.fields.separator,
+      title: decode(range.fields.title), subtitle: decode(range.fields.subtitle), right: decode(range.fields.right),
+    };
+    title.value = target.title;
+    subtitle.value = target.subtitle;
+    right.value = target.right;
     right.placeholder = view.selected?.classes.includes("lapis-cv-zh") ? "2023.06 – 至今" : "Jun 2023 – Present";
-    submit.setText(range.updating ? t("update") : t("insert"));
     updatePreview();
     popovers.show(form, button);
     const next = title.value ? right : title;
@@ -234,24 +166,17 @@ function createSourceEntryPopover(pane, button, field, popovers, { t, view, upda
     event.preventDefault();
     const name = title.value.trim();
     if (form.hidden || !target || !name || field.readOnly) return;
-    const { start, end, updating, attribute, separator, snapshot } = target;
-    if (snapshot !== field.value) {
+    if (target.edit !== editor.edit || target.snapshot !== field.value) {
       close();
       new Notice(t("entryMoved"));
       return;
     }
-    const detail = subtitle.value.trim();
-    const date = right.value.trim();
+    const block = updateLegacyEntry(target, name, subtitle.value.trim(), right.value.trim());
     close();
-    if (updating && name === target.title && detail === target.subtitle && date === target.right) return;
-    const block = sourceEntryMarkup(name, detail, date, attribute, separator);
-    const before = snapshot.slice(0, start);
-    const after = snapshot.slice(end);
-    const leading = updating || !before || /\n[ \t]*\n$/.test(before) ? "" : before.endsWith("\n") ? "\n" : "\n\n";
-    const trailing = updating || /^\n[ \t]*\n/.test(after) ? "" : after.startsWith("\n") ? "\n" : "\n\n";
-    const cursor = start + leading.length + block.length + (updating ? 0 : 1);
-    replaceSourceSelection(field, start, end, leading + block + trailing, cursor, cursor);
-    updateTools();
+    if (block === target.markup) return;
+    const cursor = target.start + block.length;
+    replaceSourceSelection(field, target.start, target.end, block, cursor, cursor);
+    editor.toolbar.update();
   });
 }
 

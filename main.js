@@ -153,37 +153,18 @@ var require_localization = __commonJS({
       searchNotes: ["\u641C\u7D22\u7B80\u5386\u6216\u5176\u4ED6 Markdown \u7B14\u8BB0", "Search resumes or Markdown notes"],
       noMatchingNotes: ["\u6CA1\u6709\u627E\u5230\u5339\u914D\u7684\u7B14\u8BB0", "No matching notes"],
       sourceNote: ["\u6B63\u6587\u6765\u6E90 \xB7 {path}", "Source note \xB7 {path}"],
-      formatSource: ["\u6B63\u6587\u683C\u5F0F", "Text formatting"],
+      editorActions: ["\u6B63\u6587\u5DE5\u5177", "Editor tools"],
       retry: ["\u91CD\u8BD5", "Retry"],
       retrySave: ["\u91CD\u8BD5\u4FDD\u5B58", "Retry saving"],
       saveCopy: ["\u53E6\u5B58\u4E3A\u526F\u672C", "Save a copy"],
       copyMyInput: ["\u590D\u5236\u6211\u7684\u8F93\u5165", "Copy my changes"],
       discardAndReload: ["\u653E\u5F03\u5E76\u52A0\u8F7D\u6700\u65B0", "Discard and load latest"],
       sourceLabel: ["\u7B80\u5386 Markdown \u6B63\u6587", "Resume Markdown"],
-      bold: ["\u52A0\u7C97", "Bold"],
-      unbold: ["\u53D6\u6D88\u52A0\u7C97", "Remove bold"],
-      boldShortcut: ["{action}\uFF08\u2318B / Ctrl+B\uFF09", "{action} (\u2318B / Ctrl+B)"],
-      list: ["\u5217\u8868", "List"],
-      removeList: ["\u53D6\u6D88\u5217\u8868", "Remove list"],
-      makeBulletList: ["\u5207\u6362\u4E3A\u65E0\u5E8F\u5217\u8868", "Make bulleted list"],
-      section: ["\u680F\u76EE", "Section"],
-      removeSectionFormat: ["\u53D6\u6D88\u680F\u76EE\u683C\u5F0F", "Remove section heading"],
-      makeSection: ["\u8BBE\u4E3A\u680F\u76EE", "Make section heading"],
-      editorShortcuts: ["\u7F16\u8F91\u5FEB\u6377\u952E", "Editor shortcuts"],
-      continueList: ["\u7EED\u5199\u5217\u8868", "Continue list"],
-      indent: ["\u7F29\u8FDB", "Indent"],
-      clickPreview: ["\u70B9\u51FB\u7EB8\u9762", "Click preview"],
-      jumpToSource: ["\u5B9A\u4F4D\u6E90\u7801", "Jump to source"],
-      entry: ["\u7ECF\u5386\u6761\u76EE", "Entry"],
       editEntry: ["\u7F16\u8F91\u6761\u76EE", "Edit entry"],
-      editEntryHelp: ["\u4FEE\u6539\u5F53\u524D\u7ECF\u5386\u6761\u76EE", "Edit the current entry"],
-      addDateHelp: ["\u4E3A\u5F53\u524D\u5C0F\u6807\u9898\u8865\u65E5\u671F", "Add a date to this heading"],
-      insertEntry: ["\u63D2\u5165\u7ECF\u5386\u6761\u76EE", "Insert an entry"],
       entryTitle: ["\u4E3B\u6807\u9898", "Title"],
       entrySubtitle: ["\u526F\u6807\u9898\uFF08\u53EF\u9009\uFF09", "Subtitle (optional)"],
       entryDate: ["\u53F3\u4FA7\u65E5\u671F\u6216\u5907\u6CE8", "Date or note"],
       entryPreview: ["\u6761\u76EE\u9884\u89C8", "Entry preview"],
-      insert: ["\u63D2\u5165", "Insert"],
       update: ["\u66F4\u65B0", "Update"],
       entryMoved: ["\u6B63\u6587\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u6761\u76EE\u4F4D\u7F6E", "The text changed. Choose the entry location again."],
       saved: ["\u5DF2\u4FDD\u5B58", "Saved"],
@@ -3136,12 +3117,9 @@ var require_theme_editor = __commonJS({
 // src/editor/formatting.js
 var require_formatting = __commonJS({
   "src/editor/formatting.js"(exports2, module2) {
-    var { MARKDOWN_FENCE } = require_markdown();
-    var { entryFields } = require_entry();
+    var { MARKDOWN_FENCE } = require_structure();
     var SOURCE_LIST_PREFIX = /^([ \t]*)([-+*]|\d{1,9}[.)])[ \t]+(?:(\[[ xX]\])(?:[ \t]+|$))?/;
-    var SOURCE_HEADING_PREFIX = /^ {0,3}(#{1,6})(?:[ \t]+|$)/;
-    var SOURCE_ENTRY_BLOCK = /^ {0,3}<div (alt|class)="entry-title">[ \t]*\n((?:[^\n]*\n)*?)[ \t]*<\/div>[ \t]*$/gm;
-    var SOURCE_ENTRY_SEPARATOR = "\xB7";
+    var LEGACY_ENTRY_BLOCK = /^ {0,3}<div\b[^>\n]*[ \t](?:alt|class)=(["'])entry-title\1[^>\n]*>[ \t]*\n((?:[^\n]*\n)*?)[ \t]*<\/div>[ \t]*$/gm;
     function changeSourceIndent(field, outdent) {
       const { value, selectionStart: start, selectionEnd: end, selectionDirection } = field;
       if (!outdent && start === end) {
@@ -3175,22 +3153,33 @@ var require_formatting = __commonJS({
       const end = newline === -1 ? value.length : newline;
       return { start, end, text: value.slice(start, end) };
     }
-    function inSourceFence(value, lineStart) {
+    function inSourceLiteralBlock(value, lineStart, includeComments = false) {
       let fence = "";
+      let commentEnd = "";
       for (const line of value.slice(0, lineStart).split("\n")) {
         const marker = line.match(MARKDOWN_FENCE);
-        if (!marker) continue;
-        if (!fence) fence = marker[1];
-        else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
+        if (fence) {
+          if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
+        } else if (commentEnd) {
+          if (line.includes(commentEnd)) commentEnd = "";
+        } else if (marker) {
+          fence = marker[1];
+        } else if (includeComments) {
+          const comment = line.match(/^\s*(<!--|%%)/);
+          if (comment) {
+            const end = comment[1] === "<!--" ? "-->" : "%%";
+            if (!line.slice(comment[0].length).includes(end)) commentEnd = end;
+          }
+        }
       }
-      return !!fence;
+      return !!(fence || commentEnd);
     }
     function continueSourceList(field) {
       const { value, selectionStart: cursor, selectionEnd } = field;
       if (cursor !== selectionEnd) return false;
       const line = sourceLineAt(value, cursor);
       const prefix = line.text.match(SOURCE_LIST_PREFIX);
-      if (!prefix || cursor < line.start + prefix[0].length || inSourceFence(value, line.start)) return false;
+      if (!prefix || cursor < line.start + prefix[0].length || inSourceLiteralBlock(value, line.start)) return false;
       if (!line.text.slice(prefix[0].length).trim()) {
         replaceSourceSelection(field, line.start, line.end, "", line.start, line.start);
         return true;
@@ -3224,7 +3213,11 @@ ${indent}${next} ${checklist ? "[ ] " : ""}`;
       }
       return { start, end, content };
     }
-    function toggleSourceBold(field, { bold }) {
+    function toggleSourceBold(field) {
+      const line = sourceLineAt(field.value, field.selectionStart);
+      if (field.readOnly || field.selectionEnd > line.end || MARKDOWN_FENCE.test(line.text) || inSourceLiteralBlock(field.value, line.start) || legacyEntryAt(field)) return false;
+      const bold = sourceBoldSelection(field, line);
+      if (!bold) return false;
       const { start, end, content, span } = bold;
       const { value, selectionDirection } = field;
       if (span) {
@@ -3233,114 +3226,45 @@ ${indent}${next} ${checklist ? "[ ] " : ""}`;
         const emphasis = width === 3 ? "*" : "";
         const move = (offset) => from + emphasis.length + Math.min(text.length, Math.max(0, offset - from - width));
         replaceSourceSelection(field, from, to, emphasis + text + emphasis, move(start), move(end), selectionDirection);
-        return;
+        return true;
       }
       replaceSourceSelection(field, start, end, `**${content}**`, start + 2, end + 2, selectionDirection);
+      return true;
     }
-    function replaceSourceLinePrefix(field, line, previous, prefix) {
-      const { selectionStart: start, selectionEnd: end, selectionDirection } = field;
-      const contentStart = line.start + previous.length;
-      const offset = line.start + prefix.length;
-      replaceSourceSelection(
-        field,
-        line.start,
-        contentStart,
-        prefix,
-        offset + Math.max(0, start - contentStart),
-        offset + Math.max(0, end - contentStart),
-        selectionDirection
-      );
-    }
-    function toggleSourceList(field, { line, list, heading }) {
-      const indent = line.text.match(/^[ \t]*/)[0];
-      replaceSourceLinePrefix(field, line, list?.[0] ?? heading?.[0] ?? indent, list ? indent : `${indent}- `);
-    }
-    function toggleSourceHeading(field, { line, list, heading }) {
-      replaceSourceLinePrefix(field, line, heading?.[0] ?? list?.[0] ?? "", heading?.[1] === "##" ? "" : "## ");
-    }
-    function sourceEntryAt(value, selectionStart, selectionEnd) {
-      for (const match of value.matchAll(SOURCE_ENTRY_BLOCK)) {
+    function legacyEntryAt(field) {
+      const { value, selectionStart, selectionEnd } = field;
+      for (const match of value.matchAll(LEGACY_ENTRY_BLOCK)) {
         const start = match.index;
         const end = start + match[0].length;
         if (selectionStart < start || selectionEnd > end) continue;
+        if (inSourceLiteralBlock(value, start, true)) return null;
         const block = match[2].match(/^[ \t]*<h3>([^\n]*?)<\/h3>[ \t]*\n(?:[ \t]*<p>([^<>\n]*)<\/p>[ \t]*\n)?$/);
-        const title = block?.[1].match(/^([^<>]+?)(?:[ \t]*<span class="entry-sep">([|·])<\/span>[ \t]*<span class="entry-sub">([^<>]*)<\/span>)?$/);
-        const entry = { start, end, attribute: match[1] };
-        if (title) entry.fields = { title: title[1], subtitle: title[3] ?? "", right: block[2] ?? "", separator: title[2] };
+        const title = block?.[1].match(/^([^<>]+?)(?:[ \t]*<span class=["']entry-sep["']>([|·])<\/span>[ \t]*<span class=["']entry-sub["']>([^<>]*)<\/span>)?$/);
+        const entry = { start, end, markup: match[0] };
+        if (title) entry.fields = { title: title[1], subtitle: title[3] ?? "", right: block[2] ?? "", separator: title[2] ?? "\xB7" };
         return entry;
       }
       return null;
     }
-    function sourceEditorContext(field) {
-      const { value, selectionStart, selectionEnd } = field;
-      const line = sourceLineAt(value, selectionStart);
-      const fenced = MARKDOWN_FENCE.test(line.text) || inSourceFence(value, line.start);
-      const entry = fenced ? null : sourceEntryAt(value, selectionStart, selectionEnd);
-      const singleLine = selectionEnd <= line.end;
-      const canFormat = !field.readOnly && !fenced && !entry && singleLine;
-      const heading = canFormat ? line.text.match(SOURCE_HEADING_PREFIX) : null;
-      const subtitleLine = heading?.[1] === "###" ? line.text.slice(heading[0].length).replace(/[ \t]+#+[ \t]*$/, "").trim() : "";
-      const subheading = subtitleLine;
-      return {
-        line,
-        entry,
-        subheading,
-        headingFields: subheading ? entryFields(subheading) : null,
-        canFormat,
-        canUseEntry: !field.readOnly && !fenced && (entry ? !!entry.fields : singleLine),
-        list: canFormat ? line.text.match(SOURCE_LIST_PREFIX) : null,
-        heading,
-        bold: canFormat ? sourceBoldSelection(field, line) : null
-      };
-    }
-    function sourceEntryTarget(field, context) {
-      const { value, selectionStart, selectionEnd, ownerDocument } = field;
-      const { line, entry, subheading, canUseEntry } = context;
-      if (!canUseEntry) return null;
-      if (entry) {
-        const decoder = ownerDocument.createElement("textarea");
-        const readText = (text) => {
-          decoder.innerHTML = text;
-          return decoder.value.trim();
-        };
-        const { title, subtitle, right, separator } = entry.fields;
-        return {
-          start: entry.start,
-          end: entry.end,
-          updating: true,
-          attribute: entry.attribute,
-          separator,
-          title: readText(title),
-          subtitle: readText(subtitle),
-          right: readText(right)
-        };
-      }
-      if (selectionEnd <= line.end) {
-        if (subheading) {
-          const fields = context.headingFields ?? { title: subheading, subtitle: "", right: "" };
-          return { ...fields, start: line.start, end: line.end, updating: true };
-        }
-        const selected = value.slice(selectionStart, selectionEnd).trim();
-        const title = subheading || (selected === line.text.trim() && !/^[#>*+\-]/.test(selected) ? selected : "");
-        if (title && !/[*_`[\]<>]/.test(title)) return { start: line.start, end: line.end, title };
-      }
-      const lastLine = sourceLineAt(value, selectionEnd);
-      if (!lastLine.text.trim()) return { start: lastLine.start, end: lastLine.end };
-      const boundary = value.slice(lastLine.end).search(/\n[ \t]*\n/);
-      const position = boundary === -1 ? value.length : lastLine.end + boundary;
-      return { start: position, end: position };
-    }
-    function sourceEntryMarkup(title, subtitle, right, attribute, separator = SOURCE_ENTRY_SEPARATOR) {
-      if (!attribute) return `### ${title}${subtitle ? " \xB7 " + subtitle : ""}${right ? " | " + right : ""}`;
+    function updateLegacyEntry(entry, title, subtitle, right) {
       const escape = (text) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-      const detail = subtitle ? ` <span class="entry-sep">${separator}</span><span class="entry-sub">${escape(subtitle)}</span>` : "";
-      const date = right ? `
-    <p>${escape(right)}</p>` : "";
-      return `<div ${attribute}="entry-title">
-    <h3>${escape(title)}${detail}</h3>${date}
-</div>`;
+      const lines = entry.markup.split("\n");
+      if (title !== entry.title || subtitle !== entry.subtitle) {
+        const detail = subtitle ? ` <span class="entry-sep">${entry.separator}</span><span class="entry-sub">${escape(subtitle)}</span>` : "";
+        lines[1] = lines[1].replace(/<h3>.*<\/h3>/, () => "<h3>" + escape(title) + detail + "</h3>");
+      }
+      if (right !== entry.right) {
+        const date = "<p>" + escape(right) + "</p>";
+        if (lines.length === 4) {
+          if (right) lines[2] = lines[2].replace(/<p>.*<\/p>/, () => date);
+          else lines.splice(2, 1);
+        } else if (right) {
+          lines.splice(2, 0, lines[1].match(/^[ \t]*/)[0] + date);
+        }
+      }
+      return lines.join("\n");
     }
-    module2.exports = { SOURCE_ENTRY_SEPARATOR, changeSourceIndent, continueSourceList, replaceSourceSelection, sourceEditorContext, toggleSourceBold, toggleSourceList, toggleSourceHeading, sourceEntryTarget, sourceEntryMarkup };
+    module2.exports = { changeSourceIndent, continueSourceList, replaceSourceSelection, toggleSourceBold, legacyEntryAt, updateLegacyEntry };
   }
 });
 
@@ -3455,19 +3379,9 @@ var require_modals = __commonJS({
 var require_source_toolbar = __commonJS({
   "src/workbench/source-toolbar.js"(exports2, module2) {
     var { Notice: Notice2, setIcon } = require("obsidian");
-    var { iconButton } = require_dom();
     var { mountPhotoControls } = require_photo_controls();
     var { headerPhoto } = require_avatar();
-    var {
-      SOURCE_ENTRY_SEPARATOR,
-      replaceSourceSelection,
-      sourceEditorContext,
-      sourceEntryTarget,
-      sourceEntryMarkup,
-      toggleSourceBold,
-      toggleSourceList,
-      toggleSourceHeading
-    } = require_formatting();
+    var { legacyEntryAt, updateLegacyEntry, replaceSourceSelection } = require_formatting();
     function createSourcePopovers(pane, register) {
       let opened;
       const dismiss = (event) => {
@@ -3513,45 +3427,19 @@ var require_source_toolbar = __commonJS({
         }
       };
     }
-    function mountSourceTools(editor, pane, tools, info, field) {
+    function mountSourceTools(editor, pane, tools, field) {
       const { t, view } = editor;
       const popovers = createSourcePopovers(pane, (cleanup) => view.register(cleanup));
-      const group = () => tools.createDiv({ cls: "resume-layout-source-group" });
-      const addFormat = (parent, symbol, label, run, withText = false) => {
-        const button = parent.createEl("button", {
-          type: "button",
-          cls: "resume-layout-source-format",
-          attr: { "aria-label": label, "aria-pressed": "false" }
-        });
-        setIcon(button.createSpan({ attr: { "aria-hidden": "true" } }), symbol);
-        if (withText) button.createSpan({ cls: "resume-layout-source-caption", text: label });
-        button.addEventListener("click", () => {
-          const context = sourceEditorContext(field);
-          if (button.disabled || !context.canFormat || run === toggleSourceBold && !context.bold) return;
-          popovers.close();
-          field.focus({ preventScroll: true });
-          run(field, context);
-          updateTools();
-        });
-        return button;
-      };
-      const text = group();
-      const bold = addFormat(text, "bold", t("bold"), toggleSourceBold);
-      bold.setAttribute("aria-keyshortcuts", "Meta+B Control+B");
-      const list = addFormat(text, "list", t("list"), toggleSourceList);
-      const heading = addFormat(group(), "heading-2", t("section"), toggleSourceHeading, true);
-      const entry = group().createEl("button", {
-        type: "button",
-        cls: "resume-layout-source-entry-button",
-        attr: { "aria-expanded": "false", "aria-haspopup": "dialog" }
+      const photo = tools.createEl("button", { attr: { type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" } });
+      setIcon(photo.createSpan({ attr: { "aria-hidden": "true" } }), "image");
+      photo.createSpan({ text: t("photo") });
+      photo.addEventListener("click", openPhoto);
+      const entry = tools.createEl("button", {
+        text: t("editEntry"),
+        attr: { type: "button", "aria-expanded": "false", "aria-haspopup": "dialog" }
       });
-      const entryIcon = entry.createSpan({ cls: "resume-layout-source-entry-icon", attr: { "aria-hidden": "true" } });
-      const entryLabel = entry.createSpan();
-      setIcon(entry.createSpan({ cls: "resume-layout-source-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
-      createSourceEntryPopover(pane, entry, field, popovers, { t, view, updateTools });
-      const photo = iconButton(tools, "image", t("photo"), () => openPhoto());
-      photo.setAttribute("aria-haspopup", "dialog");
-      photo.setAttribute("aria-expanded", "false");
+      entry.hidden = true;
+      mountLegacyEntryEditor(pane, entry, field, popovers, editor);
       const photoPanel = pane.createDiv({ cls: "resume-layout-source-popover resume-layout-photo-popover", attr: { role: "dialog", "aria-label": t("photo") } });
       photoPanel.hidden = true;
       const photoControls = mountPhotoControls(photoPanel, view);
@@ -3578,67 +3466,17 @@ var require_source_toolbar = __commonJS({
         popovers.close();
         field.focus({ preventScroll: true });
       });
-      const help = iconButton(info, "circle-help", t("editorShortcuts"), () => {
-        if (!helpPanel.hidden) return popovers.close();
-        popovers.show(helpPanel, help);
-        helpPanel.focus({ preventScroll: true });
-      });
-      help.addClass("resume-layout-source-help");
-      help.setAttribute("aria-expanded", "false");
-      help.setAttribute("aria-haspopup", "dialog");
-      const helpPanel = pane.createDiv({
-        cls: "resume-layout-source-popover resume-layout-source-help-panel",
-        attr: { role: "dialog", "aria-label": t("editorShortcuts"), tabindex: "-1" }
-      });
-      helpPanel.hidden = true;
-      const shortcuts = helpPanel.createEl("dl");
-      for (const [key, action] of [
-        ["\u2318B / Ctrl+B", "bold"],
-        ["Enter", "continueList"],
-        ["Tab", "indent"],
-        [t("clickPreview"), "jumpToSource"]
-      ]) {
-        shortcuts.createEl("dt").createEl("kbd", { text: key });
-        shortcuts.createEl("dd", { text: t(action) });
-      }
-      helpPanel.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
-        event.preventDefault();
-        event.stopPropagation();
-        popovers.close();
-        help.focus({ preventScroll: true });
-      });
-      const update = (button, active, title, disabled) => {
-        button.disabled = disabled;
-        button.setAttribute("aria-pressed", String(active));
-        button.title = title;
-      };
       function updateTools() {
-        if (!editor.edit) return;
-        photo.disabled = field.readOnly || !!editor.edit.conflicted;
-        const context = sourceEditorContext(field);
-        const isBold = !!context.bold?.span;
-        const isList = !!context.list;
-        const isHeading = context.heading?.[1] === "##";
-        update(bold, isBold, t("boldShortcut", { action: t(isBold ? "unbold" : "bold") }), !context.bold);
-        update(list, isList, isList ? t("removeList") : t("makeBulletList"), !context.canFormat);
-        update(heading, isHeading, isHeading ? t("removeSectionFormat") : t("makeSection"), !context.canFormat);
-        const editing = !!(context.entry?.fields || context.headingFields?.right || context.headingFields?.subtitle);
-        const label = editing ? t("editEntry") : t("entry");
-        if (entryLabel.textContent !== label) {
-          entryLabel.setText(label);
-          setIcon(entryIcon, editing ? "pencil" : "calendar-range");
-        }
-        entry.disabled = !context.canUseEntry;
-        entry.toggleClass("is-current-entry", editing);
-        entry.title = editing ? t("editEntryHelp") : context.subheading ? t("addDateHelp") : t("insertEntry");
+        photo.disabled = !editor.edit || field.readOnly || !!editor.edit.conflicted;
+        entry.hidden = photo.disabled || !legacyEntryAt(field)?.fields;
       }
       return { update: updateTools, close: popovers.close, openPhoto, updatePhoto: photoControls.update };
     }
-    function createSourceEntryPopover(pane, button, field, popovers, { t, view, updateTools }) {
+    function mountLegacyEntryEditor(pane, button, field, popovers, editor) {
+      const { t, view } = editor;
       const form = pane.createEl("form", {
         cls: "resume-layout-source-popover resume-layout-source-entry resume-layout-modal-form",
-        attr: { role: "dialog", "aria-label": t("entry") }
+        attr: { role: "dialog", "aria-label": t("editEntry") }
       });
       form.hidden = true;
       const fields = form.createDiv({ cls: "resume-layout-source-entry-fields" });
@@ -3658,7 +3496,7 @@ var require_source_toolbar = __commonJS({
       const previewRight = preview.createSpan({ cls: "resume-layout-entry-preview-date" });
       const actions = form.createDiv({ cls: "resume-layout-source-entry-actions" });
       const cancel = actions.createEl("button", { text: t("cancel"), attr: { type: "button" } });
-      const submit = actions.createEl("button", { cls: "mod-cta", text: t("insert"), attr: { type: "submit" } });
+      const submit = actions.createEl("button", { cls: "mod-cta", text: t("update"), attr: { type: "submit" } });
       let target;
       const close = () => {
         popovers.close();
@@ -3667,20 +3505,32 @@ var require_source_toolbar = __commonJS({
       const updatePreview = () => {
         const detail = subtitle.value.trim();
         previewTitle.setText(title.value.trim());
-        previewSubtitle.setText(detail ? `${target?.separator ?? SOURCE_ENTRY_SEPARATOR} ${detail}` : "");
+        previewSubtitle.setText(detail ? `${target?.separator ?? "\xB7"} ${detail}` : "");
         previewRight.setText(right.value.trim());
         submit.disabled = !title.value.trim();
       };
       button.addEventListener("click", () => {
         if (!form.hidden) return close();
-        const range = sourceEntryTarget(field, sourceEditorContext(field));
-        if (!range) return;
-        target = { ...range, snapshot: field.value };
-        title.value = range.title ?? "";
-        subtitle.value = range.subtitle ?? "";
-        right.value = range.right ?? "";
+        const range = legacyEntryAt(field);
+        if (!editor.edit || field.readOnly || editor.edit.conflicted || !range?.fields) return;
+        const decoder = field.ownerDocument.createElement("textarea");
+        const decode = (text) => {
+          decoder.innerHTML = text;
+          return decoder.value.trim();
+        };
+        target = {
+          ...range,
+          edit: editor.edit,
+          snapshot: field.value,
+          separator: range.fields.separator,
+          title: decode(range.fields.title),
+          subtitle: decode(range.fields.subtitle),
+          right: decode(range.fields.right)
+        };
+        title.value = target.title;
+        subtitle.value = target.subtitle;
+        right.value = target.right;
         right.placeholder = view.selected?.classes.includes("lapis-cv-zh") ? "2023.06 \u2013 \u81F3\u4ECA" : "Jun 2023 \u2013 Present";
-        submit.setText(range.updating ? t("update") : t("insert"));
         updatePreview();
         popovers.show(form, button);
         const next = title.value ? right : title;
@@ -3699,24 +3549,17 @@ var require_source_toolbar = __commonJS({
         event.preventDefault();
         const name = title.value.trim();
         if (form.hidden || !target || !name || field.readOnly) return;
-        const { start, end, updating, attribute, separator, snapshot } = target;
-        if (snapshot !== field.value) {
+        if (target.edit !== editor.edit || target.snapshot !== field.value) {
           close();
           new Notice2(t("entryMoved"));
           return;
         }
-        const detail = subtitle.value.trim();
-        const date = right.value.trim();
+        const block = updateLegacyEntry(target, name, subtitle.value.trim(), right.value.trim());
         close();
-        if (updating && name === target.title && detail === target.subtitle && date === target.right) return;
-        const block = sourceEntryMarkup(name, detail, date, attribute, separator);
-        const before = snapshot.slice(0, start);
-        const after = snapshot.slice(end);
-        const leading = updating || !before || /\n[ \t]*\n$/.test(before) ? "" : before.endsWith("\n") ? "\n" : "\n\n";
-        const trailing = updating || /^\n[ \t]*\n/.test(after) ? "" : after.startsWith("\n") ? "\n" : "\n\n";
-        const cursor = start + leading.length + block.length + (updating ? 0 : 1);
-        replaceSourceSelection(field, start, end, leading + block + trailing, cursor, cursor);
-        updateTools();
+        if (block === target.markup) return;
+        const cursor = target.start + block.length;
+        replaceSourceSelection(field, target.start, target.end, block, cursor, cursor);
+        editor.toolbar.update();
       });
     }
     module2.exports = { mountSourceTools };
@@ -3728,7 +3571,7 @@ var require_source_editor = __commonJS({
   "src/workbench/source-editor.js"(exports2, module2) {
     var { Notice: Notice2, Scope } = require("obsidian");
     var { editableBody, withEditedBody } = require_markdown();
-    var { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold, replaceSourceSelection } = require_formatting();
+    var { changeSourceIndent, continueSourceList, toggleSourceBold, replaceSourceSelection } = require_formatting();
     var { copySourceText, runWithNotice: runWithNotice2 } = require_dom();
     var { SourceRecoveryModal, PhotoPicker } = require_modals();
     var { avatarEdit } = require_avatar();
@@ -3745,7 +3588,7 @@ var require_source_editor = __commonJS({
         const pane = this.sourcePane = parent.createDiv({ cls: "resume-layout-source" });
         pane.hidden = true;
         const header = pane.createDiv({ cls: "resume-layout-source-header" });
-        const tools = header.createDiv({ cls: "resume-layout-source-tools", attr: { role: "group", "aria-label": this.t("formatSource") } });
+        const tools = header.createDiv({ cls: "resume-layout-source-tools", attr: { role: "group", "aria-label": this.t("editorActions") } });
         const info = header.createDiv({ cls: "resume-layout-source-info" });
         this.sourceStatus = info.createSpan({ cls: "resume-layout-source-status", attr: { role: "status" } });
         this.retrySourceSave = info.createEl("button", { text: this.t("retry"), attr: { "aria-label": this.t("retrySave") } });
@@ -3761,9 +3604,9 @@ var require_source_editor = __commonJS({
         const loadLatest = this.sourceConflict.createEl("button", { text: this.t("discardAndReload"), cls: "mod-warning" });
         loadLatest.addEventListener("click", () => void this.resolveSourceConflict(false));
         const field = this.sourceField = pane.createEl("textarea", {
-          attr: { "aria-label": this.t("sourceLabel"), spellcheck: "false", autocapitalize: "off", autocomplete: "off" }
+          attr: { "aria-label": this.t("sourceLabel"), "aria-keyshortcuts": "Meta+B Control+B", spellcheck: "false", autocapitalize: "off", autocomplete: "off" }
         });
-        this.toolbar = mountSourceTools(this, pane, tools, info, field);
+        this.toolbar = mountSourceTools(this, pane, tools, field);
         field.addEventListener("input", (event) => {
           const photo = this.edit?.lastPhotoChange;
           const undo = event.inputType === "historyUndo";
@@ -3789,9 +3632,7 @@ var require_source_editor = __commonJS({
         const scope = new Scope(this.app.scope);
         scope.register(["Mod"], "B", (event) => {
           if (event.isComposing || field.ownerDocument.activeElement !== field) return;
-          const context = sourceEditorContext(field);
-          if (!context.bold) return;
-          toggleSourceBold(field, context);
+          if (!toggleSourceBold(field)) return;
           this.toolbar.update();
           return false;
         });
@@ -3934,6 +3775,7 @@ var require_source_editor = __commonJS({
       }
       markSourceConflict(edit) {
         edit.conflicted = true;
+        this.toolbar.update();
         this.sourceField.ownerDocument.defaultView.clearTimeout(edit.saveTimer);
         this.setSourceStatus("sourceConflict", "conflict");
       }
