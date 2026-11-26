@@ -1,0 +1,168 @@
+.workspace-leaf-content[data-type="careeros-resume-layout"] > .view-content {
+  padding: 0;
+}
+
+.careeros-resume-layout {
+  --studio-bg: var(--co-bg, var(--background-primary));
+  --studio-panel: var(--co-surface, var(--background-primary));
+  --studio-inset: var(--co-muted-bg, var(--background-secondary));
+  --studio-border: var(--co-border, var(--background-modifier-border));
+  --studio-ink: var(--co-ink, var(--text-normal));
+  --studio-muted: var(--co-muted, var(--text-muted));
+  --studio-accent: var(--co-accent, var(--text-accent));
+  --studio-hover: var(--co-hover, var(--background-modifier-hover));
+  --studio-warning: #a73a35;
+  --studio-inspector: 276px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--studio-ink);
+  background: var(--studio-bg);
+  container-type: inline-size;
+}
+
+body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
+
+.careeros-resume-layout [hidden] { display: none !important; }
+
+.careeros-resume-layout .resume-layout-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  min-height: 50px;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--studio-border);
+  background: var(--studio-panel);
+}
+
+.careeros-resume-layout :is(.resume-layout-identity, .resume-layout-header-center, .resume-layout-actions) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.careeros-resume-layout .resume-layout-header-center { gap: 12px; }
+.careeros-resume-layout .resume-layout-actions { justify-self: end; }
+
+.careeros-resume-layout button:not(.mod-cta) {
+  background: var(--studio-inset);
+  color: var(--studio-ink);
+  box-shadow: none;
+}
+
+.careeros-resume-layout button:not(.mod-cta):hover {
+  background: var(--studio-hover);
+}
+
+.careeros-resume-layout button.mod-cta {
+  background: var(--co-cta-bg, var(--interactive-accent));
+  color: var(--co-cta-ink, var(--text-on-accent));
+  box-shadow: none;
+}
+
+.careeros-resume-layout button.mod-cta:hover { filter: brightness(1.09); }
+
+.careeros-resume-layout button.resume-layout-picker {
+  height: 36px;
+  min-width: 0;
+  max-width: 100%;
+  gap: 8px;
+  padding-inline: 8px;
+  justify-content: start;
+  background: transparent;
+}
+
+.careeros-resume-layout .resume-layout-identity-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  text-align: start;
+  line-height: 1.16;
+}
+
+.careeros-resume-layout :is(.resume-layout-title, .resume-layout-path) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout .resume-layout-title { font-size: 13px; font-weight: 650; }
+.careeros-resume-layout .resume-layout-path { font-size: 10px; color: var(--studio-muted); }
+
+.careeros-resume-layout .resume-layout-picker-icon {
+  display: inline-flex;
+  color: var(--studio-muted);
+}
+
+.careeros-resume-layout .resume-layout-picker-icon svg { width: 13px; height: 13px; }
+
+.careeros-resume-layout .resume-layout-icon-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex: none;
+}
+
+.careeros-resume-layout .resume-layout-icon-button svg { width: 15px; height: 15px; }
+.careeros-resume-layout .resume-layout-actions > :is(.mod-cta, .resume-layout-edit-button) {
+  min-height: 30px;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout select.dropdown {
+  color: var(--studio-ink);
+  background-color: var(--studio-inset);
+  box-shadow: none;
+}
+
+.careeros-resume-layout .resume-layout-zoom { min-height: 29px; font-size: 12px; }
+
+.careeros-resume-layout .resume-layout-page-status {
+  display: grid;
+  gap: 5px;
+  min-width: 68px;
+  color: var(--studio-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout .resume-layout-page-progress {
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--studio-border);
+}
+
+.careeros-resume-layout .resume-layout-page-progress::after {
+  display: block;
+  width: var(--page-usage, 0%);
+  height: 100%;
+  background: var(--co-ready, var(--studio-accent));
+  content: "";
+}
+
+.careeros-resume-layout .resume-layout-page-status.is-overflowing { color: var(--studio-warning); }
+.careeros-resume-layout .resume-layout-fit-button { flex-shrink: 0; white-space: nowrap; font-size: 12px; }
+.careeros-resume-layout .is-overflowing .resume-layout-page-progress::after { background: var(--studio-warning); }
+
+.careeros-resume-layout .resume-layout-body {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr) var(--studio-inspector);
+  flex: 1;
+  min-height: 0;
+}
+
+.careeros-resume-layout .resume-layout-body:has(.resume-layout-inspector[hidden]):not(.is-source-editing) {
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+
+.careeros-resume-layout .resume-layout-body.is-source-editing {
+  grid-template: minmax(0, 1fr) / repeat(2, minmax(0, 1fr));
+}

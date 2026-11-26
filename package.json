@@ -1,0 +1,14 @@
+{
+  "name": "resume-atelier",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check && node --test"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,109 @@
+/* ==========================================================================
+ * Chinese Resume Variant (`cssclasses: [lapis-cv, careeros-resume, lapis-cv-zh]`)
+ * Uses serif headings and a matched Latin/CJK sans-serif body.
+ * ========================================================================== */
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh,
+body.theme-dark .lapis-cv:where(.resume-layout-styled).lapis-cv-zh,
+body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
+  --text-size: 8.85pt;
+  --line-height: 1.48;
+  --h1-size: 19pt;
+  --h2-size: 10.4pt;
+  --h3-size: 9.5pt;
+  --blockquote-size: 8.75pt;
+
+  --resume-default-heading-top: 3mm;
+  --resume-default-heading-bottom: 1.25mm;
+  --resume-default-list-gap: 0.55mm;
+  --text-font: var(--resume-sans-font);
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh h1 {
+  letter-spacing: 0.04em;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh h2 {
+  text-transform: none;
+  letter-spacing: 0.1em;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh strong,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh b {
+  font-weight: 600;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh p,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh li {
+  text-align: justify;
+  text-justify: inter-ideograph;
+  letter-spacing: 0.01em;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh blockquote p,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) p {
+  text-align: left;
+  letter-spacing: 0;
+}
+
+/* Upright secondary subtitle for Chinese (never faux-oblique CJK glyphs) */
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) h3 .entry-sub {
+  font-family: var(--text-font) !important;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 8.65pt;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+ * Master Resume Wrapper (`cssclasses: [..., lapis-cv-master]`)
+ * - Renders embedded original resume (`![[profile/...]]`) seamlessly on screen
+ * - Automatically hides wrapper heading & info callout during PDF export
+ * ========================================================================== */
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] {
+  margin: 0 0 4mm 0 !important;
+  padding: 2.2mm 3.2mm !important;
+  border: 1px solid color-mix(in srgb, var(--color-accent), transparent 72%) !important;
+  border-left: 3px solid var(--color-accent) !important;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-accent), transparent 94%) !important;
+  font-size: 8.4pt;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] .callout-title {
+  color: var(--color-accent);
+  font-size: 8.6pt;
+  font-weight: 600;
+  margin-bottom: 0.8mm;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] .callout-content p {
+  font-size: 8.2pt;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .internal-embed.markdown-embed {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed-content {
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed-title,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed-link {
+  display: none !important;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed .markdown-preview-sizer {
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}

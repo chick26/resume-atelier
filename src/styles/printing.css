@@ -1,0 +1,48 @@
+@media print {
+  .lapis-cv:where(.resume-layout-styled),
+  body.theme-dark .lapis-cv:where(.resume-layout-styled),
+  body.theme-light .lapis-cv:where(.resume-layout-styled) {
+    --file-margins: 10mm 13.5mm 10mm 13.5mm;
+    --background-primary: #ffffff;
+    --code-background: transparent !important;
+    --text-normal: #262e3a;
+    --text-strong: #111827;
+  }
+
+  /* Hide only the outer Master Resume wrapper heading & info callout on print,
+     never the embedded resume's own h1 or contact blockquote */
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master > .markdown-preview-sizer > :is(h1, .el-h1, .el-callout, .callout[data-callout="info"], .el-blockquote:has(.callout)),
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master > :is(h1, .callout[data-callout="info"]),
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] {
+    display: none !important;
+  }
+
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed :is(h1, .el-h1, blockquote, .el-blockquote) {
+    display: block !important;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) .markdown-preview-sizer {
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) :is(h1, h2, h3, h4, h5, h6, .entry-title, div[alt="entry-title"]) {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) hr {
+    break-after: page;
+    page-break-after: always;
+    margin: 0;
+    visibility: hidden;
+  }
+}

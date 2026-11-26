@@ -1,0 +1,167 @@
+@media print {
+  .print > .resume-layout-surface {
+    --file-margins: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+}
+
+/*
+ * Resume paper styles and icons adapted from LapisCV v2.0.1
+ * https://github.com/BingyanStudio/LapisCV
+ *
+ * MIT License
+ *
+ * Copyright (c) 2024 YiNN
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+/*
+ * CareerOS refined editorial port of LapisCV Serif for Obsidian.
+ *
+ * Upstream: https://github.com/BingyanStudio/LapisCV (v2.0.1, MIT)
+ *
+ * Scoped to notes with `cssclasses: [lapis-cv]` so the CareerOS dashboard and
+ * ordinary notes keep their own theme. Uses matching Latin and CJK type
+ * families for each text role, with the LapisCV icon face reserved for icons.
+ */
+
+.lapis-cv:where(.resume-layout-styled),
+body.theme-dark .lapis-cv:where(.resume-layout-styled),
+body.theme-light .lapis-cv:where(.resume-layout-styled) {
+  /* Page & typographic scale tuned for high-density executive A4 output */
+  --file-margins: var(--resume-margin-top, 10mm) var(--resume-margin-right, 13.5mm)
+                  var(--resume-margin-bottom, 10mm) var(--resume-margin-left, 13.5mm);
+  --text-size: 9.05pt;
+  --line-height: 1.37;
+  --avatar-width: 24mm;
+  --h1-size: 19.5pt;
+  --h2-size: 9.8pt;
+  --h3-size: 9.5pt;
+  --blockquote-size: 8.85pt;
+  --resume-default-heading-top: 2.8mm;
+  --resume-default-heading-bottom: 1.15mm;
+  --resume-default-list-gap: 0.5mm;
+  --resume-heading-top: var(--resume-density-heading-top, var(--resume-default-heading-top));
+  --resume-heading-bottom: var(--resume-density-heading-bottom, var(--resume-default-heading-bottom));
+  --resume-list-gap: var(--resume-density-list-gap, var(--resume-default-list-gap));
+  --resume-entry-gap: var(--resume-density-entry-gap, 1.65mm);
+
+  /* Platform fonts keep the vault portable without a bundled CJK font. */
+  --icon-font: "CareerOS Resume Icons";
+  --resume-serif-font: "Charter", "Georgia", "Iowan Old Style", "CareerOS Resume Icons", "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
+  --resume-sans-font: "Inter", "Helvetica Neue", Arial, "CareerOS Resume Icons", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --title-font: var(--resume-serif-font);
+  --text-font: var(--resume-serif-font);
+  --link-font: var(--text-font);
+  --code-font: var(--text-font);
+
+  /* Editorial Lapis palette */
+  --color-accent: #1f4478;
+  --text-strong: #111827;
+  --text-normal: #262e3a;
+  --text-muted: #526071;
+  --text-faint: #8c9aab;
+  --link-color: var(--color-accent);
+  --h1-color: var(--text-strong);
+  --h2-color: var(--color-accent);
+  --h3-color: var(--text-strong);
+  --bold-color: var(--text-strong);
+  --italic-color: inherit;
+  --border-color: color-mix(in srgb, var(--color-accent), transparent 62%);
+  --shadow-color: rgba(15, 23, 42, 0.14);
+  --background-primary: #ffffff;
+  --code-background: transparent;
+  --code-normal: var(--text-normal);
+
+  /* Obsidian theme variables scoped to resume sheets */
+  --font-text: var(--text-font);
+  --font-text-size: var(--text-size);
+  --line-height-normal: var(--line-height);
+  --p-spacing: 0;
+  --h1-weight: 700;
+  --h1-line-height: 1.15;
+  --h1-font: var(--title-font);
+  --h2-weight: 700;
+  --h2-line-height: 1.2;
+  --h2-font: var(--title-font);
+  --h3-weight: 700;
+  --h3-line-height: 1.3;
+  --h3-font: var(--title-font);
+  --font-monospace: var(--code-font);
+  --link-external-color: var(--link-color);
+  --link-external-decoration: none;
+  --text-accent: var(--link-color);
+  --text-accent-hover: var(--link-color);
+  --code-size: inherit;
+  --heading-spacing: 0;
+  --list-spacing: 0;
+  --list-indent-editing: 0;
+  --list-indent: 3.2mm;
+  --list-marker-color: color-mix(in srgb, var(--color-accent), var(--text-muted) 35%);
+  --file-line-width: 210mm;
+}
+
+.lapis-cv:where(.resume-layout-styled)[data-resume-density="comfortable"] {
+  --resume-density-heading-top: 3.45mm;
+  --resume-density-heading-bottom: 1.45mm;
+  --resume-density-entry-gap: 2.05mm;
+  --resume-density-list-gap: 0.7mm;
+}
+
+.lapis-cv:where(.resume-layout-styled)[data-resume-density="compact"] {
+  --resume-density-heading-top: 1.9mm;
+  --resume-density-heading-bottom: 0.85mm;
+  --resume-density-entry-gap: 1.15mm;
+  --resume-density-list-gap: 0.28mm;
+}
+
+/* Paper sheet preview inside Obsidian */
+.lapis-cv:where(.resume-layout-styled) .markdown-preview-sizer,
+.lapis-cv:where(.resume-layout-styled) .cm-sizer {
+  box-sizing: border-box;
+  margin: 12px auto 24px;
+  max-width: var(--file-line-width) !important;
+  min-height: 297mm;
+  padding: var(--file-margins);
+  background: #ffffff;
+  color: var(--text-normal);
+  box-shadow: 0 2px 14px var(--shadow-color);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@media screen {
+  .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) {
+    padding: 16px 18px 20px;
+  }
+
+  .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) > .markdown-preview-sizer {
+    min-height: 297mm !important;
+    padding: var(--file-margins) !important;
+  }
+
+  .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) > .markdown-preview-sizer > div {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0 !important;
+  }
+}

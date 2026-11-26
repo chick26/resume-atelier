@@ -1,0 +1,207 @@
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+const vm = require("node:vm");
+
+const manifest = require("../manifest.json");
+const { layoutFor, dimensions, layoutMetadata, noteLayoutKey } = require("../src/layout/geometry");
+const root = path.join(__dirname, "..");
+const bundle = readFileSync(path.join(root, "main.js"), "utf8");
+
+class FileView {
+  constructor(leaf) {
+    this.app = leaf.app;
+    this.leaf = leaf;
+  }
+
+  async setState(state) {
+    this.restoredState = state;
+  }
+}
+
+class MarkdownView {}
+
+function frontMatterInfo(markdown) {
+  const prefix = markdown.match(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/)?.[0];
+  return { exists: !!prefix, contentStart: prefix?.length ?? 0 };
+}
+
+async function loadPlugin({ language = "en", data, notes = new Map() } = {}) {
+  const sandbox = {
+    module: {},
+    require(name) {
+      assert.equal(name, "obsidian");
+      return {
+        FileView, MarkdownView, getFrontMatterInfo: frontMatterInfo,
+        getLanguage: () => language, normalizePath: value => value,
+        Plugin: class {}, PluginSettingTab: class {}, FuzzySuggestModal: class {},
+        Modal: class {}, Notice: class {},
+      };
+    },
+  };
+  vm.runInNewContext(bundle, sandbox, { filename: "main.js" });
+  const Plugin = sandbox.module.exports;
+  const plugin = new Plugin();
+  const writes = [];
+  const persisted = [];
+  const workspace = {
+    on() {},
+    onLayoutReady() {},
+    getLeavesOfType: () => [],
+  };
+  const metadataCache = {
+    on() {},
+    getFileCache(file) {
+      return { frontmatter: file.properties };
+    },
+    getFirstLinkpathDest(value) {
+      return notes.get(value) ?? notes.get(value + ".md");
+    },
+  };
+  const vault = {
+    configDir: ".obsidian",
+    adapter: { async exists() { return false; } },
+    on() {},
+    getMarkdownFiles: () => [...notes.values()],
+    getAbstractFileByPath: value => notes.get(value),
+    getAvailablePath: (name, extension) => name + "." + extension,
+    async create(filePath, contents) {
+      writes.push({ filePath, contents });
+      return { path: filePath };
+    },
+    async read(file) {
+      return file.contents;
+    },
+    async process(file, transform) {
+      file.contents = transform(file.contents);
+      return file.contents;
+    },
+  };
+  let viewFactory;
+  let command;
+  Object.assign(plugin, {
+    manifest,
+    app: { workspace, metadataCache, vault },
+    loadData: async () => data,
+    saveData: async value => { persisted.push(structuredClone(value)); },
+    registerView(type, factory) {
+      assert.equal(type, manifest.id);
+      viewFactory = factory;
+    },
+    addCommand(value) { command = value; },
+    addSettingTab() {},
+    registerEvent() {},
+    registerMarkdownPostProcessor() {},
+  });
+  await plugin.onload();
+  return { plugin, viewFactory, command, writes, persisted, workspace, vault };
+}
+
+function note(filePath, properties, contents = "") {
+  return { path: filePath, extension: "md", basename: path.basename(filePath, ".md"), properties, contents };
+}
+
+test("the bundled plugin registers its view and restores the old file state", async () => {
+  const data = { lastPath: "Resumes/Draft.md", settings: { defaultDensity: "comfortable" } };
+  const { plugin, viewFactory, command } = await loadPlugin({ data });
+  assert.equal(command.id, "open");
+  assert.equal(plugin.settings.defaultDensity, "comfortable");
+  const view = viewFactory({ app: plugin.app });
+  assert.equal(view.getViewType(), manifest.id);
+  assert.equal(view.getDisplayText(), "Resume Atelier");
+  await view.setState({});
+  assert.equal(view.restoredState.file, data.lastPath);
+});
+
+test("the sample notes used by the UI come from the downloadable Markdown files", async () => {
+  for (const [language, title, commandName] of [
+    ["en", "Sample Resume", "Open workbench"],
+    ["zh", "示例简历", "打开工作台"],
+  ]) {
+    const { plugin, command, writes } = await loadPlugin({ language });
+    assert.equal(command.name, commandName);
+    await plugin.files.createExampleResume();
+    assert.equal(writes[0].filePath, title + ".md");
+    assert.equal(writes[0].contents, readFileSync(path.join(root, "examples", `sample-resume.${language}.md`), "utf8"));
+    assert.match(writes[0].contents, /<div alt="entry-title">/);
+  }
+});
+
+test("older settings, local layouts and the recent note survive a folder rename", async () => {
+  const data = {
+    settings: { autoSaveLayout: false, defaultTemplate: "黑白 ATS", interfaceLanguage: "zh" },
+    layouts: { "Resumes/Draft.md": { preview: true, template: "紧凑", top: 15 } },
+    lastPath: "Resumes/Draft.md",
+  };
+  const { plugin, persisted } = await loadPlugin({ data });
+  assert.equal(plugin.t("pluginName"), "Resume Atelier");
+  plugin.state.moveLayouts("Archive", "Resumes");
+  await plugin.state.saveQueue;
+  assert.equal(persisted[0].lastPath, "Archive/Draft.md");
+  assert.deepEqual(persisted[0].layouts, { "Archive/Draft.md": data.layouts["Resumes/Draft.md"] });
+  assert.equal(persisted[0].settings.autoSaveLayout, false);
+  assert.equal(persisted[0].settings.defaultTemplate, "黑白 ATS");
+  assert.equal(Object.hasOwn(persisted[0].settings, "interfaceLanguage"), false);
+});
+
+test("saved metadata keeps the layout identity and clamps geometry", async () => {
+  const stored = { resume_style: "黑白 ATS", resume_density: "compact",
+    resume_layout: { top: 40, bottom: 12, left: 4, right: 11, fontSize: 9, lineHeight: 1.4 } };
+  const meta = layoutMetadata(stored);
+  const file = note("Resume.md", { type: "resume-draft", ...stored, language: "zh" });
+  const { plugin } = await loadPlugin();
+  const layout = plugin.layouts.noteLayout(plugin.catalog.resume(file));
+  assert.equal(meta.stored, true);
+  assert.equal(layout.template, "黑白 ATS");
+  assert.equal(layout.density, "compact");
+  assert.equal(layout.top, 30);
+  assert.equal(layout.left, 5);
+  assert.notEqual(noteLayoutKey(meta),
+    noteLayoutKey({ template: layout.template, density: layout.density, geometry: dimensions(layout) }));
+  assert.notEqual(layoutFor([], {}).lineHeight, layoutFor(["lapis-cv-zh"], {}).lineHeight);
+});
+
+test("atomic source edits preserve the YAML and reject concurrent edits", async () => {
+  const yaml = "\ufeff---\r\ntype: resume-draft\r\ncustom: keep\r\n---\r\n";
+  const before = "## Experience\n- Original\n";
+  const after = "## Experience\n- Updated\n";
+  const file = note("Resume.md", { type: "resume-draft" }, yaml + before.replaceAll("\n", "\r\n"));
+  const { plugin } = await loadPlugin({ notes: new Map([[file.path, file]]) });
+  await plugin.files.writeSourceBody(file, before, after);
+  assert.equal(file.contents, yaml + after.replaceAll("\n", "\r\n"));
+  await assert.rejects(plugin.files.writeSourceBody(file, before, "Lost update"), { code: "CONFLICT" });
+  assert.equal(file.contents, yaml + after.replaceAll("\n", "\r\n"));
+});
+
+test("an application with frozen materials protects the linked resume", async () => {
+  const resume = note("Draft.md", { type: "resume-draft" }, "# Keep this draft");
+  const application = note("Application.md", { type: "application", status: "ready", resume: "[[Draft]]" });
+  const { plugin } = await loadPlugin({ notes: new Map([[resume.path, resume], [application.path, application]]) });
+  const selected = plugin.catalog.resumeForNote(application);
+  assert.equal(selected.file, resume);
+  assert.equal(plugin.catalog.protectionReason(selected), "frozen");
+  await assert.rejects(plugin.files.writeSourceBody(resume, resume.contents, "Changed"), /editable resume/);
+  assert.equal(resume.contents, "# Keep this draft");
+});
+
+test("native PDF export uses A4 and restores the vault preferences on error", async () => {
+  const file = note("Draft.md", { type: "resume-draft" });
+  const { plugin, vault, workspace } = await loadPlugin({ notes: new Map([[file.path, file]]) });
+  const original = { includeName: true, pageSize: "Letter", landscape: true };
+  let config = original;
+  vault.getConfig = () => config;
+  vault.setConfig = (_, value) => { config = value; };
+  const view = new MarkdownView();
+  view.file = file;
+  view.printToPdf = () => {
+    assert.equal(config.pageSize, "A4");
+    assert.equal(config.landscape, false);
+    throw new Error("Unavailable exporter");
+  };
+  workspace.getLeavesOfType = () => [{ view, getViewState: () => ({ state: { file: file.path } }) }];
+  const studio = { view: { file } };
+  await assert.rejects(plugin.presentation.openNativeExport(file, studio, layoutFor([], {})), /Unavailable exporter/);
+  assert.equal(config, original);
+  assert.equal(plugin.presentation.printRequest, null);
+});

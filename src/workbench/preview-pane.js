@@ -1,0 +1,183 @@
+const { Component, MarkdownRenderer } = require("obsidian");
+const { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require("../layout/geometry");
+const { sourceParts, sourceText } = require("../resume/markdown");
+const { decorateResumeMarkup } = require("../resume/rendered-markup");
+const { applyTemplate } = require("../themes/scoped-css");
+
+class PreviewPane {
+  constructor(view) {
+    this.view = view;
+    this.app = view.app;
+    this.t = view.t;
+    this.rendered = null;
+    this.renderer = null;
+    this.renderVersion = 0;
+  }
+
+  mountToolbar(center) {
+    this.zoomSelect = center.createEl("select", { cls: "dropdown resume-layout-zoom", attr: { "aria-label": this.t("previewZoom") } });
+    for (const [value, label] of Object.entries(ZOOM_OPTIONS)) {
+      this.zoomSelect.createEl("option", { value, text: this.t(label) });
+    }
+    const zoom = this.app.loadLocalStorage("careeros-resume-zoom");
+    this.zoomSelect.value = Object.hasOwn(ZOOM_OPTIONS, zoom) ? zoom : "page";
+    this.zoomSelect.addEventListener("change", () => {
+      this.app.saveLocalStorage("careeros-resume-zoom", this.zoomSelect.value);
+      this.measure();
+    });
+    const status = this.pageStatus = center.createDiv({ cls: "resume-layout-page-status" });
+    this.measurement = status.createSpan({ attr: { role: "status", "aria-live": "polite" } });
+    this.fill = status.createSpan({ cls: "resume-layout-page-progress", attr: { "aria-hidden": "true" } });
+  }
+
+  mount(parent) {
+    this.stage = parent.createDiv({ cls: "resume-layout-stage", attr: { "aria-label": this.t("previewLabel") } });
+    this.stage.addEventListener("click", event => this.view.editor.focusSourceFromPreview(event));
+    this.staleBanner = this.stage.createDiv({ cls: "resume-layout-stale", text: this.t("contentStale") });
+    this.staleBanner.hidden = true;
+    this.view.createEmptyState(this.stage);
+    this.paper = this.stage.createDiv({ cls: "resume-layout-paper" });
+    this.guide = this.paper.createDiv({ cls: "resume-layout-guide", attr: { "aria-hidden": "true" } });
+    for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
+      this.guide.createSpan({ cls: `resume-layout-crop is-${corner}` });
+    }
+    this.cutoff = this.paper.createDiv({ cls: "resume-layout-cutoff", attr: { "aria-hidden": "true" } });
+    this.cutoff.createSpan({ text: this.t("firstPageBreak") });
+    this.cutoff.hidden = true;
+  }
+
+  observe() {
+    this.observer = new this.stage.ownerDocument.defaultView.ResizeObserver(() => this.measure());
+    this.observer.observe(this.stage);
+  }
+
+  beginRender() {
+    return ++this.renderVersion;
+  }
+
+  dispose() {
+    this.beginRender();
+    this.observer?.disconnect();
+    this.clearPreview();
+  }
+
+  clearPreview() {
+    if (this.rendered) {
+      this.observer?.unobserve(this.rendered);
+      this.rendered.remove();
+      this.rendered = null;
+    }
+    if (this.renderer) {
+      this.view.removeChild(this.renderer);
+      this.renderer = null;
+    }
+    this.renderedFile = null;
+    this.renderedBody = null;
+    this.view.editor.clearPreviewSelection();
+  }
+
+  async render({ resume, markdown, body, version, sameFile }) {
+    const { file } = resume;
+    const next = this.paper.createDiv({
+      cls: "resume-layout-rendered resume-layout-surface resume-layout-styled markdown-rendered resume-layout-buffer",
+    });
+    next.classList.add(...resume.classes);
+    const renderer = this.view.addChild(new Component());
+    let swapped = false;
+    try {
+      this.stylePreview(next);
+      // The file's YAML is already separated. A second leading delimiter belongs to the body.
+      await MarkdownRenderer.render(this.app, sourceParts(body).hasYaml ? `\n${body}` : body, next, file.path, renderer);
+      if (version !== this.renderVersion) return;
+      decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
+      this.stylePreview(next);
+
+      const scrollTop = sameFile ? this.stage.scrollTop : 0;
+      this.clearPreview();
+      next.removeClass("resume-layout-buffer");
+      this.rendered = next;
+      this.renderedFile = file;
+      this.renderer = renderer;
+      this.view.sourceMarkdown = markdown;
+      this.renderedBody = sourceText(body);
+      this.view.sections.render();
+      this.observer.observe(next);
+      this.stage.scrollTop = scrollTop;
+      swapped = true;
+      this.view.updateExportButton();
+      this.measure();
+      this.view.editor.queueCursorFollow();
+    } catch (error) {
+      if (version === this.renderVersion) {
+        this.setPageMeasurement(this.t("previewUnavailable"));
+        console.error("CareerOS resume preview failed", error);
+      }
+    } finally {
+      if (!swapped) {
+        next.remove();
+        this.view.removeChild(renderer);
+      }
+    }
+  }
+
+  updateLayout(layout) {
+    applyMargins(this.paper, layout);
+    if (this.rendered) this.stylePreview(this.rendered);
+  }
+
+  stylePreview(root) {
+    const layout = this.view.layout.current;
+    applyTypography(root, layout);
+    const theme = this.view.plugin.themes.templates.get(layout.template);
+    applyTemplate(root, this.view.themeEditor.draft?.text ?? theme?.css);
+  }
+
+  setPageMeasurement(label, detail = "") {
+    if (this.measurement.textContent !== label) this.measurement.setText(label);
+    if (this.pageStatus.title === detail) return;
+    this.pageStatus.title = detail;
+    if (detail) this.measurement.setAttribute("aria-label", detail);
+    else this.measurement.removeAttribute("aria-label");
+  }
+
+  measure() {
+    if (!this.view.selected || !this.paper || !this.stage.clientWidth) return;
+    const margins = this.stage.ownerDocument.defaultView.getComputedStyle(this.stage);
+    const width = this.stage.clientWidth - parseFloat(margins.paddingLeft) - parseFloat(margins.paddingRight);
+    const height = this.stage.clientHeight - parseFloat(margins.paddingTop) - parseFloat(margins.paddingBottom);
+    const fitWidth = Math.max(0.12, width / (A4_WIDTH * PX_PER_MM));
+    const fitHeight = Math.max(0.12, height / (A4_HEIGHT * PX_PER_MM));
+    const zoom = this.zoomSelect.value === "actual" ? 1
+      : Math.min(1, fitWidth, this.zoomSelect.value === "page" ? fitHeight : Infinity);
+    const scale = zoom.toFixed(4);
+    if (this.paper.style.zoom !== scale) this.paper.style.zoom = scale;
+    if (!this.rendered || this.renderedFile !== this.view.selected.file) return;
+
+    const { used, printable, overflow } = this.pageMetrics();
+    const breaks = this.rendered.querySelectorAll("hr").length;
+    const pages = Math.ceil(used / printable);
+    const last = used - (pages - 1) * printable;
+    const usage = Math.min(100, Math.round(100 * used / printable));
+    const excess = Math.ceil(used - printable);
+    const label = breaks ? this.t("minimumPages", { pages: breaks + 1 })
+      : overflow ? this.t("overflowPages", { excess, pages }) : this.t("onePage", { usage });
+    const detail = breaks ? this.t("pageBreaks", { label }) : overflow
+      ? this.t("overflowPagesDetail", { pages, usage: Math.max(1, Math.round(100 * last / printable)), excess })
+      : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
+    this.pageStatus.toggleClass("is-overflowing", overflow || !!breaks);
+    this.paper.toggleClass("is-overflowing", overflow);
+    this.cutoff.hidden = !overflow;
+    this.fill.style.setProperty("--page-usage", `${Math.min(100, used / printable * 100)}%`);
+    this.setPageMeasurement(label, detail);
+    this.view.layout.syncFitButton(overflow, breaks);
+  }
+
+  pageMetrics() {
+    const scale = Number(this.paper.style.zoom) || 1;
+    const used = this.rendered.getBoundingClientRect().height / scale / PX_PER_MM;
+    const printable = A4_HEIGHT - this.view.layout.current.top - this.view.layout.current.bottom;
+    return { used, printable, overflow: used - printable > 0.2 };
+  }
+}
+
+module.exports = { PreviewPane };
