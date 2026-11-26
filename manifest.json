@@ -1,7 +1,7 @@
 {
   "id": "careeros-resume-layout",
   "name": "Resume Atelier",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "minAppVersion": "1.5.0",
   "description": "Lay out Markdown resumes with a live A4 preview, adjustable typography, and native PDF export.",
   "author": "Chick Lee",
