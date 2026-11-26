@@ -1,6 +1,8 @@
 const { Notice, setIcon } = require("obsidian");
 const { editableBody, sourceParts, splitSectionBody } = require("../resume/markdown");
 const { sectionRuleIssues } = require("../resume/structure");
+const { changeSectionRule, ruleFor } = require("../resume/section-layout");
+const { SIDEBAR_TEMPLATE } = require("../themes/built-ins");
 const { runWithNotice } = require("./dom");
 
 class SectionsPanel {
@@ -21,14 +23,15 @@ class SectionsPanel {
     const editable = !resume.protected;
     const sections = editable ? splitSectionBody(sourceParts(source).body).sections
       : this.previewHeadings().map(heading => ({ title: heading.textContent.replace(/[\uE000-\uF8FF]/gu, "").trim() }));
+    const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
     if (editable) {
       this.renderSectionActions(panel, resume, source, sections);
-      const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
       for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
       for (const title of issues.missing) panel.createDiv({ cls: "resume-layout-hint", text: this.t("missingSectionRule", { title }) });
     }
     const list = panel.createDiv({ cls: "resume-layout-section-list" });
-    sections.forEach(({ title }, index) => this.renderSection(list, title, index, sections.length, source, editable));
+    sections.forEach(({ title }, index) =>
+      this.renderSection(list, title, index, sections.length, source, editable, !!title && !issues.duplicate.includes(title)));
     if (editable && sections.length > 1) this.enableSectionDrag(list, resume.file, source);
     if (!sections.length) panel.createDiv({ cls: "resume-layout-modal-hint", text: editable
       ? this.t("createSectionsHelp") : this.t("emptySections") });
@@ -103,7 +106,7 @@ class SectionsPanel {
     this.previewHeadings()[index]?.scrollIntoView({ block: "center", behavior: reducedMotion ? "instant" : "smooth" });
   }
 
-  renderSection(container, title, index, count, source, editable) {
+  renderSection(container, title, index, count, source, editable, unique) {
     title ||= this.t("untitledSection");
     const row = container.createDiv({ cls: "resume-layout-section-row" });
     if (editable && count > 1) {
@@ -117,6 +120,17 @@ class SectionsPanel {
     });
     jump.addEventListener("click", () => this.jumpToSection(index));
     if (!editable) return;
+    if (unique) {
+      const layout = this.view.layout.current;
+      const rule = ruleFor(layout.sections, title);
+      if (layout.template === SIDEBAR_TEMPLATE) {
+        const sidebar = rule.region === "sidebar";
+        this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? undefined : "sidebar");
+      }
+      const hidden = rule.hidden === true;
+      jump.disabled = hidden;
+      this.ruleButton(row, title, hidden ? "showSection" : "hideSection", hidden ? "eye-off" : "eye", "hidden", hidden ? undefined : true);
+    }
     for (const [delta, message, icon] of [[-1, "moveSectionUp", "arrow-up"], [1, "moveSectionDown", "arrow-down"]]) {
       if (index + delta < 0 || index + delta >= count) continue;
       const label = this.t(message, { title });
@@ -124,6 +138,18 @@ class SectionsPanel {
       setIcon(button, icon);
       button.addEventListener("click", () => void runWithNotice(() => this.moveSection(index, index + delta, source)));
     }
+  }
+
+  ruleButton(row, title, message, icon, key, value) {
+    const label = this.t(message, { title });
+    const button = row.createEl("button", { attr: { "aria-label": label, title: label } });
+    setIcon(button, icon);
+    button.addEventListener("click", () => {
+      const layout = this.view.layout;
+      layout.current.sections = changeSectionRule(layout.current.sections, title, key, value);
+      layout.commit();
+      this.render();
+    });
   }
 
   enableSectionDrag(list, file, source) {

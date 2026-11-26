@@ -1,4 +1,5 @@
 const { BASE_TEMPLATE } = require("../layout/geometry");
+const SIDEBAR_TEMPLATE = "双栏现代";
 
 const THEME_LABELS = { [BASE_TEMPLATE]: "经典衬线", "黑白 ATS": "黑白简约（ATS 友好）" };
 const BUILT_IN_THEME_MESSAGES = {
@@ -6,10 +7,16 @@ const BUILT_IN_THEME_MESSAGES = {
   "简洁蓝": "themeBlue",
   "现代无衬线": "themeSans",
   "黑白 ATS": "themeAts",
+  [SIDEBAR_TEMPLATE]: "themeSidebar",
 };
 
 const BUILT_IN_TEMPLATE_CSS = {
   [BASE_TEMPLATE]: "",
+  [SIDEBAR_TEMPLATE]: `:scope {
+  --title-font: var(--resume-sans-font);
+  --color-accent: #205c63;
+  --border-color: #a1bdbf;
+}`,
   "简洁蓝": `:scope {
   --color-accent: #254f78;
   --h2-color: var(--color-accent);
@@ -56,4 +63,4 @@ span[alt="icon"] {
 };
 const BUILT_IN_TEMPLATES = Object.keys(BUILT_IN_TEMPLATE_CSS);
 
-module.exports = { BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };
+module.exports = { SIDEBAR_TEMPLATE, BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };

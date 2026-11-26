@@ -323,7 +323,7 @@ class SourceEditor {
     if (block === this.highlightedBlock) return;
     this.highlightedBlock?.classList.remove("resume-layout-current-block");
     this.highlightedBlock = block;
-    if (!block) return;
+    if (!block || block.closest(".resume-layout-section-hidden")) return;
     block.classList.add("resume-layout-current-block");
     const position = block.getBoundingClientRect();
     const viewport = this.view.preview.stage.getBoundingClientRect();

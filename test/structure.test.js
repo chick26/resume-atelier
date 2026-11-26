@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { splitSectionBody, sectionRuleIssues } = require("../src/resume/structure");
+const { changeSectionRule, ruleFor } = require("../src/resume/section-layout");
 
 test("section and entry line ranges include their details and ignore fenced, quoted and commented headings", () => {
   const body = ["# Name", "> ## Contact", "## Work", "### First | Now", "- details", "",
@@ -13,4 +14,15 @@ test("section and entry line ranges include their details and ignore fenced, quo
   assert.deepEqual(sections[0].entries, [{ startLine: 3, endLine: 6 }, { startLine: 6, endLine: 16 }]);
   assert.deepEqual(sectionRuleIssues(sections, { Skills: { hidden: true }, Honors: {} }),
     { duplicate: ["Skills"], missing: ["Honors"] });
+});
+
+test("section controls change one property at a time and previous layouts stay usable for undo", () => {
+  const original = { Skills: { display: "tags", extra: ["retained"] } };
+  const sidebar = changeSectionRule(original, "Skills", "region", "sidebar");
+  const hidden = changeSectionRule(sidebar, "Skills", "hidden", true);
+  assert.deepEqual(ruleFor(hidden, "Skills"), { display: "tags", extra: ["retained"], hidden: true, region: "sidebar" });
+  assert.deepEqual(ruleFor(sidebar, "Skills"), { display: "tags", extra: ["retained"], region: "sidebar" });
+  assert.deepEqual(changeSectionRule(sidebar, "Skills", "region", undefined), original);
+  assert.deepEqual(changeSectionRule({ Other: { hidden: true } }, "Other", "hidden", undefined), {});
+  assert.deepEqual(ruleFor({}, "constructor"), {});
 });

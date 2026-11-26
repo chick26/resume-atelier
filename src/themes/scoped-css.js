@@ -33,6 +33,7 @@ function scopeSelectors(selectorText, scope) {
     // Reading and print views wrap each rendered Markdown block.
     return [
       anchored,
+      `.print > ${host} > :where(div:not([class])) > ${target}`,
       `${host} > :where([class^="el-"]) > ${target}`,
       `${host} > :where(.markdown-preview-sizer) > ${target}`,
       `${host} > :where(.markdown-preview-sizer) > :where([class^="el-"]) > ${target}`,

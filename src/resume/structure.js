@@ -1,6 +1,10 @@
 const MARKDOWN_FENCE = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/;
 const LEGACY_ENTRY = /^ {0,3}<div\b[^>]*\b(?:alt|class)=["']entry-title["'][^>]*>/i;
 
+function sectionTitle(text) {
+  return text.replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
+}
+
 // Zero-based body lines. The end of a section or entry is exclusive.
 function splitSectionBody(body) {
   const headings = [];
@@ -19,7 +23,7 @@ function splitSectionBody(body) {
     } else {
       const heading = line.match(/^ {0,3}(#{2,3})[ \t]+(.+?)[ \t]*(?:\r?\n)?$/);
       if (heading?.[1] === "##") {
-        const title = heading[2].replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
+        const title = sectionTitle(heading[2]);
         headings.push({ title, offset, startLine: lineNumber, entries: [] });
       } else if (headings.length && (heading || LEGACY_ENTRY.test(line))) {
         headings.at(-1).entries.push(lineNumber);
@@ -51,4 +55,4 @@ function sectionRuleIssues(sections, rules) {
   };
 }
 
-module.exports = { MARKDOWN_FENCE, splitSectionBody, sectionRuleIssues };
+module.exports = { MARKDOWN_FENCE, splitSectionBody, sectionTitle, sectionRuleIssues };

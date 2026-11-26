@@ -3,6 +3,7 @@ const { MARGINS, applyMargins, applyTypography } = require("../layout/geometry")
 const { applyTemplate } = require("../themes/scoped-css");
 const { editableBody } = require("../resume/markdown");
 const { decorateResumeMarkup } = require("../resume/rendered-markup");
+const { SectionLayout } = require("../resume/section-layout");
 
 class ResumePresentation {
   constructor(app, catalog, layouts, themes, t) {
@@ -152,6 +153,9 @@ class ResumePresentation {
     applyTypography(root, layout);
     applyTemplate(root, this.themes.templates.get(layout.template)?.css);
     decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+    const content = root.querySelector(":scope > .markdown-preview-sizer") ?? root;
+    const blocks = [...content.children].filter(node => !node.matches("style, .mod-ui, .mod-frontmatter, .mod-header, .mod-footer"));
+    new SectionLayout(content, blocks).apply(layout);
     const { top, right, bottom, left } = layout;
     const style = root.ownerDocument.createElement("style");
     style.textContent = `@media print { @page { size: A4 portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;

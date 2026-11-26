@@ -203,6 +203,11 @@ var require_localization = __commonJS({
       moveSectionDown: ["\u4E0B\u79FB{title}", "Move \u201C{title}\u201D down"],
       sectionNameRequired: ["\u8BF7\u586B\u5199\u4E00\u884C\u680F\u76EE\u540D\u79F0\u3002", "Enter a section name on one line."],
       sectionNameDuplicate: ["\u5DF2\u7ECF\u6709\u540C\u540D\u680F\u76EE\u3002", "A section with this name already exists."],
+      themeSidebar: ["\u53CC\u680F\u73B0\u4EE3", "Modern sidebar"],
+      hideSection: ["\u9690\u85CF\u300C{title}\u300D", "Hide {title}"],
+      showSection: ["\u663E\u793A\u300C{title}\u300D", "Show {title}"],
+      sectionToSidebar: ["\u5C06\u300C{title}\u300D\u79FB\u5230\u4FA7\u680F", "Move {title} to the sidebar"],
+      sectionToMain: ["\u5C06\u300C{title}\u300D\u79FB\u5230\u4E3B\u680F", "Move {title} to the main column"],
       duplicateSectionRule: ["\u6709\u591A\u4E2A\u300C{title}\u300D\u680F\u76EE\u3002\u8BF7\u7528\u4E0D\u540C\u7684\u6807\u9898\u533A\u5206\u5B83\u4EEC\uFF0C\u518D\u6307\u5B9A\u680F\u4F4D\u6216\u663E\u9690\u3002", "Several sections are named \u201C{title}\u201D. Give them distinct headings to control their placement or visibility."],
       missingSectionRule: ["\u7248\u5F0F\u5C5E\u6027\u5F15\u7528\u7684\u300C{title}\u300D\u5728\u6B63\u6587\u4E2D\u627E\u4E0D\u5230\u3002\u8BF7\u6838\u5BF9\u680F\u76EE\u6807\u9898\u3002", "The layout refers to \u201C{title}\u201D, which has no matching section heading."],
       sectionAdded: ["\u5DF2\u65B0\u589E\u680F\u76EE", "Section added"],
@@ -459,6 +464,9 @@ var require_structure = __commonJS({
   "src/resume/structure.js"(exports2, module2) {
     var MARKDOWN_FENCE = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/;
     var LEGACY_ENTRY = /^ {0,3}<div\b[^>]*\b(?:alt|class)=["']entry-title["'][^>]*>/i;
+    function sectionTitle(text) {
+      return text.replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
+    }
     function splitSectionBody(body) {
       const headings = [];
       let fence = "";
@@ -476,7 +484,7 @@ var require_structure = __commonJS({
         } else {
           const heading = line.match(/^ {0,3}(#{2,3})[ \t]+(.+?)[ \t]*(?:\r?\n)?$/);
           if (heading?.[1] === "##") {
-            const title = heading[2].replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
+            const title = sectionTitle(heading[2]);
             headings.push({ title, offset, startLine: lineNumber, entries: [] });
           } else if (headings.length && (heading || LEGACY_ENTRY.test(line))) {
             headings.at(-1).entries.push(lineNumber);
@@ -508,7 +516,7 @@ var require_structure = __commonJS({
         missing: Object.keys(rules).filter((title) => !counts.has(title))
       };
     }
-    module2.exports = { MARKDOWN_FENCE, splitSectionBody, sectionRuleIssues };
+    module2.exports = { MARKDOWN_FENCE, splitSectionBody, sectionTitle, sectionRuleIssues };
   }
 });
 
@@ -920,15 +928,22 @@ var require_catalog = __commonJS({
 var require_built_ins = __commonJS({
   "src/themes/built-ins.js"(exports2, module2) {
     var { BASE_TEMPLATE } = require_geometry();
+    var SIDEBAR_TEMPLATE = "\u53CC\u680F\u73B0\u4EE3";
     var THEME_LABELS = { [BASE_TEMPLATE]: "\u7ECF\u5178\u886C\u7EBF", "\u9ED1\u767D ATS": "\u9ED1\u767D\u7B80\u7EA6\uFF08ATS \u53CB\u597D\uFF09" };
     var BUILT_IN_THEME_MESSAGES = {
       [BASE_TEMPLATE]: "themeClassic",
       "\u7B80\u6D01\u84DD": "themeBlue",
       "\u73B0\u4EE3\u65E0\u886C\u7EBF": "themeSans",
-      "\u9ED1\u767D ATS": "themeAts"
+      "\u9ED1\u767D ATS": "themeAts",
+      [SIDEBAR_TEMPLATE]: "themeSidebar"
     };
     var BUILT_IN_TEMPLATE_CSS = {
       [BASE_TEMPLATE]: "",
+      [SIDEBAR_TEMPLATE]: `:scope {
+  --title-font: var(--resume-sans-font);
+  --color-accent: #205c63;
+  --border-color: #a1bdbf;
+}`,
       "\u7B80\u6D01\u84DD": `:scope {
   --color-accent: #254f78;
   --h2-color: var(--color-accent);
@@ -974,7 +989,7 @@ span[alt="icon"] {
 `
     };
     var BUILT_IN_TEMPLATES = Object.keys(BUILT_IN_TEMPLATE_CSS);
-    module2.exports = { BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };
+    module2.exports = { SIDEBAR_TEMPLATE, BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };
   }
 });
 
@@ -1014,6 +1029,7 @@ var require_scoped_css = __commonJS({
         const host = scope + modifier;
         return [
           anchored,
+          `.print > ${host} > :where(div:not([class])) > ${target}`,
           `${host} > :where([class^="el-"]) > ${target}`,
           `${host} > :where(.markdown-preview-sizer) > ${target}`,
           `${host} > :where(.markdown-preview-sizer) > :where([class^="el-"]) > ${target}`
@@ -1425,6 +1441,103 @@ var require_rendered_markup = __commonJS({
   }
 });
 
+// src/resume/section-layout.js
+var require_section_layout = __commonJS({
+  "src/resume/section-layout.js"(exports2, module2) {
+    var { sectionTitle, sectionRuleIssues } = require_structure();
+    var { SIDEBAR_TEMPLATE } = require_built_ins();
+    function ruleFor(rules, title) {
+      const rule = Object.hasOwn(rules, title) && rules[title];
+      return rule && typeof rule === "object" && !Array.isArray(rule) ? rule : {};
+    }
+    function changeSectionRule(rules, title, key, value) {
+      const next = { ...rules };
+      const rule = { ...ruleFor(rules, title) };
+      if (value === void 0) delete rule[key];
+      else rule[key] = value;
+      if (Object.keys(rule).length) return { ...next, [title]: rule };
+      delete next[title];
+      return next;
+    }
+    function blockHeading(block) {
+      if (block.matches("h2[data-heading]")) return block;
+      return block.matches("div") && block.firstElementChild?.matches("h2[data-heading]") ? block.firstElementChild : null;
+    }
+    function beginsEntry(block) {
+      const selector = 'h3[data-heading], .entry-title, [alt="entry-title"]';
+      return block.matches(selector) || block.matches("div") && block.firstElementChild?.matches(selector);
+    }
+    function container(root, tag, className) {
+      const element = root.ownerDocument.createElement(tag);
+      element.className = className;
+      return element;
+    }
+    var SectionLayout = class {
+      constructor(root, blocks, titles) {
+        this.root = root;
+        this.intro = [];
+        this.sections = [];
+        this.blocks = blocks;
+        let nodes = this.intro;
+        for (const block of blocks) {
+          const heading = blockHeading(block);
+          const title = titles ? titles.get(heading) : heading && sectionTitle(heading.dataset.heading);
+          if (typeof title === "string") {
+            nodes = [];
+            this.sections.push({ title, nodes });
+          }
+          nodes.push(block);
+        }
+        this.duplicates = new Set(sectionRuleIssues(this.sections, {}).duplicate);
+      }
+      apply(layout) {
+        const dual = layout.template === SIDEBAR_TEMPLATE;
+        const rules = this.sections.map(({ title }) => this.duplicates.has(title) ? {} : ruleFor(layout.sections, title));
+        const key = JSON.stringify([dual, rules.map((rule) => [rule.hidden === true, rule.region === "sidebar"])]);
+        if (this.key === key) return;
+        this.key = key;
+        if (this.wrapper) {
+          this.wrapper.before(...this.blocks);
+          this.wrapper.remove();
+          this.wrapper = null;
+        }
+        for (const [index, { nodes }] of this.sections.entries()) {
+          for (const node of nodes) node.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
+        }
+        if (!dual || !this.sections.length) return;
+        const wrapper = container(this.root, "div", "resume-layout-document");
+        this.blocks[0].before(wrapper);
+        this.wrapper = wrapper;
+        const header = container(this.root, "header", "resume-header");
+        header.append(...this.intro);
+        const columns = container(this.root, "div", "resume-layout-columns");
+        const main = container(this.root, "div", "resume-main");
+        const sidebar = container(this.root, "aside", "resume-sidebar");
+        for (const [index, { title, nodes }] of this.sections.entries()) {
+          const section = container(this.root, "section", "resume-section");
+          section.dataset.resumeSection = title;
+          section.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
+          let parent = section;
+          for (const node of nodes) {
+            if (beginsEntry(node)) {
+              parent = container(this.root, "div", "resume-entry");
+              section.append(parent);
+            }
+            parent.append(node);
+          }
+          (rules[index].region === "sidebar" ? sidebar : main).append(section);
+        }
+        if (main.querySelector("section:not(.resume-layout-section-hidden)") && sidebar.querySelector("section:not(.resume-layout-section-hidden)")) {
+          columns.classList.add("has-sidebar");
+        }
+        columns.append(main, sidebar);
+        wrapper.append(header, columns);
+      }
+    };
+    module2.exports = { SectionLayout, changeSectionRule, ruleFor };
+  }
+});
+
 // src/obsidian/presentation.js
 var require_presentation = __commonJS({
   "src/obsidian/presentation.js"(exports2, module2) {
@@ -1433,6 +1546,7 @@ var require_presentation = __commonJS({
     var { applyTemplate } = require_scoped_css();
     var { editableBody } = require_markdown();
     var { decorateResumeMarkup } = require_rendered_markup();
+    var { SectionLayout } = require_section_layout();
     var ResumePresentation2 = class {
       constructor(app, catalog, layouts, themes, t) {
         this.app = app;
@@ -1577,6 +1691,9 @@ var require_presentation = __commonJS({
         applyTypography(root, layout);
         applyTemplate(root, this.themes.templates.get(layout.template)?.css);
         decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+        const content = root.querySelector(":scope > .markdown-preview-sizer") ?? root;
+        const blocks = [...content.children].filter((node) => !node.matches("style, .mod-ui, .mod-frontmatter, .mod-header, .mod-footer"));
+        new SectionLayout(content, blocks).apply(layout);
         const { top, right, bottom, left } = layout;
         const style = root.ownerDocument.createElement("style");
         style.textContent = `@media print { @page { size: A4 portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
@@ -2075,6 +2192,7 @@ var require_preview_pane = __commonJS({
     var { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
     var { sourceParts, sourceText } = require_markdown();
     var { splitSectionBody } = require_structure();
+    var { SectionLayout } = require_section_layout();
     var { decorateResumeMarkup, locatePreviewBlocks } = require_rendered_markup();
     var { applyTemplate } = require_scoped_css();
     var PreviewPane = class {
@@ -2141,6 +2259,7 @@ var require_preview_pane = __commonJS({
         this.renderedFile = null;
         this.renderedBody = null;
         this.sourceHeadings = [];
+        this.sectionLayout = null;
         this.view.editor.clearPreviewSelection();
       }
       async render({ resume, markdown, body, version, sameFile }) {
@@ -2158,14 +2277,19 @@ ${body}` : body, next, file.path, renderer);
           if (version !== this.renderVersion) return;
           const bindings = locatePreviewBlocks(next, sourceText(body));
           const headingByLine = new Map(bindings.filter(({ element }) => element.matches("h2")).map(({ line, element }) => [line, element]));
-          const headings = splitSectionBody(body).sections.map(({ startLine }) => headingByLine.get(startLine));
+          const sections = splitSectionBody(body).sections;
+          const headings = sections.map(({ startLine }) => headingByLine.get(startLine));
+          const titles = new Map(sections.flatMap(({ title }, index) => headings[index] ? [[headings[index], title]] : []));
+          const flow = new SectionLayout(next, [...next.children].filter((node) => !node.matches("style")), titles);
           decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
+          flow.apply(this.view.layout.current);
           this.stylePreview(next);
           const scrollTop = sameFile ? this.stage.scrollTop : 0;
           this.clearPreview();
           next.removeClass("resume-layout-buffer");
           this.rendered = next;
           this.sourceHeadings = headings;
+          this.sectionLayout = flow;
           this.view.editor.previewBlocks = bindings;
           this.renderedFile = file;
           this.renderer = renderer;
@@ -2192,6 +2316,7 @@ ${body}` : body, next, file.path, renderer);
       }
       updateLayout(layout) {
         applyMargins(this.paper, layout);
+        if (this.renderedFile === this.view.selected?.file) this.sectionLayout?.apply(layout);
         if (this.rendered) this.stylePreview(this.rendered);
       }
       stylePreview(root) {
@@ -3184,7 +3309,7 @@ var require_source_editor = __commonJS({
         if (block === this.highlightedBlock) return;
         this.highlightedBlock?.classList.remove("resume-layout-current-block");
         this.highlightedBlock = block;
-        if (!block) return;
+        if (!block || block.closest(".resume-layout-section-hidden")) return;
         block.classList.add("resume-layout-current-block");
         const position = block.getBoundingClientRect();
         const viewport = this.view.preview.stage.getBoundingClientRect();
@@ -3257,6 +3382,8 @@ var require_sections_panel = __commonJS({
     var { Notice: Notice2, setIcon } = require("obsidian");
     var { editableBody, sourceParts, splitSectionBody } = require_markdown();
     var { sectionRuleIssues } = require_structure();
+    var { changeSectionRule, ruleFor } = require_section_layout();
+    var { SIDEBAR_TEMPLATE } = require_built_ins();
     var { runWithNotice } = require_dom();
     var SectionsPanel = class {
       constructor(view) {
@@ -3273,14 +3400,14 @@ var require_sections_panel = __commonJS({
         const source = this.view.sourceMarkdown;
         const editable = !resume.protected;
         const sections = editable ? splitSectionBody(sourceParts(source).body).sections : this.previewHeadings().map((heading) => ({ title: heading.textContent.replace(/[\uE000-\uF8FF]/gu, "").trim() }));
+        const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
         if (editable) {
           this.renderSectionActions(panel, resume, source, sections);
-          const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
           for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
           for (const title of issues.missing) panel.createDiv({ cls: "resume-layout-hint", text: this.t("missingSectionRule", { title }) });
         }
         const list = panel.createDiv({ cls: "resume-layout-section-list" });
-        sections.forEach(({ title }, index) => this.renderSection(list, title, index, sections.length, source, editable));
+        sections.forEach(({ title }, index) => this.renderSection(list, title, index, sections.length, source, editable, !!title && !issues.duplicate.includes(title)));
         if (editable && sections.length > 1) this.enableSectionDrag(list, resume.file, source);
         if (!sections.length) panel.createDiv({ cls: "resume-layout-modal-hint", text: editable ? this.t("createSectionsHelp") : this.t("emptySections") });
       }
@@ -3349,7 +3476,7 @@ var require_sections_panel = __commonJS({
         const reducedMotion = this.view.preview.paper.ownerDocument.defaultView.matchMedia("(prefers-reduced-motion: reduce)").matches;
         this.previewHeadings()[index]?.scrollIntoView({ block: "center", behavior: reducedMotion ? "instant" : "smooth" });
       }
-      renderSection(container, title, index, count, source, editable) {
+      renderSection(container, title, index, count, source, editable, unique) {
         title ||= this.t("untitledSection");
         const row = container.createDiv({ cls: "resume-layout-section-row" });
         if (editable && count > 1) {
@@ -3364,6 +3491,17 @@ var require_sections_panel = __commonJS({
         });
         jump.addEventListener("click", () => this.jumpToSection(index));
         if (!editable) return;
+        if (unique) {
+          const layout = this.view.layout.current;
+          const rule = ruleFor(layout.sections, title);
+          if (layout.template === SIDEBAR_TEMPLATE) {
+            const sidebar = rule.region === "sidebar";
+            this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? void 0 : "sidebar");
+          }
+          const hidden = rule.hidden === true;
+          jump.disabled = hidden;
+          this.ruleButton(row, title, hidden ? "showSection" : "hideSection", hidden ? "eye-off" : "eye", "hidden", hidden ? void 0 : true);
+        }
         for (const [delta, message, icon] of [[-1, "moveSectionUp", "arrow-up"], [1, "moveSectionDown", "arrow-down"]]) {
           if (index + delta < 0 || index + delta >= count) continue;
           const label = this.t(message, { title });
@@ -3371,6 +3509,17 @@ var require_sections_panel = __commonJS({
           setIcon(button, icon);
           button.addEventListener("click", () => void runWithNotice(() => this.moveSection(index, index + delta, source)));
         }
+      }
+      ruleButton(row, title, message, icon, key, value) {
+        const label = this.t(message, { title });
+        const button = row.createEl("button", { attr: { "aria-label": label, title: label } });
+        setIcon(button, icon);
+        button.addEventListener("click", () => {
+          const layout = this.view.layout;
+          layout.current.sections = changeSectionRule(layout.current.sections, title, key, value);
+          layout.commit();
+          this.render();
+        });
       }
       enableSectionDrag(list, file, source) {
         const rows = Array.from(list.children);

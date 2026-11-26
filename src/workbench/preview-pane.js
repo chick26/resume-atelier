@@ -2,6 +2,7 @@ const { Component, MarkdownRenderer } = require("obsidian");
 const { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require("../layout/geometry");
 const { sourceParts, sourceText } = require("../resume/markdown");
 const { splitSectionBody } = require("../resume/structure");
+const { SectionLayout } = require("../resume/section-layout");
 const { decorateResumeMarkup, locatePreviewBlocks } = require("../resume/rendered-markup");
 const { applyTemplate } = require("../themes/scoped-css");
 
@@ -75,6 +76,7 @@ class PreviewPane {
     this.renderedFile = null;
     this.renderedBody = null;
     this.sourceHeadings = [];
+    this.sectionLayout = null;
     this.view.editor.clearPreviewSelection();
   }
 
@@ -93,8 +95,12 @@ class PreviewPane {
       if (version !== this.renderVersion) return;
       const bindings = locatePreviewBlocks(next, sourceText(body));
       const headingByLine = new Map(bindings.filter(({ element }) => element.matches("h2")).map(({ line, element }) => [line, element]));
-      const headings = splitSectionBody(body).sections.map(({ startLine }) => headingByLine.get(startLine));
+      const sections = splitSectionBody(body).sections;
+      const headings = sections.map(({ startLine }) => headingByLine.get(startLine));
+      const titles = new Map(sections.flatMap(({ title }, index) => headings[index] ? [[headings[index], title]] : []));
+      const flow = new SectionLayout(next, [...next.children].filter(node => !node.matches("style")), titles);
       decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
+      flow.apply(this.view.layout.current);
       this.stylePreview(next);
 
       const scrollTop = sameFile ? this.stage.scrollTop : 0;
@@ -102,6 +108,7 @@ class PreviewPane {
       next.removeClass("resume-layout-buffer");
       this.rendered = next;
       this.sourceHeadings = headings;
+      this.sectionLayout = flow;
       this.view.editor.previewBlocks = bindings;
       this.renderedFile = file;
       this.renderer = renderer;
@@ -129,6 +136,7 @@ class PreviewPane {
 
   updateLayout(layout) {
     applyMargins(this.paper, layout);
+    if (this.renderedFile === this.view.selected?.file) this.sectionLayout?.apply(layout);
     if (this.rendered) this.stylePreview(this.rendered);
   }
 
