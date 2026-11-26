@@ -1,13 +1,19 @@
 ---
 type: resume-draft
 language: zh
-resume_style: 简洁蓝
+resume_style: 双栏现代
 resume_density: comfortable
+resume_layout:
+  paper: A4
+resume_sections:
+  核心技能:
+    region: sidebar
+    display: tags
 ---
 
 # 林安
 
-产品设计师 · 香港
+> 产品设计师 · 香港
 
 ## 个人简介
 
@@ -31,4 +37,7 @@ resume_density: comfortable
 
 ## 核心技能
 
-交互设计 · 原型设计 · 用户研究 · 设计系统
+- 交互设计
+- 原型设计
+- 用户研究
+- 设计系统

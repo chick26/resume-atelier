@@ -1,13 +1,18 @@
 ---
 type: resume-draft
 language: en
-resume_style: 简洁蓝
+resume_style: 时间轴
 resume_density: comfortable
+resume_layout:
+  paper: Letter
+resume_sections:
+  Skills:
+    display: tags
 ---
 
 # Alex Morgan
 
-Product Designer · Hong Kong
+> Product Designer · Hong Kong
 
 ## Profile
 
@@ -31,4 +36,7 @@ Product designer focused on making complex tools easier to use. I work across re
 
 ## Skills
 
-Interaction design · Prototyping · User research · Design systems
+- Interaction design
+- Prototyping
+- User research
+- Design systems
