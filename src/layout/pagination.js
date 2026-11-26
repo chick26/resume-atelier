@@ -84,4 +84,10 @@ function* readableNodes(root) {
   while (walker.nextNode()) yield walker.currentNode;
 }
 
-module.exports = { measurePageStarts };
+function pageBreakCounts(starts) {
+  const breaks = starts.slice(1);
+  const manual = breaks.filter(start => start.manual).length;
+  return { manual, automatic: breaks.length - manual };
+}
+
+module.exports = { measurePageStarts, pageBreakCounts };

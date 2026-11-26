@@ -17,6 +17,18 @@ var require_localization = __commonJS({
   "src/localization.js"(exports2, module2) {
     var { getLanguage } = require("obsidian");
     var MESSAGES = {
+      mixedPages: ["\u9884\u8BA1 {pages} \u9875 \xB7 \u542B\u81EA\u52A8\u5206\u9875", "{pages} pages \xB7 auto break"],
+      manualPageTag: ["{page} \xB7 \u624B\u52A8\u5206\u9875", "{page} \xB7 Manual"],
+      autoPageTag: ["{page} \xB7 \u9884\u8BA1\u5206\u9875", "{page} \xB7 Auto"],
+      discardThemeConfirm: ["\u786E\u8BA4\u653E\u5F03\u6539\u52A8", "Discard changes"],
+      keepEditing: ["\u7EE7\u7EED\u7F16\u8F91", "Keep editing"],
+      entryTitleHint: ["\u804C\u4F4D\u3001\u9879\u76EE\u6216\u5B66\u4F4D", "Role, project, or degree"],
+      entrySubtitleHint: ["\u516C\u53F8\u3001\u56E2\u961F\u6216\u9662\u6821", "Company, team, or school"],
+      fitSuccess: ["\u5DF2\u6536\u7D27\u81F3 1 \u9875", "Fitted to one page"],
+      fitUndone: ["\u5DF2\u8FD8\u539F\u6536\u7D27\u524D\u7684\u7248\u5F0F", "Fit undone"],
+      clearRule: ["\u6E05\u9664", "Clear"],
+      undoSourceStale: ["\u6B63\u6587\u5DF2\u53D8\u5316\uFF0C\u5DF2\u8DF3\u8FC7\u8FD9\u6B21\u64A4\u9500\u3002", "The text changed. Skipped this undo step."],
+      applyBeforeEdit: ["\u5148\u5E94\u7528\u7B80\u5386\u6392\u7248\uFF0C\u5373\u53EF\u7F16\u8F91\u6B64\u7B14\u8BB0\u3002", "Apply the resume layout to edit this note."],
       pluginName: ["\u7B80\u5386\u5DE5\u574A", "Resume Atelier"],
       openCommand: ["\u6253\u5F00\u5DE5\u4F5C\u53F0", "Open workbench"],
       layoutThisResume: ["\u6392\u7248\u8FD9\u4EFD\u7B80\u5386", "Lay out this resume"],
@@ -82,8 +94,8 @@ var require_localization = __commonJS({
       actualZoom: ["100%", "100%"],
       fitOnePage: ["\u6536\u7D27\u81F3\u4E00\u9875", "Fit to one page"],
       undoFit: ["\u64A4\u9500\u6536\u7D27", "Undo fit"],
-      editSource: ["\u7F16\u8F91\u6B63\u6587", "Edit text"],
-      editSourceHelp: ["\u5728\u5DE5\u4F5C\u53F0\u5E76\u6392\u7F16\u8F91 Markdown \u6E90\u7801", "Edit Markdown beside the preview"],
+      editSource: ["\u7F16\u8F91\u5185\u5BB9", "Edit text"],
+      editSourceHelp: ["\u5728\u7EB8\u9762\u65C1\u76F4\u63A5\u7F16\u8F91\u7B80\u5386\u5185\u5BB9", "Edit resume text beside the page"],
       doneEditing: ["\u5B8C\u6210\u7F16\u8F91", "Done editing"],
       doneEditingHelp: ["\u4FDD\u5B58\u5E76\u8FD4\u56DE\u6392\u7248", "Save and return to layout"],
       copyAndEdit: ["\u521B\u5EFA\u526F\u672C\u5E76\u7F16\u8F91", "Copy and edit"],
@@ -91,7 +103,7 @@ var require_localization = __commonJS({
       showPanel: ["\u5C55\u5F00\u6392\u7248\u9762\u677F", "Show layout panel"],
       exportPdf: ["\u5BFC\u51FA PDF", "Export PDF"],
       estimatedPages: ["\u9884\u8BA1 {pages} \u9875", "{pages} estimated pages"],
-      pageGuideDetail: ["\u9884\u8BA1 {pages} \u9875\uFF0C\u5176\u4E2D {manual} \u5904\u624B\u52A8\u5206\u9875\u3002\u865A\u7EBF\u4E3A\u9884\u8BA1\u9875\u754C\uFF0C\u5B9E\u7EBF\u4E3A\u624B\u52A8\u5206\u9875\u3002", "{pages} estimated pages, with {manual} manual breaks. Dashed lines mark estimated breaks and solid lines mark manual breaks."],
+      pageGuideDetail: ["\u9884\u8BA1 {pages} \u9875\uFF0C\u624B\u52A8\u5206\u9875 {manual} \u5904\uFF0C\u9884\u8BA1\u81EA\u52A8\u5206\u9875 {automatic} \u5904\u3002", "{pages} estimated pages, {manual} manual breaks and {automatic} automatic breaks."],
       manualGuide: ["\u624B\u52A8\u5206\u9875", "Manual page break"],
       automaticGuide: ["\u9884\u8BA1\u5206\u9875", "Estimated page break"],
       previewLabel: ["\u7B80\u5386\u7EB8\u9762\u9884\u89C8", "Resume page preview"],
@@ -99,7 +111,7 @@ var require_localization = __commonJS({
       contentStale: ["\u5BF9\u5E94\u804C\u4F4D\u63CF\u8FF0\u6216\u7ECF\u5386\u5DF2\u66F4\u65B0\uFF0C\u5EFA\u8BAE\u5148\u6838\u5BF9\u5185\u5BB9", "The job description or work history has changed. Review your resume."],
       layoutTab: ["\u7248\u5F0F", "Layout"],
       sections: ["\u680F\u76EE", "Sections"],
-      fineTune: ["\u7CBE\u7EC6\u5FAE\u8C03", "Fine-tune"],
+      fineTune: ["\u5FAE\u8C03", "Customize"],
       margins: ["\u9875\u8FB9\u8DDD", "Margins"],
       linkVertical: ["\u4E0A\u4E0B\u8054\u52A8", "Link top & bottom"],
       linkHorizontal: ["\u5DE6\u53F3\u8054\u52A8", "Link left & right"],
@@ -107,10 +119,10 @@ var require_localization = __commonJS({
       showMarginGuides: ["\u663E\u793A\u8FB9\u8DDD\u53C2\u8003\u7EBF", "Show margin guides"],
       resetFineTuning: ["\u91CD\u7F6E\u5FAE\u8C03", "Reset adjustments"],
       undoReset: ["\u64A4\u9500\u91CD\u7F6E", "Undo reset"],
-      applyLayout: ["\u5C06\u7248\u5F0F\u5199\u5165\u6B64\u7B14\u8BB0", "Apply layout to this note"],
+      applyLayout: ["\u5E94\u7528\u7B80\u5386\u6392\u7248", "Use resume layout"],
       saveLayout: ["\u4FDD\u5B58\u7248\u5F0F\u5230\u7B14\u8BB0", "Save layout to note"],
       undo: ["\u64A4\u9500", "Undo"],
-      undoLayout: ["\u64A4\u9500\u7248\u5F0F\u6539\u52A8", "Undo layout change"],
+      undoLayout: ["\u64A4\u9500\u4E0A\u4E00\u6B65", "Undo last action"],
       cannotOpenResume: ["\u65E0\u6CD5\u6253\u5F00\u8FD9\u4EFD\u7B80\u5386\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u3002", "Could not open this resume. Choose another note."],
       emptyWorkbench: ["\u4ECE\u4E00\u4EFD\u7B80\u5386\u5F00\u59CB\u6392\u7248\u3002", "Choose a resume to start."],
       createExample: ["\u65B0\u5EFA\u793A\u4F8B\u7B80\u5386", "Create sample resume"],
@@ -221,7 +233,7 @@ var require_localization = __commonJS({
       choosePhoto: ["\u9009\u62E9\u5E93\u5185\u5934\u50CF", "Choose vault photo"],
       searchImages: ["\u641C\u7D22\u5E93\u5185\u56FE\u7247", "Search vault images"],
       headerRight: ["\u540D\u7247\u53F3\u4FA7", "Header right"],
-      sidebar: ["\u53CC\u680F\u6A21\u677F\u7684\u4FA7\u680F", "Sidebar in a two-column theme"],
+      sidebar: ["\u4FA7\u680F\u9876\u90E8", "Sidebar top"],
       square: ["\u76F4\u89D2", "Square"],
       rounded: ["\u5C0F\u5706\u89D2", "Rounded"],
       round: ["\u5706\u5F62\uFF0F\u692D\u5706", "Round"],
@@ -232,7 +244,7 @@ var require_localization = __commonJS({
       sectionToSidebar: ["\u5C06\u300C{title}\u300D\u79FB\u5230\u4FA7\u680F", "Move {title} to the sidebar"],
       sectionToMain: ["\u5C06\u300C{title}\u300D\u79FB\u5230\u4E3B\u680F", "Move {title} to the main column"],
       duplicateSectionRule: ["\u6709\u591A\u4E2A\u300C{title}\u300D\u680F\u76EE\u3002\u8BF7\u7528\u4E0D\u540C\u7684\u6807\u9898\u533A\u5206\u5B83\u4EEC\uFF0C\u518D\u6307\u5B9A\u680F\u4F4D\u6216\u663E\u9690\u3002", "Several sections are named \u201C{title}\u201D. Give them distinct headings to control their placement or visibility."],
-      missingSectionRule: ["\u7248\u5F0F\u5C5E\u6027\u5F15\u7528\u7684\u300C{title}\u300D\u5728\u6B63\u6587\u4E2D\u627E\u4E0D\u5230\u3002\u8BF7\u6838\u5BF9\u680F\u76EE\u6807\u9898\u3002", "The layout refers to \u201C{title}\u201D, which has no matching section heading."],
+      missingSectionRule: ["\u6B63\u6587\u4E2D\u5DF2\u6CA1\u6709\u300C{title}\u300D\u680F\u76EE\u3002", "Section \u201C{title}\u201D is no longer in the note."],
       sectionAdded: ["\u5DF2\u65B0\u589E\u680F\u76EE", "Section added"],
       sectionsChanged: ["\u680F\u76EE\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u64CD\u4F5C\u3002", "The sections changed. Try again."],
       sectionsReordered: ["\u5DF2\u8C03\u6574\u680F\u76EE\u987A\u5E8F", "Sections reordered"],
@@ -253,11 +265,11 @@ var require_localization = __commonJS({
       frozenHelp: ["\u8FD9\u4EFD\u7B80\u5386\u5DF2\u5173\u8054\u5230\u5DF2\u6838\u5BF9\u6216\u5DF2\u6295\u9012\u7684\u7533\u8BF7\u3002\u53EF\u4ECE\u526F\u672C\u5F00\u59CB\u7F16\u8F91\u3002", "This resume belongs to a reviewed or submitted application. Create a copy to edit."],
       protectedBadge: ["\u53EA\u8BFB\u8D44\u6599", "Read-only note"],
       protectedHelp: ["\u5F53\u524D\u7B14\u8BB0\u53D7\u4FDD\u62A4\u3002\u53EF\u8BD5\u6392\u6216\u521B\u5EFA\u7F16\u8F91\u526F\u672C\u3002", "This note is protected. Preview the layout or create an editable copy."],
-      previewBadge: ["\u666E\u901A\u7B14\u8BB0\u8BD5\u6392", "Note preview"],
+      previewBadge: ["\u8BD5\u6392\u9884\u89C8", "Preview only"],
       previewHelp: ["\u7248\u5F0F\u4EC5\u4F9B\u9884\u89C8\u3002\u9009\u62E9\u5199\u5165\u7248\u5F0F\u540E\u624D\u4F1A\u6DFB\u52A0\u5C5E\u6027\u3002", "Preview layout changes. Apply the layout to add properties to this note."],
       previewUnavailable: ["\u9884\u89C8\u6682\u672A\u66F4\u65B0", "Preview unavailable"],
       loading: ["\u8F7D\u5165\u4E2D\u2026", "Loading\u2026"],
-      localPreviewHelp: ["\u5F53\u524D\u4E3A\u672C\u673A\u8BD5\u6392\u3002\u521B\u5EFA\u7F16\u8F91\u526F\u672C\u53EF\u6CBF\u7528\u7248\u5F0F\u3002", "This layout is local to this vault. Create an editable copy to keep it with a note."],
+      localPreviewHelp: ["\u6B64\u7A3F\u4E3A\u53EA\u8BFB\uFF0C\u8BD5\u6392\u8BBE\u7F6E\u6682\u5B58\u5728\u5F53\u524D\u5E93\u3002\u521B\u5EFA\u526F\u672C\u540E\u53EF\u968F\u7B14\u8BB0\u4FDD\u5B58\u3002", "Read-only note. Preview settings stay in this vault until you create an editable copy."],
       layoutSaving: ["\u6B63\u5728\u4FDD\u5B58\u7248\u5F0F\u2026", "Saving layout\u2026"],
       previewOnly: ["\u5F53\u524D\u4E3A\u8BD5\u6392\u9884\u89C8\uFF0C\u672A\u4FEE\u6539\u539F\u7B14\u8BB0", "Layout preview"],
       layoutUnsaved: ["\u7248\u5F0F\u5C1A\u672A\u4FDD\u5B58", "Layout unsaved"],
@@ -292,7 +304,7 @@ var require_localization = __commonJS({
       noteLayoutChanged: ["\u7B14\u8BB0\u7248\u5F0F\u5DF2\u53D8\u5316\uFF0C\u8BF7\u6309\u6700\u65B0\u5C5E\u6027\u91CD\u65B0\u8C03\u6574\u3002", "The note\u2019s layout changed. Adjust the layout using the latest properties."],
       editableResumeRequired: ["\u8BF7\u5728\u53EF\u7F16\u8F91\u7684\u7B80\u5386\u7B14\u8BB0\u4E2D\u4FEE\u6539\u6B63\u6587\u3002", "Open an editable resume to change its text."],
       fileUpdated: ["\u6587\u4EF6\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u6309\u5237\u65B0\u540E\u7684\u9884\u89C8\u91CD\u65B0\u64CD\u4F5C\u3002", "The note was updated. Try again from the refreshed preview."],
-      yamlRequired: ["\u8BF7\u5728\u539F\u7B14\u8BB0\u7684\u5C5E\u6027\u4E2D\u6DFB\u52A0 YAML\u3002", "Add YAML properties in the original note."],
+      yamlRequired: ["\u65E0\u5C5E\u6027\u7B14\u8BB0\u7684\u6B63\u6587\u5F00\u5934\u4E0D\u80FD\u5F62\u6210 --- \u5C5E\u6027\u5757\u3002\u8BF7\u5728\u539F\u7B14\u8BB0\u9876\u90E8\u6DFB\u52A0\u5C5E\u6027\u3002", "In a note without properties, body text cannot start a --- frontmatter block. Add properties in the original note."],
       sourceBusy: ["\u6B63\u6587\u6B63\u5728\u66F4\u65B0\uFF0C\u7B49\u9884\u89C8\u540C\u6B65\u540E\u518D\u8BD5\u3002", "Wait for the preview to catch up with the text, then try again."],
       noteNotFound: ["\u627E\u4E0D\u5230\u8FD9\u4EFD Markdown \u7B14\u8BB0", "Could not find this Markdown note"],
       themeNeedsNote: ["\u6253\u5F00\u4E00\u4EFD Markdown \u7B14\u8BB0\u5373\u53EF\u5B9E\u65F6\u9884\u89C8\u4E3B\u9898\u3002", "Open a Markdown note to preview the theme live."],
@@ -2118,7 +2130,10 @@ var require_layout_panel = __commonJS({
           const draft = this.draftLayouts.get(file);
           const useDraft = !resume.protected && draft?.key === key;
           if (!useDraft) this.draftLayouts.delete(file);
-          if (changedMetadata && !useDraft) this.layoutUndo.delete(file);
+          if (changedMetadata && !useDraft) {
+            const bodyChanges = this.layoutUndo.get(file)?.filter((step) => step.kind === "body");
+            if (bodyChanges) this.layoutUndo.set(file, bodyChanges);
+          }
           this.savedLayout = canonical;
           this.current = useDraft ? { ...draft.layout } : this.view.plugin.layouts.previewLayout(resume);
           this.lastCommittedLayout = { ...this.current };
@@ -2322,7 +2337,8 @@ var require_layout_panel = __commonJS({
         this.applyTemplateButton.hidden = readOnly || recognized && !needsManualSave;
         this.applyTemplateButton.setText(recognized ? this.t("saveLayout") : this.t("applyLayout"));
         this.applyTemplateButton.disabled = this.applyingLayout;
-        this.undoLayoutButton.hidden = readOnly || !recognized || !this.layoutUndo.get(file)?.length;
+        this.undoLayoutButton.hidden = !this.layoutUndo.get(file)?.length;
+        this.undoLayoutButton.disabled = !!this.undoingBody;
         const hint = readOnly ? this.t("localPreviewHelp") : this.applyingLayout || this.queuedLayout ? this.t("layoutSaving") : !recognized ? this.t("previewOnly") : needsManualSave ? this.t("layoutUnsaved") : this.layoutFeedback || "";
         this.layoutHint.setText(hint);
       }
@@ -2379,9 +2395,11 @@ var require_layout_panel = __commonJS({
           this.fitUndo.delete(file);
           this.current = { ...undo.before };
           const history = this.layoutUndo.get(file);
-          if (history?.length && sameLayout(history.at(-1), undo.before)) history.pop();
+          const index = history?.findLastIndex((step) => step.kind === "layout" && sameLayout(step.before, undo.before) && sameLayout(step.after, undo.after));
+          if (index >= 0) history.splice(index, 1);
           this.alignLocks();
           this.commit(false);
+          new Notice2(this.t("fitUndone"));
           return;
         }
         if (!this.view.preview.pageMetrics().overflow || this.view.preview.visiblePageBreaks()) return;
@@ -2419,6 +2437,7 @@ var require_layout_panel = __commonJS({
         this.resetUndo.delete(file);
         this.alignLocks();
         this.commit();
+        new Notice2(this.t("fitSuccess"));
       }
       rememberDraft() {
         const resume = this.view.selected;
@@ -2431,11 +2450,8 @@ var require_layout_panel = __commonJS({
         const { file, protected: readOnly, recognized } = this.view.selected;
         const changed = !sameLayout(this.current, this.lastCommittedLayout);
         if (changed) {
-          if (record && recognized && !readOnly && this.lastCommittedLayout) {
-            const history = this.layoutUndo.get(file) ?? [];
-            history.push(this.lastCommittedLayout);
-            if (history.length > 10) history.shift();
-            this.layoutUndo.set(file, history);
+          if (record && this.lastCommittedLayout) {
+            this.recordChange(file, { kind: "layout", before: this.lastCommittedLayout, after: { ...this.current } });
           }
           this.lastCommittedLayout = { ...this.current };
           this.layoutFeedback = "";
@@ -2447,15 +2463,48 @@ var require_layout_panel = __commonJS({
         }
         this.update();
       }
-      undoLayoutChange() {
-        if (!this.view.selected || this.view.selected.protected) return;
-        const { file } = this.view.selected;
-        const prior = this.layoutUndo.get(file)?.pop();
-        if (!prior) return;
-        this.resetUndo.delete(file);
-        this.current = { ...prior };
-        this.alignLocks();
-        this.commit(false);
+      recordChange(file, step) {
+        const history = this.layoutUndo.get(file) ?? [];
+        history.push(step);
+        if (history.length > 20) history.shift();
+        this.layoutUndo.set(file, history);
+      }
+      async undoLayoutChange() {
+        const resume = this.view.selected;
+        if (!resume || this.undoingBody) return;
+        const { file } = resume;
+        const history = this.layoutUndo.get(file);
+        const step = history?.at(-1);
+        if (!step) return;
+        if (step.kind === "layout") {
+          history.pop();
+          this.resetUndo.delete(file);
+          this.fitUndo.delete(file);
+          this.current = { ...step.before };
+          this.alignLocks();
+          this.commit(false);
+          this.view.sections.render();
+          return;
+        }
+        this.undoingBody = true;
+        try {
+          if (resume.protected || !resume.recognized) throw Object.assign(new Error(), { code: "CONFLICT" });
+          await this.view.plugin.files.writeSourceBody(file, step.after, step.before);
+          const index = history.indexOf(step);
+          if (index >= 0) history.splice(index, 1);
+          if (this.view.selected?.file === file) await this.view.show(file);
+          new Notice2(this.t("sectionChangeUndone"));
+        } catch (error) {
+          if (error.code === "CONFLICT") {
+            const index = history.indexOf(step);
+            if (index >= 0) history.splice(index, 1);
+            new Notice2(this.t("undoSourceStale"));
+          } else new Notice2(error.message);
+        } finally {
+          this.undoingBody = false;
+          this.updateLayoutActions();
+          this.view.sections.render();
+        }
       }
       queueLayoutSave(file) {
         const win = this.view.preview.stage.ownerDocument.defaultView;
@@ -2576,7 +2625,12 @@ var require_pagination = __commonJS({
       });
       while (walker.nextNode()) yield walker.currentNode;
     }
-    module2.exports = { measurePageStarts };
+    function pageBreakCounts(starts) {
+      const breaks = starts.slice(1);
+      const manual = breaks.filter((start) => start.manual).length;
+      return { manual, automatic: breaks.length - manual };
+    }
+    module2.exports = { measurePageStarts, pageBreakCounts };
   }
 });
 
@@ -2585,7 +2639,7 @@ var require_preview_pane = __commonJS({
   "src/workbench/preview-pane.js"(exports2, module2) {
     var { Component, MarkdownRenderer } = require("obsidian");
     var { paperSize, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
-    var { measurePageStarts } = require_pagination();
+    var { measurePageStarts, pageBreakCounts } = require_pagination();
     var { sourceParts, sourceText } = require_markdown();
     var { splitSectionBody } = require_structure();
     var { SectionLayout } = require_section_layout();
@@ -2745,21 +2799,30 @@ ${body}` : body, next, file.path, renderer);
         const pages = starts.length;
         this.showPageGuides(starts, Number(scale));
         const usage = Math.min(100, Math.round(100 * used / printable));
-        const label = overflow && !breaks ? this.t("overflowPages", { pages, excess: Math.ceil(used - printable) }) : pages > 1 ? this.t("estimatedPages", { pages }) : this.t("onePage", { usage });
-        const detail = pages > 1 ? this.t("pageGuideDetail", { pages, manual: starts.filter((start) => start.manual).length }) : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
-        this.pageStatus.toggleClass("is-overflowing", overflow || !!breaks);
+        const { manual, automatic } = pageBreakCounts(starts);
+        let label = this.t("onePage", { usage });
+        if (automatic && manual) label = this.t("mixedPages", { pages });
+        else if (automatic) label = this.t("overflowPages", { pages, excess: Math.max(0, Math.ceil(used - printable)) });
+        else if (manual) label = this.t("estimatedPages", { pages });
+        const detail = pages > 1 ? this.t("pageGuideDetail", { pages, manual, automatic }) : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
+        this.pageStatus.toggleClass("is-overflowing", automatic > 0);
         this.fill.style.setProperty("--page-usage", `${Math.min(100, used / printable * 100)}%`);
         this.setPageMeasurement(label, detail);
-        this.view.layout.syncFitButton(overflow, breaks);
+        this.view.layout.syncFitButton(automatic > 0, manual);
       }
       showPageGuides(starts, zoom) {
+        if (starts.length < 2) {
+          this.guides.replaceChildren();
+          return;
+        }
         const inset = (this.rendered.getBoundingClientRect().top - this.paper.getBoundingClientRect().top) / zoom;
         starts.forEach((start, index) => {
           const guide = this.guides.children[index] ?? this.guides.createDiv({ cls: "resume-layout-page-guide" });
           guide.style.top = index ? `${Math.max(0, inset + start.offset - 2)}px` : "0";
           guide.dataset.break = index ? start.manual ? "manual" : "automatic" : "first";
           guide.title = this.t(index ? start.manual ? "manualGuide" : "automaticGuide" : "previewLabel");
-          guide.dataset.page = `${index + 1}/${starts.length}`;
+          const page = `${index + 1}/${starts.length}`;
+          guide.dataset.page = index ? this.t(start.manual ? "manualPageTag" : "autoPageTag", { page }) : page;
         });
         while (this.guides.childElementCount > starts.length) this.guides.lastElementChild.remove();
       }
@@ -2840,8 +2903,24 @@ var require_theme_editor = __commonJS({
           this.layout.updateTemplateControls();
           this.layout.templateSelect.focus();
         };
-        back.addEventListener("click", close);
-        cancel.addEventListener("click", close);
+        const initialName = input.value;
+        const initialCss = editor.value;
+        const confirm = panel.createDiv({ cls: "resume-layout-template-actions" });
+        confirm.hidden = true;
+        const keep = confirm.createEl("button", { text: this.t("keepEditing") });
+        const discard = confirm.createEl("button", { text: this.t("discardThemeConfirm"), cls: "mod-warning" });
+        const requestClose = () => {
+          if (initialName === input.value && initialCss === editor.value) return close();
+          confirm.hidden = false;
+          keep.focus();
+        };
+        keep.addEventListener("click", () => {
+          confirm.hidden = true;
+          (initialCss === editor.value ? input : editor).focus();
+        });
+        discard.addEventListener("click", close);
+        back.addEventListener("click", requestClose);
+        cancel.addEventListener("click", requestClose);
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           if (save.disabled) return;
@@ -3363,6 +3442,8 @@ var require_source_toolbar = __commonJS({
       }).createEl("input", { type: "text", attr: required ? { required: "" } : {} });
       const title = input(t("entryTitle"), "title", true);
       const subtitle = input(t("entrySubtitle"), "subtitle");
+      title.placeholder = t("entryTitleHint");
+      subtitle.placeholder = t("entrySubtitleHint");
       const right = input(t("entryDate"), "date");
       const preview = form.createDiv({ cls: "resume-layout-entry-preview", attr: { "aria-label": t("entryPreview") } });
       const previewHeading = preview.createDiv({ cls: "resume-layout-entry-preview-heading" });
@@ -3532,6 +3613,13 @@ var require_source_editor = __commonJS({
       async openEditor() {
         const resume = this.view.selected;
         if (!resume || this.view.editButton.disabled) return;
+        if (!resume.recognized && !resume.protected) {
+          this.view.toggleInspector(false);
+          this.view.setPanel("layout");
+          this.view.layout.applyTemplateButton.focus();
+          new Notice2(this.t("applyBeforeEdit"));
+          return;
+        }
         this.view.editButton.disabled = true;
         try {
           await runWithNotice(async () => {
@@ -3829,7 +3917,6 @@ var require_sections_panel = __commonJS({
       constructor(view) {
         this.view = view;
         this.t = view.t;
-        this.contentUndo = /* @__PURE__ */ new WeakMap();
       }
       render() {
         const panel = this.view.contentPanel;
@@ -3838,21 +3925,34 @@ var require_sections_panel = __commonJS({
         const resume = this.view.selected;
         if (!resume || this.view.sourceMarkdown === null || this.view.sourceMarkdown === void 0) return;
         const source = this.view.sourceMarkdown;
-        const editable = !resume.protected;
-        const sections = editable ? splitSectionBody(sourceParts(source).body).sections : this.previewHeadings().map((heading) => ({ title: heading.textContent.replace(/[\uE000-\uF8FF]/gu, "").trim() }));
+        const editable = resume.recognized && !resume.protected;
+        const sections = splitSectionBody(sourceParts(source).body).sections;
         const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
-        if (editable) {
-          this.renderSectionActions(panel, resume, source, sections);
-          for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
-          for (const title of issues.missing) panel.createDiv({ cls: "resume-layout-hint", text: this.t("missingSectionRule", { title }) });
+        const actions = panel.createDiv({ cls: "resume-layout-content-actions" });
+        if (editable) this.renderSectionActions(actions, resume, source, sections);
+        if (this.view.layout.layoutUndo.get(resume.file)?.length) {
+          actions.createEl("button", { text: this.t("undoLast") }).addEventListener("click", () => void this.view.layout.undoLayoutChange());
+        }
+        for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
+        for (const title of issues.missing) {
+          const row = panel.createDiv({ cls: "resume-layout-rule-warning" });
+          row.createSpan({ text: this.t("missingSectionRule", { title }) });
+          row.createEl("button", { text: this.t("clearRule") }).addEventListener("click", () => {
+            const layout = this.view.layout;
+            const sections2 = { ...layout.current.sections };
+            delete sections2[title];
+            layout.current.sections = sections2;
+            layout.commit();
+            this.render();
+          });
         }
         const list = panel.createDiv({ cls: "resume-layout-section-list" });
         sections.forEach(({ title }, index) => this.renderSection(list, title, index, sections.length, source, editable, !!title && !issues.duplicate.includes(title)));
         if (editable && sections.length > 1) this.enableSectionDrag(list, resume.file, source);
         if (!sections.length) panel.createDiv({ cls: "resume-layout-modal-hint", text: editable ? this.t("createSectionsHelp") : this.t("emptySections") });
       }
-      renderSectionActions(panel, resume, source, sections) {
-        const actions = panel.createDiv({ cls: "resume-layout-content-actions" });
+      renderSectionActions(actions, resume, source, sections) {
+        const panel = this.view.contentPanel;
         const draft = this.sectionDraft?.file === resume.file ? this.sectionDraft : null;
         const add = actions.createEl("button", { text: draft ? this.t("cancelNewSection") : this.t("newSection"), cls: draft ? "" : "mod-cta" });
         add.setAttribute("aria-expanded", String(!!draft));
@@ -3861,18 +3961,6 @@ var require_sections_panel = __commonJS({
           this.render();
           if (!draft) this.view.contentPanel.querySelector("input")?.focus();
         });
-        const history = this.contentUndo.get(resume.file);
-        const prior = history?.at(-1);
-        if (prior?.after === editableBody(source)) {
-          actions.createEl("button", { text: this.t("undoLast") }).addEventListener("click", () => {
-            void runWithNotice(async () => {
-              await this.view.plugin.files.writeSourceBody(resume.file, prior.after, prior.before);
-              history.pop();
-              if (this.view.selected?.file === resume.file) await this.view.show(resume.file);
-              new Notice2(this.t("sectionChangeUndone"));
-            });
-          });
-        }
         if (!draft) return;
         const form = panel.createEl("form", { cls: "resume-layout-modal-form" });
         const label = form.createEl("label", { text: this.t("sectionName") });
@@ -3930,7 +4018,6 @@ var require_sections_panel = __commonJS({
           attr: { title: this.t("findSectionOnPage", { title }) }
         });
         jump.addEventListener("click", () => this.jumpToSection(index));
-        if (!editable) return;
         if (unique) {
           const layout = this.view.layout.current;
           const rule = ruleFor(layout.sections, title);
@@ -3945,8 +4032,10 @@ var require_sections_panel = __commonJS({
           }
           const hidden = rule.hidden === true;
           jump.disabled = hidden;
+          row.classList.toggle("is-muted-section", hidden);
           this.ruleButton(row, title, hidden ? "showSection" : "hideSection", hidden ? "eye-off" : "eye", "hidden", hidden ? void 0 : true);
         }
+        if (!editable) return;
         for (const [delta, message, icon] of [[-1, "moveSectionUp", "arrow-up"], [1, "moveSectionDown", "arrow-down"]]) {
           if (index + delta < 0 || index + delta >= count) continue;
           const label = this.t(message, { title });
@@ -3957,7 +4046,7 @@ var require_sections_panel = __commonJS({
       }
       ruleButton(row, title, message, icon, key, value) {
         const label = this.t(message, { title });
-        const button = row.createEl("button", { attr: { "aria-label": label, title: label } });
+        const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === void 0) } });
         setIcon(button, icon);
         button.addEventListener("click", () => {
           const layout = this.view.layout;
@@ -4044,18 +4133,14 @@ var require_sections_panel = __commonJS({
       }
       async changeContent(source, transform, message) {
         const resume = this.view.selected;
-        if (!resume || source == null || source !== this.view.sourceMarkdown || this.view.plugin.catalog.isProtected(resume)) {
+        if (!resume?.recognized || source == null || source !== this.view.sourceMarkdown || this.view.plugin.catalog.isProtected(resume)) {
           throw new Error(this.t("noteChanged"));
         }
         const { prefix, body } = sourceParts(source);
         const next = prefix + transform(body);
         await this.view.plugin.files.writeContent(resume.file, source, next);
         const before = editableBody(source);
-        const history = this.contentUndo.get(resume.file) ?? [];
-        if (history.length && history.at(-1).after !== before) history.length = 0;
-        history.push({ before, after: editableBody(next) });
-        if (history.length > 5) history.shift();
-        this.contentUndo.set(resume.file, history);
+        this.view.layout.recordChange(resume.file, { kind: "body", before, after: editableBody(next) });
         if (this.view.selected?.file === resume.file) await this.view.show(resume.file);
         new Notice2(message);
       }

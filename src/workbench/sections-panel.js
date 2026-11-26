@@ -8,7 +8,6 @@ class SectionsPanel {
   constructor(view) {
     this.view = view;
     this.t = view.t;
-    this.contentUndo = new WeakMap();
   }
 
   render() {
@@ -19,14 +18,27 @@ class SectionsPanel {
     if (!resume || this.view.sourceMarkdown === null || this.view.sourceMarkdown === undefined) return;
 
     const source = this.view.sourceMarkdown;
-    const editable = !resume.protected;
-    const sections = editable ? splitSectionBody(sourceParts(source).body).sections
-      : this.previewHeadings().map(heading => ({ title: heading.textContent.replace(/[\uE000-\uF8FF]/gu, "").trim() }));
+    const editable = resume.recognized && !resume.protected;
+    const sections = splitSectionBody(sourceParts(source).body).sections;
     const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
-    if (editable) {
-      this.renderSectionActions(panel, resume, source, sections);
-      for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
-      for (const title of issues.missing) panel.createDiv({ cls: "resume-layout-hint", text: this.t("missingSectionRule", { title }) });
+    const actions = panel.createDiv({ cls: "resume-layout-content-actions" });
+    if (editable) this.renderSectionActions(actions, resume, source, sections);
+    if (this.view.layout.layoutUndo.get(resume.file)?.length) {
+      actions.createEl("button", { text: this.t("undoLast") })
+        .addEventListener("click", () => void this.view.layout.undoLayoutChange());
+    }
+    for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
+    for (const title of issues.missing) {
+      const row = panel.createDiv({ cls: "resume-layout-rule-warning" });
+      row.createSpan({ text: this.t("missingSectionRule", { title }) });
+      row.createEl("button", { text: this.t("clearRule") }).addEventListener("click", () => {
+        const layout = this.view.layout;
+        const sections = { ...layout.current.sections };
+        delete sections[title];
+        layout.current.sections = sections;
+        layout.commit();
+        this.render();
+      });
     }
     const list = panel.createDiv({ cls: "resume-layout-section-list" });
     sections.forEach(({ title }, index) =>
@@ -36,8 +48,8 @@ class SectionsPanel {
       ? this.t("createSectionsHelp") : this.t("emptySections") });
   }
 
-  renderSectionActions(panel, resume, source, sections) {
-    const actions = panel.createDiv({ cls: "resume-layout-content-actions" });
+  renderSectionActions(actions, resume, source, sections) {
+    const panel = this.view.contentPanel;
     const draft = this.sectionDraft?.file === resume.file ? this.sectionDraft : null;
     const add = actions.createEl("button", { text: draft ? this.t("cancelNewSection") : this.t("newSection"), cls: draft ? "" : "mod-cta" });
     add.setAttribute("aria-expanded", String(!!draft));
@@ -46,18 +58,6 @@ class SectionsPanel {
       this.render();
       if (!draft) this.view.contentPanel.querySelector("input")?.focus();
     });
-    const history = this.contentUndo.get(resume.file);
-    const prior = history?.at(-1);
-    if (prior?.after === editableBody(source)) {
-      actions.createEl("button", { text: this.t("undoLast") }).addEventListener("click", () => {
-        void runWithNotice(async () => {
-          await this.view.plugin.files.writeSourceBody(resume.file, prior.after, prior.before);
-          history.pop();
-          if (this.view.selected?.file === resume.file) await this.view.show(resume.file);
-          new Notice(this.t("sectionChangeUndone"));
-        });
-      });
-    }
     if (!draft) return;
 
     const form = panel.createEl("form", { cls: "resume-layout-modal-form" });
@@ -118,7 +118,6 @@ class SectionsPanel {
       attr: { title: this.t("findSectionOnPage", { title }) },
     });
     jump.addEventListener("click", () => this.jumpToSection(index));
-    if (!editable) return;
     if (unique) {
       const layout = this.view.layout.current;
       const rule = ruleFor(layout.sections, title);
@@ -133,8 +132,10 @@ class SectionsPanel {
       }
       const hidden = rule.hidden === true;
       jump.disabled = hidden;
+      row.classList.toggle("is-muted-section", hidden);
       this.ruleButton(row, title, hidden ? "showSection" : "hideSection", hidden ? "eye-off" : "eye", "hidden", hidden ? undefined : true);
     }
+    if (!editable) return;
     for (const [delta, message, icon] of [[-1, "moveSectionUp", "arrow-up"], [1, "moveSectionDown", "arrow-down"]]) {
       if (index + delta < 0 || index + delta >= count) continue;
       const label = this.t(message, { title });
@@ -146,7 +147,7 @@ class SectionsPanel {
 
   ruleButton(row, title, message, icon, key, value) {
     const label = this.t(message, { title });
-    const button = row.createEl("button", { attr: { "aria-label": label, title: label } });
+    const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === undefined) } });
     setIcon(button, icon);
     button.addEventListener("click", () => {
       const layout = this.view.layout;
@@ -237,18 +238,14 @@ class SectionsPanel {
 
   async changeContent(source, transform, message) {
     const resume = this.view.selected;
-    if (!resume || source == null || source !== this.view.sourceMarkdown || this.view.plugin.catalog.isProtected(resume)) {
+    if (!resume?.recognized || source == null || source !== this.view.sourceMarkdown || this.view.plugin.catalog.isProtected(resume)) {
       throw new Error(this.t("noteChanged"));
     }
     const { prefix, body } = sourceParts(source);
     const next = prefix + transform(body);
     await this.view.plugin.files.writeContent(resume.file, source, next);
     const before = editableBody(source);
-    const history = this.contentUndo.get(resume.file) ?? [];
-    if (history.length && history.at(-1).after !== before) history.length = 0;
-    history.push({ before, after: editableBody(next) });
-    if (history.length > 5) history.shift();
-    this.contentUndo.set(resume.file, history);
+    this.view.layout.recordChange(resume.file, { kind: "body", before, after: editableBody(next) });
     if (this.view.selected?.file === resume.file) await this.view.show(resume.file);
     new Notice(message);
   }

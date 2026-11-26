@@ -91,7 +91,10 @@ class LayoutPanel {
       const draft = this.draftLayouts.get(file);
       const useDraft = !resume.protected && draft?.key === key;
       if (!useDraft) this.draftLayouts.delete(file);
-      if (changedMetadata && !useDraft) this.layoutUndo.delete(file);
+      if (changedMetadata && !useDraft) {
+        const bodyChanges = this.layoutUndo.get(file)?.filter(step => step.kind === "body");
+        if (bodyChanges) this.layoutUndo.set(file, bodyChanges);
+      }
       this.savedLayout = canonical;
       this.current = useDraft ? { ...draft.layout } : this.view.plugin.layouts.previewLayout(resume);
       this.lastCommittedLayout = { ...this.current };
@@ -309,7 +312,8 @@ class LayoutPanel {
     this.applyTemplateButton.hidden = readOnly || (recognized && !needsManualSave);
     this.applyTemplateButton.setText(recognized ? this.t("saveLayout") : this.t("applyLayout"));
     this.applyTemplateButton.disabled = this.applyingLayout;
-    this.undoLayoutButton.hidden = readOnly || !recognized || !(this.layoutUndo.get(file)?.length);
+    this.undoLayoutButton.hidden = !this.layoutUndo.get(file)?.length;
+    this.undoLayoutButton.disabled = !!this.undoingBody;
     const hint = readOnly ? this.t("localPreviewHelp")
       : this.applyingLayout || this.queuedLayout ? this.t("layoutSaving")
       : !recognized ? this.t("previewOnly")
@@ -373,9 +377,11 @@ class LayoutPanel {
       this.fitUndo.delete(file);
       this.current = { ...undo.before };
       const history = this.layoutUndo.get(file);
-      if (history?.length && sameLayout(history.at(-1), undo.before)) history.pop();
+      const index = history?.findLastIndex(step => step.kind === "layout" && sameLayout(step.before, undo.before) && sameLayout(step.after, undo.after));
+      if (index >= 0) history.splice(index, 1);
       this.alignLocks();
       this.commit(false);
+      new Notice(this.t("fitUndone"));
       return;
     }
     if (!this.view.preview.pageMetrics().overflow || this.view.preview.visiblePageBreaks()) return;
@@ -415,6 +421,7 @@ class LayoutPanel {
     this.resetUndo.delete(file);
     this.alignLocks();
     this.commit();
+    new Notice(this.t("fitSuccess"));
   }
 
   rememberDraft() {
@@ -429,11 +436,8 @@ class LayoutPanel {
     const { file, protected: readOnly, recognized } = this.view.selected;
     const changed = !sameLayout(this.current, this.lastCommittedLayout);
     if (changed) {
-      if (record && recognized && !readOnly && this.lastCommittedLayout) {
-        const history = this.layoutUndo.get(file) ?? [];
-        history.push(this.lastCommittedLayout);
-        if (history.length > 10) history.shift();
-        this.layoutUndo.set(file, history);
+      if (record && this.lastCommittedLayout) {
+        this.recordChange(file, { kind: "layout", before: this.lastCommittedLayout, after: { ...this.current } });
       }
       this.lastCommittedLayout = { ...this.current };
       this.layoutFeedback = "";
@@ -446,15 +450,50 @@ class LayoutPanel {
     this.update();
   }
 
-  undoLayoutChange() {
-    if (!this.view.selected || this.view.selected.protected) return;
-    const { file } = this.view.selected;
-    const prior = this.layoutUndo.get(file)?.pop();
-    if (!prior) return;
-    this.resetUndo.delete(file);
-    this.current = { ...prior };
-    this.alignLocks();
-    this.commit(false);
+  recordChange(file, step) {
+    const history = this.layoutUndo.get(file) ?? [];
+    history.push(step);
+    if (history.length > 20) history.shift();
+    this.layoutUndo.set(file, history);
+  }
+
+  async undoLayoutChange() {
+    const resume = this.view.selected;
+    if (!resume || this.undoingBody) return;
+    const { file } = resume;
+    const history = this.layoutUndo.get(file);
+    const step = history?.at(-1);
+    if (!step) return;
+    if (step.kind === "layout") {
+      history.pop();
+      this.resetUndo.delete(file);
+      this.fitUndo.delete(file);
+      this.current = { ...step.before };
+      this.alignLocks();
+      this.commit(false);
+      this.view.sections.render();
+      return;
+    }
+
+    this.undoingBody = true;
+    try {
+      if (resume.protected || !resume.recognized) throw Object.assign(new Error(), { code: "CONFLICT" });
+      await this.view.plugin.files.writeSourceBody(file, step.after, step.before);
+      const index = history.indexOf(step);
+      if (index >= 0) history.splice(index, 1);
+      if (this.view.selected?.file === file) await this.view.show(file);
+      new Notice(this.t("sectionChangeUndone"));
+    } catch (error) {
+      if (error.code === "CONFLICT") {
+        const index = history.indexOf(step);
+        if (index >= 0) history.splice(index, 1);
+        new Notice(this.t("undoSourceStale"));
+      } else new Notice(error.message);
+    } finally {
+      this.undoingBody = false;
+      this.updateLayoutActions();
+      this.view.sections.render();
+    }
   }
 
   queueLayoutSave(file) {

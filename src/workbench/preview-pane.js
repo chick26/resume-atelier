@@ -1,6 +1,6 @@
 const { Component, MarkdownRenderer } = require("obsidian");
 const { paperSize, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require("../layout/geometry");
-const { measurePageStarts } = require("../layout/pagination");
+const { measurePageStarts, pageBreakCounts } = require("../layout/pagination");
 const { sourceParts, sourceText } = require("../resume/markdown");
 const { splitSectionBody } = require("../resume/structure");
 const { SectionLayout } = require("../resume/section-layout");
@@ -175,24 +175,32 @@ class PreviewPane {
     const pages = starts.length;
     this.showPageGuides(starts, Number(scale));
     const usage = Math.min(100, Math.round(100 * used / printable));
-    const label = overflow && !breaks ? this.t("overflowPages", { pages, excess: Math.ceil(used - printable) })
-      : pages > 1 ? this.t("estimatedPages", { pages }) : this.t("onePage", { usage });
-    const detail = pages > 1 ? this.t("pageGuideDetail", { pages, manual: starts.filter(start => start.manual).length })
+    const { manual, automatic } = pageBreakCounts(starts);
+    let label = this.t("onePage", { usage });
+    if (automatic && manual) label = this.t("mixedPages", { pages });
+    else if (automatic) label = this.t("overflowPages", { pages, excess: Math.max(0, Math.ceil(used - printable)) });
+    else if (manual) label = this.t("estimatedPages", { pages });
+    const detail = pages > 1 ? this.t("pageGuideDetail", { pages, manual, automatic })
       : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
-    this.pageStatus.toggleClass("is-overflowing", overflow || !!breaks);
+    this.pageStatus.toggleClass("is-overflowing", automatic > 0);
     this.fill.style.setProperty("--page-usage", `${Math.min(100, used / printable * 100)}%`);
     this.setPageMeasurement(label, detail);
-    this.view.layout.syncFitButton(overflow, breaks);
+    this.view.layout.syncFitButton(automatic > 0, manual);
   }
 
   showPageGuides(starts, zoom) {
+    if (starts.length < 2) {
+      this.guides.replaceChildren();
+      return;
+    }
     const inset = (this.rendered.getBoundingClientRect().top - this.paper.getBoundingClientRect().top) / zoom;
     starts.forEach((start, index) => {
       const guide = this.guides.children[index] ?? this.guides.createDiv({ cls: "resume-layout-page-guide" });
       guide.style.top = index ? `${Math.max(0, inset + start.offset - 2)}px` : "0";
       guide.dataset.break = index ? (start.manual ? "manual" : "automatic") : "first";
       guide.title = this.t(index ? (start.manual ? "manualGuide" : "automaticGuide") : "previewLabel");
-      guide.dataset.page = `${index + 1}/${starts.length}`;
+      const page = `${index + 1}/${starts.length}`;
+      guide.dataset.page = index ? this.t(start.manual ? "manualPageTag" : "autoPageTag", { page }) : page;
     });
     while (this.guides.childElementCount > starts.length) this.guides.lastElementChild.remove();
   }

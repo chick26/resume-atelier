@@ -1,5 +1,12 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { pageBreakCounts } = require("../src/layout/pagination");
+
+test("page warnings distinguish single, explicit, automatic and mixed boundaries", () => {
+  for (const [flags, manual, automatic] of [
+    [[false], 0, 0], [[false, true], 1, 0], [[false, false], 0, 1], [[false, true, false], 1, 1],
+  ]) assert.deepEqual(pageBreakCounts(flags.map(manual => ({ manual }))), { manual, automatic });
+});
 const { splitSectionBody, sectionRuleIssues } = require("../src/resume/structure");
 const { changeSectionRule, ruleFor } = require("../src/resume/section-layout");
 

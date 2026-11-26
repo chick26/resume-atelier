@@ -322,6 +322,36 @@ test("margin handles measure the displayed paper at both zooms and preserve lock
   }
 });
 
+test("all trial layouts undo locally and interleaved source changes undo in order", async () => {
+  const file = note("Trial.md", {}, "# A\n");
+  const { plugin, viewFactory } = await loadPlugin({ notes: new Map([[file.path, file]]) });
+  const view = viewFactory({ app: plugin.app });
+  const panel = view.layout;
+  panel.update = () => {};
+  panel.queueLayoutSave = () => {};
+  view.show = async () => {};
+  for (const protectedNote of [false, true]) {
+    view.selected = { file, classes: [], recognized: protectedNote, protected: protectedNote };
+    panel.current = layoutFor([], {});
+    panel.savedLayout = panel.lastCommittedLayout = { ...panel.current };
+    for (const width of [15, 16, 17]) { panel.current.left = width; panel.commit(); }
+    for (const width of [16, 15, 13.5]) { await panel.undoLayoutChange(); assert.equal(panel.current.left, width); }
+    assert.equal(file.contents, "# A\n");
+  }
+  view.selected = { file, classes: [], recognized: true, protected: false };
+  panel.recordChange(file, { kind: "body", before: "# B\n", after: file.contents });
+  panel.current.sections = { Skills: { hidden: true } };
+  panel.commit();
+  await panel.undoLayoutChange();
+  assert.equal(file.contents, "# A\n");
+  await panel.undoLayoutChange();
+  assert.equal(file.contents, "# B\n");
+  panel.recordChange(file, { kind: "body", before: "old", after: "expired" });
+  await panel.undoLayoutChange();
+  assert.equal(file.contents, "# B\n");
+  assert.equal(panel.layoutUndo.get(file).length, 0);
+});
+
 test("quick styles and save actions follow the source editor without remounting on every edit", async () => {
   const { plugin, viewFactory } = await loadPlugin();
   const view = viewFactory({ app: plugin.app });

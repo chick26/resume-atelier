@@ -95,6 +95,13 @@ class SourceEditor {
   async openEditor() {
     const resume = this.view.selected;
     if (!resume || this.view.editButton.disabled) return;
+    if (!resume.recognized && !resume.protected) {
+      this.view.toggleInspector(false);
+      this.view.setPanel("layout");
+      this.view.layout.applyTemplateButton.focus();
+      new Notice(this.t("applyBeforeEdit"));
+      return;
+    }
     this.view.editButton.disabled = true;
     try {
       await runWithNotice(async () => {

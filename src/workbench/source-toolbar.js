@@ -158,6 +158,8 @@ function createSourceEntryPopover(pane, button, field, popovers, { t, view, upda
   }).createEl("input", { type: "text", attr: required ? { required: "" } : {} });
   const title = input(t("entryTitle"), "title", true);
   const subtitle = input(t("entrySubtitle"), "subtitle");
+  title.placeholder = t("entryTitleHint");
+  subtitle.placeholder = t("entrySubtitleHint");
   const right = input(t("entryDate"), "date");
   const preview = form.createDiv({ cls: "resume-layout-entry-preview", attr: { "aria-label": t("entryPreview") } });
   const previewHeading = preview.createDiv({ cls: "resume-layout-entry-preview-heading" });

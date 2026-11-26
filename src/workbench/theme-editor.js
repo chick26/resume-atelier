@@ -61,8 +61,24 @@ class ThemeEditor {
       this.layout.updateTemplateControls();
       this.layout.templateSelect.focus();
     };
-    back.addEventListener("click", close);
-    cancel.addEventListener("click", close);
+    const initialName = input.value;
+    const initialCss = editor.value;
+    const confirm = panel.createDiv({ cls: "resume-layout-template-actions" });
+    confirm.hidden = true;
+    const keep = confirm.createEl("button", { text: this.t("keepEditing") });
+    const discard = confirm.createEl("button", { text: this.t("discardThemeConfirm"), cls: "mod-warning" });
+    const requestClose = () => {
+      if (initialName === input.value && initialCss === editor.value) return close();
+      confirm.hidden = false;
+      keep.focus();
+    };
+    keep.addEventListener("click", () => {
+      confirm.hidden = true;
+      (initialCss === editor.value ? input : editor).focus();
+    });
+    discard.addEventListener("click", close);
+    back.addEventListener("click", requestClose);
+    cancel.addEventListener("click", requestClose);
     form.addEventListener("submit", async event => {
       event.preventDefault();
       if (save.disabled) return;
