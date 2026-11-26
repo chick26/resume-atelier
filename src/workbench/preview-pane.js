@@ -1,5 +1,6 @@
 const { Component, MarkdownRenderer } = require("obsidian");
 const { paperSize, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require("../layout/geometry");
+const { measurePageStarts } = require("../layout/pagination");
 const { sourceParts, sourceText } = require("../resume/markdown");
 const { splitSectionBody } = require("../resume/structure");
 const { SectionLayout } = require("../resume/section-layout");
@@ -43,9 +44,7 @@ class PreviewPane {
     for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
       this.guide.createSpan({ cls: `resume-layout-crop is-${corner}` });
     }
-    this.cutoff = this.paper.createDiv({ cls: "resume-layout-cutoff", attr: { "aria-hidden": "true" } });
-    this.cutoff.createSpan({ text: this.t("firstPageBreak") });
-    this.cutoff.hidden = true;
+    this.guides = this.paper.createDiv({ cls: "resume-layout-page-guides", attr: { "aria-hidden": "true" } });
   }
 
   observe() {
@@ -64,6 +63,7 @@ class PreviewPane {
   }
 
   clearPreview() {
+    this.guides?.replaceChildren();
     if (this.rendered) {
       this.observer?.unobserve(this.rendered);
       this.rendered.remove();
@@ -171,21 +171,30 @@ class PreviewPane {
 
     const { used, printable, overflow } = this.pageMetrics();
     const breaks = this.visiblePageBreaks();
-    const pages = Math.ceil(used / printable);
-    const last = used - (pages - 1) * printable;
+    const starts = overflow || breaks ? measurePageStarts(this.rendered, this.view.layout.current, Number(scale)) : [{ offset: 0, manual: false }];
+    const pages = starts.length;
+    this.showPageGuides(starts, Number(scale));
     const usage = Math.min(100, Math.round(100 * used / printable));
-    const excess = Math.ceil(used - printable);
-    const label = breaks ? this.t("minimumPages", { pages: breaks + 1 })
-      : overflow ? this.t("overflowPages", { excess, pages }) : this.t("onePage", { usage });
-    const detail = breaks ? this.t("pageBreaks", { label }) : overflow
-      ? this.t("overflowPagesDetail", { pages, usage: Math.max(1, Math.round(100 * last / printable)), excess })
+    const label = overflow && !breaks ? this.t("overflowPages", { pages, excess: Math.ceil(used - printable) })
+      : pages > 1 ? this.t("estimatedPages", { pages }) : this.t("onePage", { usage });
+    const detail = pages > 1 ? this.t("pageGuideDetail", { pages, manual: starts.filter(start => start.manual).length })
       : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
     this.pageStatus.toggleClass("is-overflowing", overflow || !!breaks);
-    this.paper.toggleClass("is-overflowing", overflow);
-    this.cutoff.hidden = !overflow;
     this.fill.style.setProperty("--page-usage", `${Math.min(100, used / printable * 100)}%`);
     this.setPageMeasurement(label, detail);
     this.view.layout.syncFitButton(overflow, breaks);
+  }
+
+  showPageGuides(starts, zoom) {
+    const inset = (this.rendered.getBoundingClientRect().top - this.paper.getBoundingClientRect().top) / zoom;
+    starts.forEach((start, index) => {
+      const guide = this.guides.children[index] ?? this.guides.createDiv({ cls: "resume-layout-page-guide" });
+      guide.style.top = index ? `${Math.max(0, inset + start.offset - 2)}px` : "0";
+      guide.dataset.break = index ? (start.manual ? "manual" : "automatic") : "first";
+      guide.title = this.t(index ? (start.manual ? "manualGuide" : "automaticGuide") : "previewLabel");
+      guide.dataset.page = `${index + 1}/${starts.length}`;
+    });
+    while (this.guides.childElementCount > starts.length) this.guides.lastElementChild.remove();
   }
 
   pageMetrics() {

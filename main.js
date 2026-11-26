@@ -90,10 +90,13 @@ var require_localization = __commonJS({
       hidePanel: ["\u6536\u8D77\u6392\u7248\u9762\u677F", "Hide layout panel"],
       showPanel: ["\u5C55\u5F00\u6392\u7248\u9762\u677F", "Show layout panel"],
       exportPdf: ["\u5BFC\u51FA PDF", "Export PDF"],
+      estimatedPages: ["\u9884\u8BA1 {pages} \u9875", "{pages} estimated pages"],
+      pageGuideDetail: ["\u9884\u8BA1 {pages} \u9875\uFF0C\u5176\u4E2D {manual} \u5904\u624B\u52A8\u5206\u9875\u3002\u865A\u7EBF\u4E3A\u9884\u8BA1\u9875\u754C\uFF0C\u5B9E\u7EBF\u4E3A\u624B\u52A8\u5206\u9875\u3002", "{pages} estimated pages, with {manual} manual breaks. Dashed lines mark estimated breaks and solid lines mark manual breaks."],
+      manualGuide: ["\u624B\u52A8\u5206\u9875", "Manual page break"],
+      automaticGuide: ["\u9884\u8BA1\u5206\u9875", "Estimated page break"],
       previewLabel: ["\u7B80\u5386\u7EB8\u9762\u9884\u89C8", "Resume page preview"],
       paperSize: ["\u7EB8\u5F20", "Paper size"],
       contentStale: ["\u5BF9\u5E94\u804C\u4F4D\u63CF\u8FF0\u6216\u7ECF\u5386\u5DF2\u66F4\u65B0\uFF0C\u5EFA\u8BAE\u5148\u6838\u5BF9\u5185\u5BB9", "The job description or work history has changed. Review your resume."],
-      firstPageBreak: ["\u7B2C 1 \u9875\u5206\u9875\u7EBF", "Page 1 break"],
       layoutTab: ["\u7248\u5F0F", "Layout"],
       sections: ["\u680F\u76EE", "Sections"],
       fineTune: ["\u7CBE\u7EC6\u5FAE\u8C03", "Fine-tune"],
@@ -242,11 +245,8 @@ var require_localization = __commonJS({
       finishThemeBeforeExport: ["\u4FDD\u5B58\u6216\u53D6\u6D88\u4E3B\u9898\u7F16\u8F91\u540E\u5373\u53EF\u5BFC\u51FA", "Save or cancel theme edits to export"],
       layoutRestored: ["\u5DF2\u8FD8\u539F\u4E4B\u524D\u7684\u6392\u7248", "Previous layout restored"],
       layoutDefaultsRestored: ["\u5DF2\u6062\u590D\u9ED8\u8BA4\u6392\u7248", "Default layout restored"],
-      minimumPages: ["\u81F3\u5C11 {pages} \u9875", "At least {pages} pages"],
       overflowPages: ["\u8D85 {excess} mm \xB7 {pages} \u9875", "+{excess} mm \xB7 {pages} pages"],
       onePage: ["1 \u9875 \xB7 {usage}%", "1 page \xB7 {usage}%"],
-      pageBreaks: ["\u542B\u5206\u9875\u7B26 \xB7 {label}", "Manual page breaks \xB7 {label}"],
-      overflowPagesDetail: ["\u7EA6 {pages} \u9875 \xB7 \u7B2C {pages} \u9875\u5360 {usage}%\uFF08\u8D85\u51FA {excess} mm\uFF09", "About {pages} pages \xB7 page {pages} is {usage}% full ({excess} mm over one page)"],
       onePageDetail: ["\u5355\u9875 \xB7 \u5DF2\u7528 {usage}% \xB7 \u4F59 {remaining} mm", "One page \xB7 {usage}% used \xB7 {remaining} mm left"],
       fitCannotReach: ["\u5185\u5BB9\u8D85\u51FA\u5355\u9875\u53EF\u8BFB\u8303\u56F4\uFF08\u4ECD\u8D85\u51FA\u7EA6 {excess} mm\uFF09\uFF0C\u5EFA\u8BAE\u7CBE\u7B80\u6B63\u6587\u6216\u91C7\u7528\u4E24\u9875\u6392\u7248\u3002", "About {excess} mm still overflows. Shorten the text or use two pages to keep it readable."],
       nativeExportFailed: ["\u65E0\u6CD5\u6253\u5F00 Obsidian \u539F\u751F PDF \u5BFC\u51FA", "Could not open Obsidian\u2019s PDF export"],
@@ -2215,11 +2215,97 @@ var require_layout_panel = __commonJS({
   }
 });
 
+// src/layout/pagination.js
+var require_pagination = __commonJS({
+  "src/layout/pagination.js"(exports2, module2) {
+    var { paperSize } = require_geometry();
+    function measurePageStarts(root, layout, zoom) {
+      const doc = root.ownerDocument;
+      const sheet = paperSize(layout);
+      const probe = doc.createElement("div");
+      probe.className = "resume-layout-pagination-probe";
+      probe.inert = true;
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.width = `${sheet.width - layout.left - layout.right}mm`;
+      probe.style.height = `${sheet.height - layout.top - layout.bottom}mm`;
+      const copy = root.cloneNode(true);
+      const media = "iframe,video,audio,object,canvas";
+      const originals = [...root.querySelectorAll(media)];
+      [...copy.querySelectorAll(media)].forEach((node, i) => {
+        const size = originals[i].getBoundingClientRect();
+        const box = doc.createElement("span");
+        box.className = "resume-layout-media-box";
+        box.style.width = `${size.width / zoom}px`;
+        box.style.height = `${size.height / zoom}px`;
+        node.replaceWith(box);
+      });
+      probe.append(copy);
+      root.closest(".resume-layout-stage").append(probe);
+      try {
+        const bounds = probe.getBoundingClientRect();
+        const count = Math.max(1, copy.getClientRects().length);
+        const pages = Array.from({ length: count }, () => ({ offset: 0, manual: false }));
+        if (count < 2 || bounds.width <= 0) return pages;
+        const top = root.getBoundingClientRect().top;
+        const firstY = Array(count).fill(Infinity);
+        const columnOf = (rect) => Math.max(0, Math.min(count - 1, Math.floor((rect.left - bounds.left + 0.5) / bounds.width)));
+        const range = doc.createRange();
+        const liveRange = doc.createRange();
+        const live = readableNodes(root);
+        for (const node of readableNodes(copy)) {
+          const original = live.next().value;
+          if (!original) break;
+          if (node.nodeName === "HR") {
+            const rect = node.getClientRects()[0];
+            const next = rect && pages[columnOf(rect) + 1];
+            if (next) {
+              next.manual = true;
+              next.offset = Math.max(0, (original.getBoundingClientRect().bottom - top) / zoom);
+            }
+            continue;
+          }
+          const isText = node.nodeType === 3;
+          if (isText) range.selectNodeContents(node);
+          const rects = (isText ? range : node).getClientRects();
+          for (let i = 0; i < rects.length; i++) {
+            const rect = rects[i];
+            const page = columnOf(rect);
+            if (!page || !rect.height || rect.top >= firstY[page]) continue;
+            if (isText) liveRange.selectNodeContents(original);
+            const originalRects = (isText ? liveRange : original).getClientRects();
+            const match = originalRects[Math.min(i, originalRects.length - 1)];
+            if (!match) continue;
+            firstY[page] = rect.top;
+            pages[page].offset = Math.max(0, (match.top - top) / zoom);
+          }
+        }
+        return pages;
+      } finally {
+        probe.remove();
+      }
+    }
+    function* readableNodes(root) {
+      const { NodeFilter } = root.ownerDocument.defaultView;
+      const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (node.parentElement?.closest("iframe,video,audio,object,canvas")) return NodeFilter.FILTER_REJECT;
+          if (node.nodeType === 3) return node.data.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+          if (node.matches("style,script,.resume-layout-section-hidden")) return NodeFilter.FILTER_REJECT;
+          return node.matches("hr,img,iframe,video,audio,object,canvas,.resume-layout-media-box") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+        }
+      });
+      while (walker.nextNode()) yield walker.currentNode;
+    }
+    module2.exports = { measurePageStarts };
+  }
+});
+
 // src/workbench/preview-pane.js
 var require_preview_pane = __commonJS({
   "src/workbench/preview-pane.js"(exports2, module2) {
     var { Component, MarkdownRenderer } = require("obsidian");
     var { paperSize, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
+    var { measurePageStarts } = require_pagination();
     var { sourceParts, sourceText } = require_markdown();
     var { splitSectionBody } = require_structure();
     var { SectionLayout } = require_section_layout();
@@ -2260,9 +2346,7 @@ var require_preview_pane = __commonJS({
         for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
           this.guide.createSpan({ cls: `resume-layout-crop is-${corner}` });
         }
-        this.cutoff = this.paper.createDiv({ cls: "resume-layout-cutoff", attr: { "aria-hidden": "true" } });
-        this.cutoff.createSpan({ text: this.t("firstPageBreak") });
-        this.cutoff.hidden = true;
+        this.guides = this.paper.createDiv({ cls: "resume-layout-page-guides", attr: { "aria-hidden": "true" } });
       }
       observe() {
         this.observer = new this.stage.ownerDocument.defaultView.ResizeObserver(() => this.measure());
@@ -2277,6 +2361,7 @@ var require_preview_pane = __commonJS({
         this.clearPreview();
       }
       clearPreview() {
+        this.guides?.replaceChildren();
         if (this.rendered) {
           this.observer?.unobserve(this.rendered);
           this.rendered.remove();
@@ -2376,18 +2461,27 @@ ${body}` : body, next, file.path, renderer);
         if (!this.rendered || this.renderedFile !== this.view.selected.file) return;
         const { used, printable, overflow } = this.pageMetrics();
         const breaks = this.visiblePageBreaks();
-        const pages = Math.ceil(used / printable);
-        const last = used - (pages - 1) * printable;
+        const starts = overflow || breaks ? measurePageStarts(this.rendered, this.view.layout.current, Number(scale)) : [{ offset: 0, manual: false }];
+        const pages = starts.length;
+        this.showPageGuides(starts, Number(scale));
         const usage = Math.min(100, Math.round(100 * used / printable));
-        const excess = Math.ceil(used - printable);
-        const label = breaks ? this.t("minimumPages", { pages: breaks + 1 }) : overflow ? this.t("overflowPages", { excess, pages }) : this.t("onePage", { usage });
-        const detail = breaks ? this.t("pageBreaks", { label }) : overflow ? this.t("overflowPagesDetail", { pages, usage: Math.max(1, Math.round(100 * last / printable)), excess }) : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
+        const label = overflow && !breaks ? this.t("overflowPages", { pages, excess: Math.ceil(used - printable) }) : pages > 1 ? this.t("estimatedPages", { pages }) : this.t("onePage", { usage });
+        const detail = pages > 1 ? this.t("pageGuideDetail", { pages, manual: starts.filter((start) => start.manual).length }) : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
         this.pageStatus.toggleClass("is-overflowing", overflow || !!breaks);
-        this.paper.toggleClass("is-overflowing", overflow);
-        this.cutoff.hidden = !overflow;
         this.fill.style.setProperty("--page-usage", `${Math.min(100, used / printable * 100)}%`);
         this.setPageMeasurement(label, detail);
         this.view.layout.syncFitButton(overflow, breaks);
+      }
+      showPageGuides(starts, zoom) {
+        const inset = (this.rendered.getBoundingClientRect().top - this.paper.getBoundingClientRect().top) / zoom;
+        starts.forEach((start, index) => {
+          const guide = this.guides.children[index] ?? this.guides.createDiv({ cls: "resume-layout-page-guide" });
+          guide.style.top = index ? `${Math.max(0, inset + start.offset - 2)}px` : "0";
+          guide.dataset.break = index ? start.manual ? "manual" : "automatic" : "first";
+          guide.title = this.t(index ? start.manual ? "manualGuide" : "automaticGuide" : "previewLabel");
+          guide.dataset.page = `${index + 1}/${starts.length}`;
+        });
+        while (this.guides.childElementCount > starts.length) this.guides.lastElementChild.remove();
       }
       pageMetrics() {
         const scale = Number(this.paper.style.zoom) || 1;

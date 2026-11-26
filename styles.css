@@ -400,10 +400,6 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
   color-scheme: light;
 }
 
-.careeros-resume-layout .resume-layout-paper.is-overflowing {
-  background-image: linear-gradient(to bottom, #fff 0 var(--resume-paper-height, 297mm), #e1e5eb var(--resume-paper-height, 297mm), #fff calc(var(--resume-paper-height, 297mm) + 2mm));
-}
-
 .careeros-resume-layout .resume-layout-rendered {
   display: flow-root;
   min-width: 0;
@@ -493,22 +489,44 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
 .careeros-resume-layout .resume-layout-margin-handle.is-left::after { left: 0; }
 .careeros-resume-layout .resume-layout-margin-handle.is-right::after { right: 0; }
 
-.careeros-resume-layout .resume-layout-cutoff {
+.careeros-resume-layout .resume-layout-page-guides {
   position: absolute;
-  top: calc(var(--resume-paper-height, 297mm) - var(--resume-margin-bottom));
-  inset-inline: 3mm;
-  border-top: 1px dashed #b14b43;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.careeros-resume-layout .resume-layout-page-guide {
+  position: absolute;
+  inset-inline: 0;
+  border-top: 1px dashed #8a99a8;
+}
+.careeros-resume-layout .resume-layout-page-guide[data-break="manual"] { border-top-style: solid; }
+.careeros-resume-layout .resume-layout-page-guide[data-break="first"] { border-color: transparent; }
+.careeros-resume-layout .resume-layout-page-guide::after {
+  content: attr(data-page);
+  position: absolute;
+  inset-inline-end: 1px;
+  padding: 1px 3px;
+  background: #f1f4f6;
+  color: #46576a;
+  font: 10px/1.3 var(--font-interface);
+  font-variant-numeric: tabular-nums;
+}
+.resume-layout-pagination-probe {
+  position: fixed;
+  left: -100000px;
+  top: 0;
+  column-count: 1;
+  column-fill: auto;
+  column-gap: 0;
+  direction: ltr;
+  visibility: hidden;
   pointer-events: none;
 }
-
-.careeros-resume-layout .resume-layout-cutoff span {
-  position: absolute;
-  right: 0;
-  padding: 1px 4px;
-  color: #a13530;
-  background: #fff6f4;
-  font-size: 10px;
-}
+.resume-layout-pagination-probe :is(h1,h2,h3,h4,h5,h6,.entry-title,div[alt="entry-title"]) { break-after: avoid-column; }
+.resume-layout-pagination-probe li { break-inside: avoid-column; }
+.resume-layout-pagination-probe .resume-layout-media-box { display: inline-block; }
+.resume-layout-pagination-probe .resume-layout-styled hr { break-after: column; margin: 0; visibility: hidden; }
 
 .careeros-resume-layout .resume-layout-inspector {
   min-width: 0;
@@ -1354,6 +1372,16 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   grid-area: 1 / 1;
   border-inline-end: 0.5pt solid var(--border-color);
   padding-inline-end: 3mm;
+}
+
+/* Keep the date within its entry's text run in narrow columns. A distant
+   right-hand rail is interpreted as an independent column by PDF readers. */
+.lapis-cv.resume-layout-styled .resume-layout-columns.has-sidebar :is(h3.resume-entry-heading, .entry-title, div[alt="entry-title"]) {
+  justify-content: flex-start;
+  column-gap: 0.7em;
+}
+.lapis-cv.resume-layout-styled .resume-layout-columns.has-sidebar :is(.entry-title, div[alt="entry-title"]) > h3 {
+  flex: 0 1 auto;
 }
 
 /* Optional avatar from the upstream template */

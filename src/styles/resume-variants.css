@@ -120,3 +120,13 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   border-inline-end: 0.5pt solid var(--border-color);
   padding-inline-end: 3mm;
 }
+
+/* Keep the date within its entry's text run in narrow columns. A distant
+   right-hand rail is interpreted as an independent column by PDF readers. */
+.lapis-cv.resume-layout-styled .resume-layout-columns.has-sidebar :is(h3.resume-entry-heading, .entry-title, div[alt="entry-title"]) {
+  justify-content: flex-start;
+  column-gap: 0.7em;
+}
+.lapis-cv.resume-layout-styled .resume-layout-columns.has-sidebar :is(.entry-title, div[alt="entry-title"]) > h3 {
+  flex: 0 1 auto;
+}
