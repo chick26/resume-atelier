@@ -63,6 +63,14 @@ class ResumeLayoutView extends FileView {
     });
     this.editButton.addEventListener("click", () => void this.editor.openEditor());
     this.inspectorButton = iconButton(actions, "panel-right", this.t("hidePanel"), () => this.toggleInspector());
+    this.hiddenBadge = actions.createEl("button", { cls: "resume-layout-hidden-count" });
+    this.hiddenBadge.hidden = true;
+    this.hiddenBadge.addEventListener("click", async () => {
+      if (!await this.editor.endSourceEdit()) return;
+      this.toggleInspector(false);
+      this.setPanel("content");
+      this.contentTab.focus();
+    });
     this.exportButton = actions.createEl("button", { text: this.t("exportPdf"), cls: "mod-cta" });
     this.exportButton.addEventListener("click", () => void this.exportPdf());
 
@@ -191,7 +199,17 @@ class ResumeLayoutView extends FileView {
     this.inspectorButton.setAttribute("aria-label", label);
     this.inspectorButton.setAttribute("aria-expanded", String(!collapsed));
     this.inspectorButton.title = label;
+    this.updateHiddenSections(this.hiddenCount ?? 0);
     setIcon(this.inspectorButton, collapsed ? "panel-right-open" : "panel-right-close");
+  }
+
+  updateHiddenSections(count) {
+    this.hiddenCount = count;
+    const text = count ? this.t("sectionsTabHidden", { count }) : this.t("sections");
+    if (this.contentTab && this.contentTab.textContent !== text) this.contentTab.setText(text);
+    if (!this.hiddenBadge) return;
+    this.hiddenBadge.hidden = !this.selected || !count || (!this.inspectorCollapsed && !this.editor.edit && this.panelMode !== "css");
+    if (count) this.hiddenBadge.setText(this.t("hiddenExportHint", { count }));
   }
 
   setPanel(mode) {
@@ -205,6 +223,7 @@ class ResumeLayoutView extends FileView {
     this.contentPanel.hidden = !content;
     this.cssPanel.hidden = !css;
     this.updateExportButton();
+    this.updateHiddenSections(this.hiddenCount ?? 0);
     if (content) this.sections.render();
   }
 

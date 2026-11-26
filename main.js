@@ -17,6 +17,22 @@ var require_localization = __commonJS({
   "src/localization.js"(exports2, module2) {
     var { getLanguage } = require("obsidian");
     var MESSAGES = {
+      photo: ["\u5934\u50CF", "Photo"],
+      addPhoto: ["\u6DFB\u52A0\u5934\u50CF", "Add photo"],
+      replacePhoto: ["\u66F4\u6362\u5934\u50CF", "Replace photo"],
+      removePhoto: ["\u79FB\u9664\u5934\u50CF", "Remove photo"],
+      legacyEllipse: ["\u65E7\u7A3F\u692D\u5706", "Legacy oval"],
+      customColor: ["\u81EA\u5B9A\u4E49\u989C\u8272", "Custom color"],
+      navy: ["\u85CF\u84DD", "Navy"],
+      teal: ["\u9752\u7EFF", "Teal"],
+      plum: ["\u6885\u7D2B", "Plum"],
+      green: ["\u58A8\u7EFF", "Forest"],
+      ink: ["\u58A8\u9ED1", "Charcoal"],
+      copyBuiltIn: ["\u4ECE\u5185\u7F6E\u4E3B\u9898\u590D\u5236\u81EA\u5B9A\u4E49\u2026", "Customize a built-in theme\u2026"],
+      sidebarAutoHint: ["\u5DF2\u5C06\u300C{title}\u300D\u653E\u5165\u4FA7\u680F\uFF0C\u53EF\u5728\u300C\u680F\u76EE\u300D\u8C03\u6574\u6216\u64A4\u9500\u3002", "Placed \u201C{title}\u201D in the sidebar. Adjust in Sections or undo."],
+      sidebarEmptyHint: ["\u53EF\u5728\u300C\u680F\u76EE\u300D\u5206\u914D\u540C\u9875\u7684\u4FA7\u680F\u5185\u5BB9\u3002", "Assign a section on the same page to the sidebar in Sections."],
+      sectionsTabHidden: ["\u680F\u76EE \xB7 {count} \u9690", "Sections \xB7 {count} hidden"],
+      hiddenExportHint: ["\u5DF2\u9690\u85CF {count} \u680F", "{count} hidden"],
       mixedPages: ["\u9884\u8BA1 {pages} \u9875 \xB7 \u542B\u81EA\u52A8\u5206\u9875", "{pages} pages \xB7 auto break"],
       manualPageTag: ["{page} \xB7 \u624B\u52A8\u5206\u9875", "{page} \xB7 Manual"],
       autoPageTag: ["{page} \xB7 \u9884\u8BA1\u5206\u9875", "{page} \xB7 Auto"],
@@ -236,7 +252,7 @@ var require_localization = __commonJS({
       sidebar: ["\u4FA7\u680F\u9876\u90E8", "Sidebar top"],
       square: ["\u76F4\u89D2", "Square"],
       rounded: ["\u5C0F\u5706\u89D2", "Rounded"],
-      round: ["\u5706\u5F62\uFF0F\u692D\u5706", "Round"],
+      round: ["\u5706\u5F62", "Circle"],
       useThemeValue: ["\u4E3B\u9898\u9ED8\u8BA4", "Theme default"],
       resetAppearance: ["\u6062\u590D\u4E3B\u9898\u6837\u5F0F", "Restore theme styling"],
       hideSection: ["\u9690\u85CF\u300C{title}\u300D", "Hide {title}"],
@@ -352,6 +368,15 @@ var require_appearance = __commonJS({
       for (const key of APPEARANCE_KEYS) delete result[key];
       return Object.assign(result, appearanceFor(current));
     }
+    function withoutGapOverrides(appearance) {
+      const { sectionGap, listGap, ...rest } = appearance;
+      return rest;
+    }
+    function changePhotoRatio(appearance, ratio, effectiveShape) {
+      const next = { ...appearance, avatarRatio: ratio };
+      if (ratio !== "1:1" && effectiveShape === "round") next.avatarShape = "rounded";
+      return next;
+    }
     function applyAppearance(root, values = {}) {
       const overrides = {
         "--color-accent": values.accent,
@@ -366,7 +391,7 @@ var require_appearance = __commonJS({
       }
       root.classList.toggle("resume-portrait-ratio", !!values.avatarRatio && values.avatarRatio !== "1:1");
     }
-    module2.exports = { PHOTO_RATIOS, PHOTO_CORNERS, GAP_LIMITS, appearanceFor, savedAppearance, applyAppearance };
+    module2.exports = { PHOTO_RATIOS, PHOTO_CORNERS, GAP_LIMITS, appearanceFor, savedAppearance, applyAppearance, withoutGapOverrides, changePhotoRatio };
   }
 });
 
@@ -472,7 +497,6 @@ var require_store = __commonJS({
     var DEFAULT_SETTINGS = {
       defaultTemplate: BASE_TEMPLATE,
       defaultDensity: "standard",
-      autoSaveLayout: true,
       draftLocationMode: "alongside",
       draftFolder: DRAFT_FOLDER,
       protectedFolders: []
@@ -483,6 +507,7 @@ var require_store = __commonJS({
         this.saveData = saveData;
         this.settings = { ...DEFAULT_SETTINGS, ...data?.settings };
         delete this.settings.interfaceLanguage;
+        delete this.settings.autoSaveLayout;
         if (!Object.hasOwn(DENSITIES, this.settings.defaultDensity)) this.settings.defaultDensity = DEFAULT_SETTINGS.defaultDensity;
         if (!Array.isArray(this.settings.protectedFolders)) this.settings.protectedFolders = [];
         this.layouts = new Map(Object.entries(data?.layouts ?? {}));
@@ -669,15 +694,22 @@ var require_avatar = __commonJS({
           if (marker?.[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
         } else if (comment || /^\s*<!--/.test(line)) comment = !line.includes("-->");
         else if (marker) fence = marker[1];
-        else if (/^ {0,3}!\[avatar\]\(.+\)\s*$/.test(line)) return { titleEnd, photo: { start: offset, line } };
-        else if (!titleEnd && /^ {0,3}#\s+/.test(line)) titleEnd = offset + line.length;
+        else if (/^ {0,3}(?:!\[avatar\]\(.+\)|!\[\[[^\]]+\|avatar\]\]|<img\b(?=[^>]*\b(?:alt=["']avatar["']|class=["'][^"']*\bavatar\b[^"']*["']))[^>]*>)\s*$/i.test(line)) {
+          return { titleEnd, photo: { start: offset, line } };
+        } else if (!titleEnd && /^ {0,3}#\s+/.test(line)) titleEnd = offset + line.length;
         offset += line.length + 1;
       }
       return { titleEnd };
     }
     function avatarEdit(body, notePath, imagePath) {
-      const markdown = `![avatar](${relativeImage(notePath, imagePath)})`;
       const { titleEnd, photo } = headerPhoto(body);
+      if (!imagePath) {
+        if (!photo) return null;
+        const end = photo.start + photo.line.length;
+        const spacing = body.slice(end).match(/^\n(?:\n)?/)?.[0] ?? "";
+        return { start: photo.start, end: end + spacing.length, text: "" };
+      }
+      const markdown = `![avatar](${relativeImage(notePath, imagePath)})`;
       if (photo) return { start: photo.start, end: photo.start + photo.line.length, text: markdown };
       const tail = body.slice(titleEnd);
       const after = !tail || tail.startsWith("\n\n") ? "" : tail.startsWith("\n") ? "\n" : "\n\n";
@@ -698,7 +730,7 @@ var require_avatar = __commonJS({
       const start = photo.start + link[1].length;
       return body.slice(0, start) + relativeImage(targetPath, asset.path) + body.slice(start + link[2].length);
     }
-    module2.exports = { avatarEdit, rebaseAvatar };
+    module2.exports = { avatarEdit, rebaseAvatar, headerPhoto };
   }
 });
 
@@ -849,6 +881,7 @@ var require_tab = __commonJS({
         const el = this.containerEl;
         const plugin = this.plugin;
         const settings = plugin.settings;
+        const advancedOpen = el.querySelector(".resume-settings-advanced")?.open ?? false;
         el.empty();
         el.addClass("resume-layout-settings");
         new Setting(el).setName(this.t("workbench")).setDesc(this.t("workbenchHelp")).addButton((button) => button.setButtonText(this.t("openWorkbench")).setCta().onClick(() => {
@@ -857,7 +890,7 @@ var require_tab = __commonJS({
         }));
         new Setting(el).setName(this.t("layoutDefaults")).setHeading();
         new Setting(el).setName(this.t("defaultTheme")).setDesc(this.t("defaultThemeHelp")).addDropdown((dropdown) => {
-          for (const theme of plugin.themes.templates.values()) dropdown.addOption(theme.id, plugin.themes.themeName(theme));
+          for (const theme of plugin.themes.visibleTemplates(settings.defaultTemplate)) dropdown.addOption(theme.id, plugin.themes.themeName(theme));
           dropdown.setValue(plugin.themes.templateId(settings.defaultTemplate) ?? BASE_TEMPLATE).onChange((value) => plugin.updateSetting("defaultTemplate", value));
         });
         new Setting(el).setName(this.t("defaultDensity")).setDesc(this.t("defaultDensityHelp")).addDropdown((dropdown) => {
@@ -866,17 +899,19 @@ var require_tab = __commonJS({
         });
         new Setting(el).setName(this.t("themes")).setHeading();
         new Setting(el).setName(this.t("customThemes")).addButton((button) => button.setButtonText(this.t("newTheme")).onClick(() => void plugin.openTheme("new"))).addButton((button) => button.setButtonText(this.t("importCss")).onClick(() => this.importTheme()));
-        if (plugin.themes.deletedTemplate) {
-          new Setting(el).setName(this.t("themeDeleted", { name: plugin.themes.deletedTemplate.theme.label })).addButton((button) => button.setButtonText(this.t("undoDelete")).onClick(() => this.run(() => plugin.themes.restoreTemplate())));
-        }
-        for (const theme of plugin.themes.templates.values()) this.addThemeRow(el, theme);
-        new Setting(el).setName(this.t("copiesAndProtection")).setHeading();
-        new Setting(el).setName(this.t("copyLocation")).setDesc(this.t("copyLocationHelp")).addDropdown((dropdown) => dropdown.addOption("alongside", this.t("sameFolder")).addOption("folder", this.t("customFolder")).setValue(settings.draftLocationMode).onChange(async (value) => {
+        for (const theme of plugin.themes.templates.values()) if (!theme.builtIn) this.addThemeRow(el, theme);
+        const builtIns = el.createEl("details");
+        builtIns.createEl("summary", { text: this.t("copyBuiltIn") });
+        for (const theme of plugin.themes.visibleTemplates()) if (theme.builtIn) this.addThemeRow(builtIns, theme);
+        const advanced = el.createEl("details", { cls: "resume-settings-advanced" });
+        advanced.open = advancedOpen;
+        advanced.createEl("summary", { text: this.t("advanced") });
+        new Setting(advanced).setName(this.t("copyLocation")).setDesc(this.t("copyLocationHelp")).addDropdown((dropdown) => dropdown.addOption("alongside", this.t("sameFolder")).addOption("folder", this.t("customFolder")).setValue(settings.draftLocationMode).onChange(async (value) => {
           await plugin.updateSetting("draftLocationMode", value);
           this.display();
         }));
         if (settings.draftLocationMode === "folder") {
-          const row2 = new Setting(el).setName(this.t("draftFolderPath"));
+          const row2 = new Setting(advanced).setName(this.t("draftFolderPath"));
           row2.addText((text) => text.setValue(settings.draftFolder).onChange((value) => {
             try {
               const folder = vaultFolder(value, this.t);
@@ -887,9 +922,6 @@ var require_tab = __commonJS({
             }
           }));
         }
-        new Setting(el).setName(this.t("autoSaveLayout")).setDesc(this.t("autoSaveLayoutHelp")).addToggle((toggle) => toggle.setValue(settings.autoSaveLayout).onChange((value) => plugin.updateSetting("autoSaveLayout", value)));
-        const advanced = el.createEl("details");
-        advanced.createEl("summary", { text: this.t("advanced") });
         const row = new Setting(advanced).setName(this.t("extraProtectedFolders"));
         const description = this.t("extraProtectedFoldersHelp");
         row.setDesc(description).addTextArea((text) => text.setValue(settings.protectedFolders.join("\n")).onChange((value) => {
@@ -953,6 +985,12 @@ var require_tab = __commonJS({
         try {
           const files = await this.plugin.themes.deletedThemeFiles();
           if (!files.length || !advanced.isConnected) return;
+          for (const path of files) {
+            const file = path.split("/").at(-1);
+            if (!/^\d+-.+\.css$/.test(file)) continue;
+            const label = file.replace(/^\d+-/, "").slice(0, -4);
+            new Setting(advanced).setName(this.t("themeDeleted", { name: label })).addButton((button) => button.setButtonText(this.t("undoDelete")).onClick(() => this.run(() => this.plugin.themes.restoreTemplate(path))));
+          }
           const row = new Setting(advanced).setName(this.t("clearDeletedThemeCache")).setDesc(this.t(files.length === 1 ? "fileCountOne" : "fileCountMany", { count: files.length }));
           let confirmed = false;
           row.addButton((button) => button.setButtonText(this.t("clear")).setWarning().onClick(() => {
@@ -1263,6 +1301,9 @@ var require_library = __commonJS({
           builtIn
         };
       }
+      visibleTemplates(current) {
+        return [...this.templates.values()].filter((theme) => theme.id !== "\u7B80\u6D01\u84DD" || theme.id === current);
+      }
       themeName(theme) {
         return theme.builtIn ? this.t(BUILT_IN_THEME_MESSAGES[theme.id]) : theme.label;
       }
@@ -1338,17 +1379,19 @@ ${css}`;
         this.templates.delete(id);
         this.onChange();
       }
-      async restoreTemplate() {
-        const deleted = this.deletedTemplate;
-        if (!deleted) throw new Error(this.t("noThemeToRestore"));
-        const { theme, path, deletedPath } = deleted;
+      async restoreTemplate(deletedPath = this.deletedTemplate?.deletedPath) {
+        const files = await this.deletedThemeFiles();
+        const id = deletedPath?.split("/").at(-1)?.match(/^\d+-(.+)\.css$/)?.[1];
+        if (!files.includes(deletedPath) || !id || !TEMPLATE_NAME.test(id)) throw new Error(this.t("noThemeToRestore"));
         const adapter = this.app.vault.adapter;
+        const theme = this.themeRecord(id, await adapter.read(deletedPath));
+        const path = `${this.templateFolder}/${id}.css`;
         if (this.templateId(theme.id) || this.templateId(theme.label) || await adapter.exists(path)) {
           throw new Error(this.t("duplicateTheme"));
         }
         await adapter.rename(deletedPath, path);
         this.templates.set(theme.id, theme);
-        this.deletedTemplate = null;
+        if (this.deletedTemplate?.deletedPath === deletedPath) this.deletedTemplate = null;
         this.onChange();
         return theme.id;
       }
@@ -1615,6 +1658,22 @@ var require_section_layout = __commonJS({
       delete next[title];
       return next;
     }
+    function defaultSidebarSection(sections, rules) {
+      if (Object.values(rules).some((rule) => rule?.region === "sidebar" || rule?.region === "main")) return;
+      const duplicates = new Set(sectionRuleIssues(sections, {}).duplicate);
+      const primary = /^(?:核心技能|专业技能|技能|技能特长|技术栈|skills|core skills|technical skills)$/i;
+      const secondary = /^(?:专业证书|证书|荣誉证书|语言能力|教育背景|教育经历|certifications|languages|education|awards)$/i;
+      const eligible = [];
+      let group = [];
+      for (const section of sections) {
+        if (!ruleFor(rules, section.title).hidden) group.push(section.title);
+        if (section.breaks?.length || section === sections.at(-1)) {
+          if (group.length >= 2) eligible.push(...group.filter((title) => !duplicates.has(title)));
+          group = [];
+        }
+      }
+      return eligible.find((title) => primary.test(title)) ?? eligible.find((title) => secondary.test(title));
+    }
     function blockHeading(block) {
       if (block.matches("h2[data-heading]")) return block;
       return block.matches("div") && block.firstElementChild?.matches("h2[data-heading]") ? block.firstElementChild : null;
@@ -1744,7 +1803,7 @@ var require_section_layout = __commonJS({
         return columns;
       }
     };
-    module2.exports = { SectionLayout, changeSectionRule, ruleFor };
+    module2.exports = { SectionLayout, changeSectionRule, ruleFor, defaultSidebarSection };
   }
 });
 
@@ -1962,72 +2021,110 @@ var require_dom = __commonJS({
   }
 });
 
+// src/workbench/photo-controls.js
+var require_photo_controls = __commonJS({
+  "src/workbench/photo-controls.js"(exports2, module2) {
+    var { PHOTO_RATIOS, changePhotoRatio } = require_appearance();
+    var { headerPhoto } = require_avatar();
+    function mountPhotoControls(parent, view) {
+      const { t, layout } = view;
+      const root = parent.createDiv({ cls: "resume-layout-photo-controls" });
+      const add = root.createEl("button", { text: t("addPhoto") });
+      add.addEventListener("click", () => view.editor.changePhoto(true));
+      const fields = root.createDiv({ cls: "resume-layout-appearance-fields" });
+      const select = (key, values) => {
+        const row = fields.createEl("label", { text: t(key) });
+        const input = row.createEl("select", { cls: "dropdown" });
+        for (const [value, text] of values) input.createEl("option", { value, text });
+        return input;
+      };
+      const ratio = select("avatarRatio", Object.keys(PHOTO_RATIOS).map((value) => [value, value]));
+      const shape = select("avatarShape", ["square", "rounded", "round"].map((value) => [value, t(value)]));
+      const round = shape.querySelector('[value="round"]');
+      const ellipse = shape.createEl("option", { value: "legacy-round", text: t("legacyEllipse") });
+      ellipse.disabled = true;
+      const position = select("avatarPosition", [["", t("headerRight")], ["sidebar", t("sidebar")]]);
+      const actions = fields.createDiv({ cls: "resume-layout-photo-actions" });
+      for (const [key, pick] of [["replacePhoto", true], ["removePhoto", false]]) {
+        actions.createEl("button", { text: t(key) }).addEventListener("click", () => {
+          view.editor.toolbar.close();
+          view.editor.changePhoto(pick);
+        });
+      }
+      ratio.addEventListener("change", () => {
+        const next = changePhotoRatio(layout.current.appearance, ratio.value, shape.value === "legacy-round" ? "round" : shape.value);
+        layout.setAppearance(next);
+      });
+      shape.addEventListener("change", () => layout.setAppearance({ ...layout.current.appearance, avatarShape: shape.value }));
+      position.addEventListener("change", () => layout.setAppearance({ ...layout.current.appearance, avatarPosition: position.value || void 0 }));
+      function update() {
+        const resume = view.selected;
+        const currentFile = view.preview.renderedFile === resume?.file;
+        const flow = currentFile ? view.preview.sectionLayout : null;
+        const body = view.editor.edit?.text ?? (currentFile ? view.preview.renderedBody : null);
+        const sourcePhoto = body != null && headerPhoto(body).photo;
+        const hasPhoto = !!(sourcePhoto || body === view.preview.renderedBody && flow?.portrait);
+        const writable = resume?.recognized && !resume.protected && !view.editor.edit?.conflicted;
+        root.hidden = !(hasPhoto || writable);
+        fields.hidden = !hasPhoto;
+        add.hidden = hasPhoto || !writable;
+        if (!hasPhoto) return;
+        const values = layout.current.appearance;
+        const img = flow?.portrait?.querySelector("img");
+        const css = img && img.ownerDocument.defaultView.getComputedStyle(img);
+        const factor = parseFloat(css?.height) / parseFloat(css?.width);
+        const closest = Object.keys(PHOTO_RATIOS).reduce((a, b) => Math.abs(PHOTO_RATIOS[b] - factor) < Math.abs(PHOTO_RATIOS[a] - factor) ? b : a, "1:1");
+        ratio.value = values.avatarRatio ?? closest;
+        const radius = css?.borderTopLeftRadius ?? (ratio.value === "1:1" ? "50%" : "2mm");
+        const circular = radius.includes("%") ? parseFloat(radius) >= 50 : parseFloat(radius) >= parseFloat(css?.width) / 2;
+        const effectiveShape = values.avatarShape ?? (circular ? "round" : parseFloat(radius) > 0 ? "rounded" : "square");
+        round.hidden = ratio.value !== "1:1";
+        ellipse.hidden = !(round.hidden && effectiveShape === "round");
+        shape.value = ellipse.hidden ? effectiveShape : "legacy-round";
+        position.parentElement.hidden = flow?.mode !== "sidebar";
+        position.value = values.avatarPosition ?? "";
+        actions.hidden = !writable || !sourcePhoto;
+      }
+      return { update, focus: () => (fields.hidden ? add : ratio).focus({ preventScroll: true }) };
+    }
+    module2.exports = { mountPhotoControls };
+  }
+});
+
 // src/workbench/appearance-controls.js
 var require_appearance_controls = __commonJS({
   "src/workbench/appearance-controls.js"(exports2, module2) {
-    var { PHOTO_RATIOS, PHOTO_CORNERS, GAP_LIMITS, appearanceFor } = require_appearance();
+    var { mountPhotoControls } = require_photo_controls();
+    var ACCENTS = [["navy", "#254f78"], ["teal", "#205c63"], ["plum", "#70475e"], ["green", "#456347"], ["ink", "#34383c"]];
     function mountAppearanceControls(parent, panel) {
-      const { t } = panel;
-      const details = parent.createEl("details", { cls: "resume-layout-fine-tune resume-layout-appearance" });
-      details.createEl("summary", { text: t("quickStyles") });
-      const body = details.createDiv({ cls: "resume-layout-appearance-fields" });
-      const inputs = /* @__PURE__ */ new Map();
-      const label = (key) => body.createEl("label", { text: t(key) });
-      const set = (key, value, save = true) => {
-        panel.current.appearance = appearanceFor({ ...panel.current.appearance, [key]: value });
-        if (save) panel.commit();
-        else panel.update();
-      };
-      const selects = /* @__PURE__ */ new Map();
-      for (const [key, options] of [
-        ["avatarRatio", Object.keys(PHOTO_RATIOS)],
-        ["avatarShape", Object.keys(PHOTO_CORNERS)],
-        ["avatarPosition", ["sidebar"]]
-      ]) {
-        const select = label(key).createEl("select", { cls: "dropdown" });
-        select.createEl("option", { value: "", text: t(key === "avatarPosition" ? "headerRight" : "useThemeValue") });
-        for (const value of options) select.createEl("option", { value, text: key === "avatarRatio" ? value : t(value) });
-        select.addEventListener("change", () => set(key, select.value || void 0));
-        selects.set(key, select);
+      const { t, view } = panel;
+      const colors = parent.createDiv({ cls: "resume-layout-accent" });
+      colors.createEl("h3", { text: t("accent") });
+      const options = colors.createDiv({ cls: "resume-layout-swatches", attr: { role: "group", "aria-label": t("accent") } });
+      const buttons = /* @__PURE__ */ new Map();
+      const set = (accent) => panel.setAppearance({ ...panel.current.appearance, accent });
+      for (const [name, value] of [["useThemeValue", ""], ...ACCENTS]) {
+        const label = t(name);
+        const button = options.createEl("button", { cls: "resume-color-swatch", attr: { "aria-label": label, title: label } });
+        if (value) button.style.setProperty("--resume-swatch", value);
+        else button.setText("\u21BA");
+        button.addEventListener("click", () => set(panel.current.appearance.accent === value ? void 0 : value || void 0));
+        buttons.set(value, button);
       }
-      const color = label("accent").createEl("input", { type: "color" });
-      color.addEventListener("input", () => set("accent", color.value, false));
-      color.addEventListener("change", () => set("accent", color.value));
-      for (const [key, max] of Object.entries(GAP_LIMITS)) {
-        const row = label(key);
-        const value = row.createEl("output");
-        const input = row.createEl("input", { type: "range", attr: { min: "0", max: String(max), step: "0.1", "aria-label": t(key) } });
-        input.addEventListener("input", () => set(key, input.valueAsNumber, false));
-        input.addEventListener("change", () => set(key, input.valueAsNumber));
-        inputs.set(key, { input, value });
-      }
-      const reset = body.createEl("button", { text: t("resetAppearance") });
-      reset.addEventListener("click", () => {
-        panel.current.appearance = {};
-        panel.commit();
-      });
-      function update(values) {
-        const root = panel.view.preview.rendered;
-        const css = root?.ownerDocument.defaultView.getComputedStyle(root);
-        const accent = values.accent || css?.getPropertyValue("--color-accent").trim();
-        color.value = /^#[\da-f]{6}$/i.test(accent) ? accent : "#1f4478";
-        for (const [key, { input, value }] of inputs) {
-          const variable = key === "sectionGap" ? "--resume-heading-top" : "--resume-list-gap";
-          const current = values[key] ?? parseFloat(css?.getPropertyValue(variable));
-          input.value = String(Number.isFinite(current) ? current : 0);
-          const text = values[key] == null ? t("useThemeValue") : `${values[key]} mm`;
-          value.textContent = text;
-          input.setAttribute("aria-valuetext", text);
+      const custom = options.createEl("input", { type: "color", attr: { "aria-label": t("customColor"), title: t("customColor") } });
+      custom.addEventListener("input", () => panel.setAppearance({ ...panel.current.appearance, accent: custom.value }, false));
+      custom.addEventListener("change", () => set(custom.value));
+      const photo = mountPhotoControls(parent, view);
+      return {
+        focusPhoto: photo.focus,
+        update(values) {
+          photo.update();
+          for (const [value, button] of buttons) button.setAttribute("aria-pressed", String((values.accent ?? "") === value));
+          const root = view.preview.rendered;
+          const active = values.accent ?? (root && root.ownerDocument.defaultView.getComputedStyle(root).getPropertyValue("--color-accent").trim());
+          if (/^#[\da-f]{6}$/i.test(active)) custom.value = active;
         }
-        for (const [key, select] of selects) select.value = values[key] ?? "";
-        reset.disabled = !Object.keys(values).length;
-      }
-      function openForPhoto() {
-        details.open = true;
-        details.scrollTop = 0;
-        selects.get("avatarRatio").focus({ preventScroll: true });
-      }
-      return { details, update, openForPhoto };
+      };
     }
     module2.exports = { mountAppearanceControls };
   }
@@ -2051,6 +2148,8 @@ var require_layout_panel = __commonJS({
       noteLayoutKey,
       sameLayout
     } = require_geometry();
+    var { appearanceFor, withoutGapOverrides } = require_appearance();
+    var { defaultSidebarSection, changeSectionRule, ruleFor } = require_section_layout();
     var { iconButton } = require_dom();
     var { mountAppearanceControls } = require_appearance_controls();
     var LayoutPanel = class {
@@ -2074,9 +2173,9 @@ var require_layout_panel = __commonJS({
       }
       mount(layout) {
         this.addTemplateControls(layout);
-        this.appearance = mountAppearanceControls(layout, this);
         const fineTune = this.fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
         fineTune.createEl("summary", { text: this.t("fineTune") });
+        this.appearance = mountAppearanceControls(fineTune, this);
         const marginHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
         marginHeading.createEl("h3", { text: this.t("margins") });
         const locks = fineTune.createDiv({ cls: "resume-layout-locks" });
@@ -2106,17 +2205,11 @@ var require_layout_panel = __commonJS({
         this.undoLayoutButton = this.layoutActions.createEl("button", { text: this.t("undo"), attr: { "aria-label": this.t("undoLayout") } });
         this.undoLayoutButton.addEventListener("click", () => this.undoLayoutChange());
       }
-      setAppearanceInEditor(editing) {
-        const { details } = this.appearance;
-        const { editor, layoutElement } = this.view;
-        if (details.parentElement === (editing ? editor.sourcePane : layoutElement)) return;
-        if (editing) {
-          editor.sourceField.before(details);
-          details.append(this.layoutActions);
-        } else {
-          this.fineTune.before(details);
-          layoutElement.append(this.layoutActions);
-        }
+      setAppearance(values, save = true) {
+        this.resetUndo.delete(this.view.selected.file);
+        this.current.appearance = appearanceFor(values);
+        if (save) this.commit();
+        else this.update();
       }
       selectResume(resume, prior, sameFile) {
         if (!sameFile) this.fitButton.hidden = true;
@@ -2153,17 +2246,7 @@ var require_layout_panel = __commonJS({
         const theme = themeRow.createEl("label", { text: this.t("theme") });
         this.templateSelect = theme.createEl("select", { cls: "dropdown" });
         iconButton(themeRow, "settings", this.t("manageSettings"), () => this.view.plugin.showSettings());
-        this.templateSelect.addEventListener("change", () => {
-          this.current.template = this.templateSelect.value;
-          this.commit();
-        });
-        const paperLabel = controls.createEl("label", { text: this.t("paperSize") });
-        this.paperSelect = paperLabel.createEl("select", { cls: "dropdown" });
-        for (const value of Object.keys(PAPER_SIZES)) this.paperSelect.createEl("option", { value, text: value === "Letter" ? "US Letter" : value });
-        this.paperSelect.addEventListener("change", () => {
-          this.current.paper = this.paperSelect.value;
-          this.commit();
-        });
+        this.templateSelect.addEventListener("change", () => this.selectTemplate(this.templateSelect.value));
         controls.createSpan({ text: this.t("density") });
         const density = controls.createDiv({ cls: "resume-layout-density", attr: { role: "group", "aria-label": this.t("density") } });
         this.densityButtons = /* @__PURE__ */ new Map();
@@ -2172,10 +2255,42 @@ var require_layout_panel = __commonJS({
           button.addEventListener("click", () => this.setDensity(value));
           this.densityButtons.set(value, button);
         }
+        controls.createSpan({ text: this.t("paperSize") });
+        const paper = controls.createDiv({ cls: "resume-layout-density", attr: { role: "group", "aria-label": this.t("paperSize") } });
+        this.paperButtons = /* @__PURE__ */ new Map();
+        for (const value of Object.keys(PAPER_SIZES)) {
+          const button = paper.createEl("button", { text: value === "Letter" ? "US Letter" : value });
+          button.addEventListener("click", () => {
+            this.current.paper = value;
+            this.commit();
+          });
+          this.paperButtons.set(value, button);
+        }
+        this.sidebarHint = controls.createDiv({ cls: "resume-layout-hint", text: this.t("sidebarEmptyHint") });
         this.templateHint = controls.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
       }
+      selectTemplate(template) {
+        if (!this.view.selected || this.current.template === template) return;
+        const preview = this.view.preview;
+        const flow = preview.renderedFile === this.view.selected.file && preview.sectionLayout;
+        const previousMode = flow?.mode;
+        this.current.template = template;
+        preview.updateLayout(this.current);
+        if (previousMode !== "sidebar" && flow?.mode === "sidebar") {
+          const title = defaultSidebarSection(flow.sections, this.current.sections);
+          if (title) {
+            this.current.sections = changeSectionRule(this.current.sections, title, "region", "sidebar");
+            new Notice2(this.t("sidebarAutoHint", { title }));
+          }
+        }
+        this.commit();
+        this.view.sections.render();
+      }
       setDensity(value) {
-        if (!this.view.selected || this.current.density === value) return;
+        if (!this.view.selected) return;
+        const overrides = this.current.appearance;
+        if (this.current.density === value && overrides.sectionGap == null && overrides.listGap == null) return;
+        this.current.appearance = withoutGapOverrides(overrides);
         const { classes, file } = this.view.selected;
         if (this.current.lineHeight === layoutFor(classes, { density: this.current.density }).lineHeight) {
           this.current.lineHeight = layoutFor(classes, { density: value }).lineHeight;
@@ -2184,13 +2299,16 @@ var require_layout_panel = __commonJS({
         this.resetUndo.delete(file);
         this.commit();
       }
-      updateTemplateControls() {
-        if (!this.view.selected) return;
+      refreshTemplateOptions() {
         this.templateSelect.replaceChildren();
-        for (const theme of this.view.plugin.themes.templates.values()) {
+        for (const theme of this.view.plugin.themes.visibleTemplates(this.current.template)) {
           this.templateSelect.createEl("option", { value: theme.id, text: this.view.plugin.themes.themeName(theme) });
         }
         this.templateSelect.value = this.current.template;
+      }
+      updateTemplateControls() {
+        if (!this.view.selected) return;
+        this.refreshTemplateOptions();
         const declared = this.view.selected.template;
         this.templateHint.setText(declared && !this.view.plugin.themes.templateId(declared) && declared !== "\u7D27\u51D1" ? this.t("missingTheme", { name: declared }) : "");
         this.update();
@@ -2333,20 +2451,19 @@ var require_layout_panel = __commonJS({
       updateLayoutActions() {
         if (!this.layoutActions || !this.view.selected) return;
         const { protected: readOnly, recognized, file } = this.view.selected;
-        const needsManualSave = recognized && !this.view.plugin.settings.autoSaveLayout && !sameLayout(this.current, this.savedLayout);
-        this.applyTemplateButton.hidden = readOnly || recognized && !needsManualSave;
-        this.applyTemplateButton.setText(recognized ? this.t("saveLayout") : this.t("applyLayout"));
+        this.applyTemplateButton.hidden = readOnly || recognized;
         this.applyTemplateButton.disabled = this.applyingLayout;
         this.undoLayoutButton.hidden = !this.layoutUndo.get(file)?.length;
         this.undoLayoutButton.disabled = !!this.undoingBody;
-        const hint = readOnly ? this.t("localPreviewHelp") : this.applyingLayout || this.queuedLayout ? this.t("layoutSaving") : !recognized ? this.t("previewOnly") : needsManualSave ? this.t("layoutUnsaved") : this.layoutFeedback || "";
+        const hint = readOnly ? this.t("localPreviewHelp") : this.applyingLayout || this.queuedLayout ? this.t("layoutSaving") : !recognized ? this.t("previewOnly") : this.layoutFeedback || "";
         this.layoutHint.setText(hint);
       }
       update() {
         if (!this.view.selected || !this.current) return;
         const layout = this.current;
+        if (layout.template === "\u7B80\u6D01\u84DD" !== !!this.templateSelect.querySelector('option[value="\u7B80\u6D01\u84DD"]')) this.refreshTemplateOptions();
         this.templateSelect.value = layout.template;
-        this.paperSelect.value = layout.paper;
+        for (const [value, button] of this.paperButtons) button.setAttribute("aria-pressed", String(value === layout.paper));
         for (const [density, button] of this.densityButtons) button.setAttribute("aria-pressed", String(density === layout.density));
         for (const { field, input, value } of this.controls.values()) {
           const number = layout[field.key];
@@ -2361,14 +2478,23 @@ var require_layout_panel = __commonJS({
           button.setAttribute("aria-pressed", String(this.marginLocks[side]));
         }
         this.view.preview.updateLayout(layout);
-        this.appearance.update(layout.appearance);
+        this.updateContextControls();
         const { file, classes } = this.view.selected;
         const defaults = layoutFor(classes, { density: layout.density });
         const canUndo = this.resetUndo.has(file);
         this.resetButton.setText(canUndo ? this.t("undoReset") : this.t("resetFineTuning"));
-        this.resetButton.hidden = !canUndo && FIELDS.every(({ key }) => layout[key] === defaults[key]);
+        this.resetButton.hidden = !canUndo && !Object.keys(layout.appearance).length && FIELDS.every(({ key }) => layout[key] === defaults[key]);
         this.updateLayoutActions();
         this.view.preview.measure();
+      }
+      updateContextControls() {
+        const preview = this.view.preview;
+        const flow = preview.renderedFile === this.view.selected?.file ? preview.sectionLayout : null;
+        this.appearance.update(this.current.appearance);
+        if (this.view.editor.edit) this.view.editor.toolbar.updatePhoto();
+        this.sidebarHint.hidden = flow?.mode !== "sidebar" || !!preview.rendered?.querySelector(".has-sidebar");
+        const hidden = (flow?.sections ?? []).filter(({ title }) => !flow.duplicates.has(title) && ruleFor(this.current.sections, title).hidden === true).length;
+        this.view.updateHiddenSections(hidden);
       }
       resetLayout() {
         if (!this.view.selected) return;
@@ -2378,9 +2504,9 @@ var require_layout_panel = __commonJS({
           this.resetUndo.delete(file);
           this.current = { ...this.current, ...prior };
         } else {
-          this.resetUndo.set(file, dimensions(this.current));
+          this.resetUndo.set(file, { ...dimensions(this.current), appearance: this.current.appearance });
           const defaults = layoutFor(classes, { density: this.current.density });
-          this.current = { ...this.current, ...dimensions(defaults) };
+          this.current = { ...this.current, ...dimensions(defaults), appearance: {} };
         }
         this.alignLocks();
         this.commit();
@@ -2411,6 +2537,7 @@ var require_layout_panel = __commonJS({
           return this.view.preview.pageMetrics();
         };
         const decrement = (value, step, floor) => value <= floor ? value : Math.max(floor, Number((value - step).toFixed(2)));
+        this.current.appearance = withoutGapOverrides(this.current.appearance);
         this.current.density = "compact";
         this.current.lineHeight = DENSITIES.compact.lineHeight[language];
         let page = measure();
@@ -2458,7 +2585,7 @@ var require_layout_panel = __commonJS({
           if (readOnly) this.view.plugin.state.saveLocalLayout(file.path, this.current);
           else {
             this.rememberDraft();
-            if (recognized && this.view.plugin.settings.autoSaveLayout) this.queueLayoutSave(file);
+            if (recognized) this.queueLayoutSave(file);
           }
         }
         this.update();
@@ -2525,7 +2652,7 @@ var require_layout_panel = __commonJS({
           }
           job.timer = void 0;
           try {
-            if (this.view.selected?.file === job.file && this.view.selected.recognized && !this.view.selected.protected && this.view.plugin.settings.autoSaveLayout && !sameLayout(this.current, this.savedLayout)) {
+            if (this.view.selected?.file === job.file && this.view.selected.recognized && !this.view.selected.protected && !sameLayout(this.current, this.savedLayout)) {
               await this.saveNoteLayout(false);
             }
           } finally {
@@ -2671,7 +2798,20 @@ var require_preview_pane = __commonJS({
       }
       mount(parent) {
         this.stage = parent.createDiv({ cls: "resume-layout-stage", attr: { "aria-label": this.t("previewLabel") } });
-        this.stage.addEventListener("click", (event) => this.view.editor.focusSourceFromPreview(event));
+        this.stage.addEventListener("click", (event) => {
+          if (this.sectionLayout?.portrait?.contains(event.target)) {
+            event.preventDefault();
+            if (this.view.editor.edit) this.view.editor.toolbar.openPhoto();
+            else {
+              this.view.toggleInspector(false);
+              this.view.setPanel("layout");
+              this.view.layout.fineTune.open = true;
+              this.view.layout.appearance.focusPhoto();
+            }
+            return;
+          }
+          this.view.editor.focusSourceFromPreview(event);
+        });
         this.staleBanner = this.stage.createDiv({ cls: "resume-layout-stale", text: this.t("contentStale") });
         this.staleBanner.hidden = true;
         this.view.createEmptyState(this.stage);
@@ -2744,6 +2884,7 @@ ${body}` : body, next, file.path, renderer);
           this.renderer = renderer;
           this.view.sourceMarkdown = markdown;
           this.renderedBody = sourceText(body);
+          this.view.layout.updateContextControls();
           this.view.sections.render();
           this.observer.observe(next);
           this.stage.scrollTop = scrollTop;
@@ -3165,15 +3306,16 @@ var require_modals = __commonJS({
   "src/workbench/modals.js"(exports2, module2) {
     var { FuzzySuggestModal, Modal } = require("obsidian");
     var { copySourceText } = require_dom();
-    var { avatarEdit } = require_avatar();
-    var { replaceSourceSelection } = require_formatting();
     var PhotoPicker = class extends FuzzySuggestModal {
-      constructor(editor, field) {
-        super(editor.app);
-        this.editor = editor;
-        this.field = field;
-        this.edit = editor.edit;
-        this.setPlaceholder(editor.t("searchImages"));
+      constructor(app, t, choose, returnFocus) {
+        super(app);
+        this.choose = choose;
+        this.returnFocus = returnFocus;
+        this.setPlaceholder(t("searchImages"));
+      }
+      onClose() {
+        super.onClose();
+        this.contentEl.ownerDocument.defaultView.requestAnimationFrame(() => this.returnFocus());
       }
       getItems() {
         return this.app.vault.getFiles().filter((file) => /^(?:png|jpe?g|gif|webp|avif|svg)$/i.test(file.extension));
@@ -3182,11 +3324,7 @@ var require_modals = __commonJS({
         return file.path;
       }
       onChooseItem(file) {
-        if (!this.edit || this.editor.edit !== this.edit || this.field.readOnly) return;
-        const { start, end, text } = avatarEdit(this.field.value, this.edit.file.path, file.path);
-        this.field.focus({ preventScroll: true });
-        replaceSourceSelection(this.field, start, end, text, start + text.length, start + text.length);
-        this.editor.view.layout.appearance.openForPhoto();
+        this.choose(file);
       }
     };
     var SourceRecoveryModal = class extends Modal {
@@ -3275,7 +3413,8 @@ var require_source_toolbar = __commonJS({
   "src/workbench/source-toolbar.js"(exports2, module2) {
     var { Notice: Notice2, setIcon } = require("obsidian");
     var { iconButton } = require_dom();
-    var { PhotoPicker } = require_modals();
+    var { mountPhotoControls } = require_photo_controls();
+    var { headerPhoto } = require_avatar();
     var {
       SOURCE_ENTRY_SEPARATOR,
       replaceSourceSelection,
@@ -3367,10 +3506,34 @@ var require_source_toolbar = __commonJS({
       const entryLabel = entry.createSpan();
       setIcon(entry.createSpan({ cls: "resume-layout-source-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
       createSourceEntryPopover(pane, entry, field, popovers, { t, view, updateTools });
-      const photo = iconButton(tools, "image", t("choosePhoto"), () => {
-        if (!editor.edit || field.readOnly) return;
+      const photo = iconButton(tools, "image", t("photo"), () => openPhoto());
+      photo.setAttribute("aria-haspopup", "dialog");
+      photo.setAttribute("aria-expanded", "false");
+      const photoPanel = pane.createDiv({ cls: "resume-layout-source-popover resume-layout-photo-popover", attr: { role: "dialog", "aria-label": t("photo") } });
+      photoPanel.hidden = true;
+      const photoControls = mountPhotoControls(photoPanel, view);
+      function openPhoto() {
+        if (!editor.edit || field.readOnly || editor.edit.conflicted) return;
+        if (!photoPanel.hidden) {
+          popovers.close();
+          field.focus();
+          return;
+        }
+        if (!headerPhoto(field.value).photo && !(view.preview.renderedBody === field.value && view.preview.sectionLayout?.portrait)) {
+          popovers.close();
+          editor.changePhoto(true);
+          return;
+        }
+        photoControls.update();
+        popovers.show(photoPanel, photo);
+        photoControls.focus();
+      }
+      photoPanel.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopPropagation();
         popovers.close();
-        new PhotoPicker(editor, field).open();
+        field.focus({ preventScroll: true });
       });
       const help = iconButton(info, "circle-help", t("editorShortcuts"), () => {
         if (!helpPanel.hidden) return popovers.close();
@@ -3409,7 +3572,7 @@ var require_source_toolbar = __commonJS({
       };
       function updateTools() {
         if (!editor.edit) return;
-        photo.disabled = field.readOnly;
+        photo.disabled = field.readOnly || !!editor.edit.conflicted;
         const context = sourceEditorContext(field);
         const isBold = !!context.bold?.span;
         const isList = !!context.list;
@@ -3427,7 +3590,7 @@ var require_source_toolbar = __commonJS({
         entry.toggleClass("is-current-entry", editing);
         entry.title = editing ? t("editEntryHelp") : context.subheading ? t("addDateHelp") : t("insertEntry");
       }
-      return { update: updateTools, close: popovers.close };
+      return { update: updateTools, close: popovers.close, openPhoto, updatePhoto: photoControls.update };
     }
     function createSourceEntryPopover(pane, button, field, popovers, { t, view, updateTools }) {
       const form = pane.createEl("form", {
@@ -3522,9 +3685,10 @@ var require_source_editor = __commonJS({
   "src/workbench/source-editor.js"(exports2, module2) {
     var { Notice: Notice2, Scope } = require("obsidian");
     var { editableBody, withEditedBody } = require_markdown();
-    var { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold } = require_formatting();
+    var { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold, replaceSourceSelection } = require_formatting();
     var { copySourceText, runWithNotice } = require_dom();
-    var { SourceRecoveryModal } = require_modals();
+    var { SourceRecoveryModal, PhotoPicker } = require_modals();
+    var { avatarEdit } = require_avatar();
     var { mountSourceTools } = require_source_toolbar();
     var SourceEditor = class {
       constructor(view) {
@@ -3556,7 +3720,18 @@ var require_source_editor = __commonJS({
           attr: { "aria-label": this.t("sourceLabel"), spellcheck: "false", autocapitalize: "off", autocomplete: "off" }
         });
         this.toolbar = mountSourceTools(this, pane, tools, info, field);
-        field.addEventListener("input", () => {
+        field.addEventListener("input", (event) => {
+          const photo = this.edit?.lastPhotoChange;
+          const undo = event.inputType === "historyUndo";
+          if (photo && (undo || event.inputType === "historyRedo")) {
+            const from = undo ? photo.after : photo.before;
+            const to = undo ? photo.before : photo.after;
+            if (this.edit.text === from.text && field.value === to.text) {
+              queueMicrotask(() => {
+                if (this.edit?.lastPhotoChange === photo && field.value === to.text) field.setSelectionRange(...to.selection);
+              });
+            }
+          }
           this.toolbar.close();
           this.editedSourceChanged();
           this.toolbar.update();
@@ -3576,6 +3751,13 @@ var require_source_editor = __commonJS({
           this.toolbar.update();
           return false;
         });
+        for (const [modifiers, command] of [[["Mod"], "undo"], [["Mod", "Shift"], "redo"]]) {
+          scope.register(modifiers, "Z", (event) => {
+            if (event.isComposing || field.ownerDocument.activeElement !== field || field.readOnly) return;
+            field.ownerDocument.execCommand(command);
+            return false;
+          });
+        }
         const popScope = () => this.app.keymap.popScope(scope);
         field.addEventListener("focus", () => this.app.keymap.pushScope(scope));
         field.addEventListener("blur", popScope);
@@ -3648,11 +3830,47 @@ var require_source_editor = __commonJS({
           this.view.editButton.disabled = false;
         }
       }
+      changePhoto(pick) {
+        const { selected: resume, sourceMarkdown } = this.view;
+        const edit = this.edit;
+        if (!resume?.recognized || resume.protected || sourceMarkdown == null || edit?.conflicted) return;
+        const { file } = resume;
+        const field = this.sourceField;
+        const original = edit ? field.value : editableBody(sourceMarkdown);
+        const selection = edit && [field.selectionStart, field.selectionEnd, field.selectionDirection];
+        const apply = async (image) => {
+          if (this.view.selected?.file !== file || this.edit !== edit || this.view.plugin.catalog.isProtected(resume)) return;
+          if (edit && (field.readOnly || edit.conflicted || field.value !== original)) return;
+          const patch = avatarEdit(original, file.path, image?.path);
+          if (!patch) return;
+          const { start, end, text } = patch;
+          if (edit) {
+            const offset = (pos) => pos < start ? pos : Math.max(start + text.length, pos + text.length - (end - start));
+            const nextSelection = [offset(selection[0]), offset(selection[1]), selection[2]];
+            field.focus({ preventScroll: true });
+            replaceSourceSelection(field, start, end, text, ...nextSelection);
+            edit.lastPhotoChange = {
+              before: { text: original, selection },
+              after: { text: field.value, selection: nextSelection }
+            };
+          } else {
+            const after = original.slice(0, start) + text + original.slice(end);
+            if (after === original) return;
+            await this.view.plugin.files.writeSourceBody(file, original, after);
+            this.view.layout.recordChange(file, { kind: "body", before: original, after });
+            if (this.view.selected?.file === file) await this.view.show(file);
+          }
+        };
+        const returnFocus = () => {
+          if (edit && this.edit === edit && this.view.selected?.file === file) field.focus({ preventScroll: true });
+        };
+        if (pick) new PhotoPicker(this.app, this.t, (image) => void runWithNotice(() => apply(image)), returnFocus).open();
+        else void runWithNotice(() => apply(null));
+      }
       syncSourceControls() {
         const editing = !!this.edit;
         if (!editing) this.toolbar.close();
         this.sourcePane.hidden = !editing;
-        this.view.layout.setAppearanceInEditor(editing);
         this.view.body.toggleClass("is-source-editing", editing);
         this.view.editButton.setText(editing ? this.t("doneEditing") : this.view.selected?.protected ? this.t("copyAndEdit") : this.t("editSource"));
         this.view.editButton.title = editing ? this.t("doneEditingHelp") : this.t("editSourceHelp");
@@ -4024,7 +4242,7 @@ var require_sections_panel = __commonJS({
           const flow = this.view.preview.sectionLayout;
           if (flow?.mode === "sidebar") {
             const sidebar = rule.region === "sidebar";
-            this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? void 0 : "sidebar");
+            this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? "main" : "sidebar");
           }
           if (flow?.sections[index]?.lists.length || rule.display === "tags") {
             const tags = rule.display === "tags";
@@ -4046,7 +4264,7 @@ var require_sections_panel = __commonJS({
       }
       ruleButton(row, title, message, icon, key, value) {
         const label = this.t(message, { title });
-        const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === void 0) } });
+        const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === void 0 || key === "region" && value === "main") } });
         setIcon(button, icon);
         button.addEventListener("click", () => {
           const layout = this.view.layout;
@@ -4209,6 +4427,14 @@ var require_view = __commonJS({
         });
         this.editButton.addEventListener("click", () => void this.editor.openEditor());
         this.inspectorButton = iconButton(actions, "panel-right", this.t("hidePanel"), () => this.toggleInspector());
+        this.hiddenBadge = actions.createEl("button", { cls: "resume-layout-hidden-count" });
+        this.hiddenBadge.hidden = true;
+        this.hiddenBadge.addEventListener("click", async () => {
+          if (!await this.editor.endSourceEdit()) return;
+          this.toggleInspector(false);
+          this.setPanel("content");
+          this.contentTab.focus();
+        });
         this.exportButton = actions.createEl("button", { text: this.t("exportPdf"), cls: "mod-cta" });
         this.exportButton.addEventListener("click", () => void this.exportPdf());
         const body = this.body = view.createDiv({ cls: "resume-layout-body" });
@@ -4322,7 +4548,16 @@ var require_view = __commonJS({
         this.inspectorButton.setAttribute("aria-label", label);
         this.inspectorButton.setAttribute("aria-expanded", String(!collapsed));
         this.inspectorButton.title = label;
+        this.updateHiddenSections(this.hiddenCount ?? 0);
         setIcon(this.inspectorButton, collapsed ? "panel-right-open" : "panel-right-close");
+      }
+      updateHiddenSections(count) {
+        this.hiddenCount = count;
+        const text = count ? this.t("sectionsTabHidden", { count }) : this.t("sections");
+        if (this.contentTab && this.contentTab.textContent !== text) this.contentTab.setText(text);
+        if (!this.hiddenBadge) return;
+        this.hiddenBadge.hidden = !this.selected || !count || !this.inspectorCollapsed && !this.editor.edit && this.panelMode !== "css";
+        if (count) this.hiddenBadge.setText(this.t("hiddenExportHint", { count }));
       }
       setPanel(mode) {
         this.panelMode = mode;
@@ -4335,6 +4570,7 @@ var require_view = __commonJS({
         this.contentPanel.hidden = !content;
         this.cssPanel.hidden = !css;
         this.updateExportButton();
+        this.updateHiddenSections(this.hiddenCount ?? 0);
         if (content) this.sections.render();
       }
       updateFileTitle() {

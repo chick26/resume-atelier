@@ -35,7 +35,20 @@ class PreviewPane {
 
   mount(parent) {
     this.stage = parent.createDiv({ cls: "resume-layout-stage", attr: { "aria-label": this.t("previewLabel") } });
-    this.stage.addEventListener("click", event => this.view.editor.focusSourceFromPreview(event));
+    this.stage.addEventListener("click", event => {
+      if (this.sectionLayout?.portrait?.contains(event.target)) {
+        event.preventDefault();
+        if (this.view.editor.edit) this.view.editor.toolbar.openPhoto();
+        else {
+          this.view.toggleInspector(false);
+          this.view.setPanel("layout");
+          this.view.layout.fineTune.open = true;
+          this.view.layout.appearance.focusPhoto();
+        }
+        return;
+      }
+      this.view.editor.focusSourceFromPreview(event);
+    });
     this.staleBanner = this.stage.createDiv({ cls: "resume-layout-stale", text: this.t("contentStale") });
     this.staleBanner.hidden = true;
     this.view.createEmptyState(this.stage);
@@ -114,6 +127,7 @@ class PreviewPane {
       this.renderer = renderer;
       this.view.sourceMarkdown = markdown;
       this.renderedBody = sourceText(body);
+      this.view.layout.updateContextControls();
       this.view.sections.render();
       this.observer.observe(next);
       this.stage.scrollTop = scrollTop;

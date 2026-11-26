@@ -1,7 +1,27 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { layoutFor, geometryForSave, layoutMetadata, noteLayoutKey, sameLayout } = require("../src/layout/geometry");
+const { changePhotoRatio } = require("../src/layout/appearance");
+const { defaultSidebarSection } = require("../src/resume/section-layout");
 const { avatarEdit, rebaseAvatar } = require("../src/resume/avatar");
+
+test("photo changes crop on request and only remove the active header image", () => {
+  const values = { avatarRatio: "3:4", avatarShape: "round" };
+  assert.deepEqual(layoutFor([], { appearance: values }).appearance, values);
+  assert.deepEqual(changePhotoRatio(values, "4:5", "round"), { avatarRatio: "4:5", avatarShape: "rounded" });
+  const source = "# Name\n\n![[Portrait.png|avatar]]\n\n## Work\n\n![avatar](other.png)";
+  const { start, end, text } = avatarEdit(source, "Draft.md", null);
+  assert.equal(source.slice(0, start) + text + source.slice(end), "# Name\n\n## Work\n\n![avatar](other.png)");
+});
+
+test("sidebar suggestions honor choices, duplicate headings and manual page groups", () => {
+  const sections = ["Work", "Education", "Skills"].map(title => ({ title, breaks: [] }));
+  assert.equal(defaultSidebarSection(sections, {}), "Skills");
+  assert.equal(defaultSidebarSection(sections, { Skills: { hidden: true } }), "Education");
+  assert.equal(defaultSidebarSection(sections, { Skills: { region: "main" } }), undefined);
+  assert.equal(defaultSidebarSection([...sections, sections[2]], {}), "Education");
+  assert.equal(defaultSidebarSection([{ title: "Work", breaks: [1] }, sections[2]], {}), undefined);
+});
 
 test("overrides survive copies, affect layout conflicts and restore the theme without losing extensions", () => {
   const previous = { paper: "Letter", appearance: { accent: "#336655", avatarRatio: "3:4", listGap: 0, vendor: { keep: true } } };

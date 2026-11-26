@@ -1,8 +1,9 @@
 const { Notice, Scope } = require("obsidian");
 const { editableBody, withEditedBody } = require("../resume/markdown");
-const { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold } = require("../editor/formatting");
+const { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold, replaceSourceSelection } = require("../editor/formatting");
 const { copySourceText, runWithNotice } = require("./dom");
-const { SourceRecoveryModal } = require("./modals");
+const { SourceRecoveryModal, PhotoPicker } = require("./modals");
+const { avatarEdit } = require("../resume/avatar");
 const { mountSourceTools } = require("./source-toolbar");
 
 class SourceEditor {
@@ -36,7 +37,19 @@ class SourceEditor {
       attr: { "aria-label": this.t("sourceLabel"), spellcheck: "false", autocapitalize: "off", autocomplete: "off" },
     });
     this.toolbar = mountSourceTools(this, pane, tools, info, field);
-    field.addEventListener("input", () => {
+    field.addEventListener("input", event => {
+      const photo = this.edit?.lastPhotoChange;
+      const undo = event.inputType === "historyUndo";
+      if (photo && (undo || event.inputType === "historyRedo")) {
+        const from = undo ? photo.after : photo.before;
+        const to = undo ? photo.before : photo.after;
+        if (this.edit.text === from.text && field.value === to.text) {
+          // Chromium restores its selection at the image. Return to the writing position.
+          queueMicrotask(() => {
+            if (this.edit?.lastPhotoChange === photo && field.value === to.text) field.setSelectionRange(...to.selection);
+          });
+        }
+      }
       this.toolbar.close();
       this.editedSourceChanged();
       this.toolbar.update();
@@ -57,6 +70,13 @@ class SourceEditor {
       this.toolbar.update();
       return false;
     });
+    for (const [modifiers, command] of [[["Mod"], "undo"], [["Mod", "Shift"], "redo"]]) {
+      scope.register(modifiers, "Z", event => {
+        if (event.isComposing || field.ownerDocument.activeElement !== field || field.readOnly) return;
+        field.ownerDocument.execCommand(command);
+        return false;
+      });
+    }
     const popScope = () => this.app.keymap.popScope(scope);
     field.addEventListener("focus", () => this.app.keymap.pushScope(scope));
     field.addEventListener("blur", popScope);
@@ -132,11 +152,48 @@ class SourceEditor {
     }
   }
 
+  changePhoto(pick) {
+    const { selected: resume, sourceMarkdown } = this.view;
+    const edit = this.edit;
+    if (!resume?.recognized || resume.protected || sourceMarkdown == null || edit?.conflicted) return;
+    const { file } = resume;
+    const field = this.sourceField;
+    const original = edit ? field.value : editableBody(sourceMarkdown);
+    const selection = edit && [field.selectionStart, field.selectionEnd, field.selectionDirection];
+    const apply = async image => {
+      if (this.view.selected?.file !== file || this.edit !== edit || this.view.plugin.catalog.isProtected(resume)) return;
+      if (edit && (field.readOnly || edit.conflicted || field.value !== original)) return;
+      const patch = avatarEdit(original, file.path, image?.path);
+      if (!patch) return;
+      const { start, end, text } = patch;
+      if (edit) {
+        const offset = pos => pos < start ? pos : Math.max(start + text.length, pos + text.length - (end - start));
+        const nextSelection = [offset(selection[0]), offset(selection[1]), selection[2]];
+        field.focus({ preventScroll: true });
+        replaceSourceSelection(field, start, end, text, ...nextSelection);
+        edit.lastPhotoChange = {
+          before: { text: original, selection },
+          after: { text: field.value, selection: nextSelection },
+        };
+      } else {
+        const after = original.slice(0, start) + text + original.slice(end);
+        if (after === original) return;
+        await this.view.plugin.files.writeSourceBody(file, original, after);
+        this.view.layout.recordChange(file, { kind: "body", before: original, after });
+        if (this.view.selected?.file === file) await this.view.show(file);
+      }
+    };
+    const returnFocus = () => {
+      if (edit && this.edit === edit && this.view.selected?.file === file) field.focus({ preventScroll: true });
+    };
+    if (pick) new PhotoPicker(this.app, this.t, image => void runWithNotice(() => apply(image)), returnFocus).open();
+    else void runWithNotice(() => apply(null));
+  }
+
   syncSourceControls() {
     const editing = !!this.edit;
     if (!editing) this.toolbar.close();
     this.sourcePane.hidden = !editing;
-    this.view.layout.setAppearanceInEditor(editing);
     this.view.body.toggleClass("is-source-editing", editing);
     this.view.editButton.setText(editing ? this.t("doneEditing") : this.view.selected?.protected ? this.t("copyAndEdit") : this.t("editSource"));
     this.view.editButton.title = editing ? this.t("doneEditingHelp") : this.t("editSourceHelp");

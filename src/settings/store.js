@@ -5,7 +5,6 @@ const DRAFT_FOLDER = "resumes/drafts";
 const DEFAULT_SETTINGS = {
   defaultTemplate: BASE_TEMPLATE,
   defaultDensity: "standard",
-  autoSaveLayout: true,
   draftLocationMode: "alongside",
   draftFolder: DRAFT_FOLDER,
   protectedFolders: [],
@@ -17,6 +16,7 @@ class SettingsStore {
     this.saveData = saveData;
     this.settings = { ...DEFAULT_SETTINGS, ...data?.settings };
     delete this.settings.interfaceLanguage;
+    delete this.settings.autoSaveLayout;
     if (!Object.hasOwn(DENSITIES, this.settings.defaultDensity)) this.settings.defaultDensity = DEFAULT_SETTINGS.defaultDensity;
     if (!Array.isArray(this.settings.protectedFolders)) this.settings.protectedFolders = [];
     this.layouts = new Map(Object.entries(data?.layouts ?? {}));

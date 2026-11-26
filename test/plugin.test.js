@@ -143,7 +143,7 @@ test("older settings, local layouts and the recent note survive a folder rename"
   await plugin.state.saveQueue;
   assert.equal(persisted[0].lastPath, "Archive/Draft.md");
   assert.deepEqual(persisted[0].layouts, { "Archive/Draft.md": data.layouts["Resumes/Draft.md"] });
-  assert.equal(persisted[0].settings.autoSaveLayout, false);
+  assert.equal(Object.hasOwn(persisted[0].settings, "autoSaveLayout"), false);
   assert.equal(persisted[0].settings.defaultTemplate, "黑白 ATS");
   assert.equal(Object.hasOwn(persisted[0].settings, "interfaceLanguage"), false);
 });
@@ -352,34 +352,37 @@ test("all trial layouts undo locally and interleaved source changes undo in orde
   assert.equal(panel.layoutUndo.get(file).length, 0);
 });
 
-test("quick styles and save actions follow the source editor without remounting on every edit", async () => {
+test("legacy themes resolve for notes and defaults while new choices omit Minimal Blue", async () => {
+  const { plugin } = await loadPlugin({ data: { settings: { defaultTemplate: "简洁蓝" } } });
+  assert.equal(plugin.themes.visibleTemplates().length, 5);
+  assert.equal(plugin.themes.visibleTemplates("简洁蓝").length, 6);
+  assert.equal(plugin.themes.templateId("简洁蓝"), "简洁蓝");
+  assert.equal(plugin.layouts.noteLayout({ classes: [], sections: {} }).template, "简洁蓝");
+});
+
+test("density, reset and failed fitting preserve recoverable legacy appearance values", async () => {
   const { plugin, viewFactory } = await loadPlugin();
   const view = viewFactory({ app: plugin.app });
-  const { editor, layout } = view;
-  const actions = layout.layoutActions = {};
-  view.layoutElement = { append(node) { node.parentElement = this; } };
-  const details = { parentElement: view.layoutElement, append(node) { node.parentElement = this; } };
-  layout.appearance = { details };
-  const moves = [];
-  const anchor = parent => ({ before(node) { moves.push(parent); node.parentElement = parent; } });
-  editor.sourcePane = {};
-  editor.sourceField = anchor(editor.sourcePane);
-  layout.fineTune = anchor(view.layoutElement);
-  editor.toolbar = { close() {} };
-  view.body = { toggleClass() {} };
-  view.editButton = { setText() {} };
-  view.inspectorButton = {};
-  view.toggleInspector = () => {};
-
-  editor.edit = { file: note("Draft.md", { type: "resume-draft" }) };
-  editor.syncSourceControls();
-  editor.syncSourceControls();
-  assert.deepEqual(moves, [editor.sourcePane]);
-  assert.equal(actions.parentElement, details);
-  assert.equal(editor.sourcePane.hidden, false);
-
-  editor.edit = null;
-  editor.syncSourceControls();
-  assert.deepEqual(moves, [editor.sourcePane, view.layoutElement]);
-  assert.equal(actions.parentElement, view.layoutElement);
+  const panel = view.layout;
+  const file = note("Legacy.md", { type: "resume-draft" });
+  view.selected = { file, recognized: true, classes: [] };
+  const original = { sectionGap: 8, listGap: 2, accent: "#345678" };
+  panel.current = layoutFor([], { appearance: original });
+  panel.savedLayout = panel.lastCommittedLayout = { ...panel.current };
+  panel.update = panel.queueLayoutSave = () => {};
+  panel.setDensity("compact");
+  assert.deepEqual({ ...panel.current.appearance }, { accent: "#345678" });
+  await panel.undoLayoutChange();
+  assert.deepEqual({ ...panel.current.appearance }, original);
+  panel.resetLayout();
+  assert.deepEqual({ ...panel.current.appearance }, {});
+  panel.resetLayout();
+  assert.deepEqual({ ...panel.current.appearance }, original);
+  view.preview.renderedFile = file;
+  view.preview.pageMetrics = () => ({ overflow: true, used: 400, printable: 270 });
+  view.preview.visiblePageBreaks = () => 0;
+  view.preview.updateLayout = () => {};
+  panel.fitToPage();
+  assert.deepEqual({ ...panel.current.appearance }, original);
+  assert.equal(panel.current.density, "standard");
 });

@@ -367,23 +367,10 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
   background: color-mix(in srgb, var(--studio-accent) 35%, transparent);
 }
 
-.careeros-resume-layout .resume-layout-source > .resume-layout-appearance {
-  max-height: 45%;
+.careeros-resume-layout .resume-layout-photo-popover {
+  width: min(270px, calc(100% - 16px));
+  padding: 12px;
   overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-inline: 10px;
-  border-bottom: 1px solid var(--studio-border);
-  font-size: var(--font-ui-small);
-}
-.careeros-resume-layout .resume-layout-source .resume-layout-appearance-fields {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
-  align-items: end;
-}
-.careeros-resume-layout .resume-layout-source .resume-layout-save {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  padding-bottom: 8px;
 }
 
 .careeros-resume-layout .resume-layout-stage {
@@ -688,7 +675,13 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
   width: 100%;
   margin: 0;
 }
-.careeros-resume-layout .resume-layout-appearance-fields output { color: var(--studio-muted); font-variant-numeric: tabular-nums; }
+.careeros-resume-layout .resume-layout-accent { margin-block: 8px; }
+.careeros-resume-layout :is(.resume-layout-swatches, .resume-layout-photo-actions) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.careeros-resume-layout button.resume-color-swatch { width: 23px; height: 23px; padding: 0; border-radius: 50%; background: var(--resume-swatch, var(--background-secondary)); }
+.careeros-resume-layout button.resume-color-swatch[aria-pressed="true"] { outline: 2px solid var(--studio-accent); outline-offset: 2px; }
+.careeros-resume-layout .resume-layout-photo-controls { margin-block: 8px; }
+.careeros-resume-layout .resume-layout-hidden-count { color: var(--studio-warning); }
+.careeros-resume-layout .resume-portrait-block img { cursor: pointer; }
 
 .careeros-resume-layout .resume-layout-section-list { display: grid; gap: 6px; }
 

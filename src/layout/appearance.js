@@ -22,6 +22,17 @@ function savedAppearance(current, previous) {
   return Object.assign(result, appearanceFor(current));
 }
 
+function withoutGapOverrides(appearance) {
+  const { sectionGap, listGap, ...rest } = appearance;
+  return rest;
+}
+
+function changePhotoRatio(appearance, ratio, effectiveShape) {
+  const next = { ...appearance, avatarRatio: ratio };
+  if (ratio !== "1:1" && effectiveShape === "round") next.avatarShape = "rounded";
+  return next;
+}
+
 function applyAppearance(root, values = {}) {
   const overrides = {
     "--color-accent": values.accent,
@@ -37,4 +48,4 @@ function applyAppearance(root, values = {}) {
   root.classList.toggle("resume-portrait-ratio", !!values.avatarRatio && values.avatarRatio !== "1:1");
 }
 
-module.exports = { PHOTO_RATIOS, PHOTO_CORNERS, GAP_LIMITS, appearanceFor, savedAppearance, applyAppearance };
+module.exports = { PHOTO_RATIOS, PHOTO_CORNERS, GAP_LIMITS, appearanceFor, savedAppearance, applyAppearance, withoutGapOverrides, changePhotoRatio };

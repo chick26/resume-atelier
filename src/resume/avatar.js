@@ -22,7 +22,9 @@ function headerPhoto(body) {
       if (marker?.[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
     } else if (comment || /^\s*<!--/.test(line)) comment = !line.includes("-->");
     else if (marker) fence = marker[1];
-    else if (/^ {0,3}!\[avatar\]\(.+\)\s*$/.test(line)) return { titleEnd, photo: { start: offset, line } };
+    else if (/^ {0,3}(?:!\[avatar\]\(.+\)|!\[\[[^\]]+\|avatar\]\]|<img\b(?=[^>]*\b(?:alt=["']avatar["']|class=["'][^"']*\bavatar\b[^"']*["']))[^>]*>)\s*$/i.test(line)) {
+      return { titleEnd, photo: { start: offset, line } };
+    }
     else if (!titleEnd && /^ {0,3}#\s+/.test(line)) titleEnd = offset + line.length;
     offset += line.length + 1;
   }
@@ -30,8 +32,14 @@ function headerPhoto(body) {
 }
 
 function avatarEdit(body, notePath, imagePath) {
-  const markdown = `![avatar](${relativeImage(notePath, imagePath)})`;
   const { titleEnd, photo } = headerPhoto(body);
+  if (!imagePath) {
+    if (!photo) return null;
+    const end = photo.start + photo.line.length;
+    const spacing = body.slice(end).match(/^\n(?:\n)?/)?.[0] ?? "";
+    return { start: photo.start, end: end + spacing.length, text: "" };
+  }
+  const markdown = `![avatar](${relativeImage(notePath, imagePath)})`;
   if (photo) return { start: photo.start, end: photo.start + photo.line.length, text: markdown };
   const tail = body.slice(titleEnd);
   const after = !tail || tail.startsWith("\n\n") ? "" : tail.startsWith("\n") ? "\n" : "\n\n";
@@ -51,4 +59,4 @@ function rebaseAvatar(body, sourcePath, targetPath, resolve) {
   return body.slice(0, start) + relativeImage(targetPath, asset.path) + body.slice(start + link[2].length);
 }
 
-module.exports = { avatarEdit, rebaseAvatar };
+module.exports = { avatarEdit, rebaseAvatar, headerPhoto };

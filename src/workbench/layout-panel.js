@@ -2,6 +2,8 @@ const { Notice } = require("obsidian");
 const {
   PAPER_SIZES, paperSize, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, noteLayoutKey, sameLayout,
 } = require("../layout/geometry");
+const { appearanceFor, withoutGapOverrides } = require("../layout/appearance");
+const { defaultSidebarSection, changeSectionRule, ruleFor } = require("../resume/section-layout");
 const { iconButton } = require("./dom");
 const { mountAppearanceControls } = require("./appearance-controls");
 
@@ -29,9 +31,9 @@ class LayoutPanel {
 
   mount(layout) {
     this.addTemplateControls(layout);
-    this.appearance = mountAppearanceControls(layout, this);
     const fineTune = this.fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
     fineTune.createEl("summary", { text: this.t("fineTune") });
+    this.appearance = mountAppearanceControls(fineTune, this);
     const marginHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
     marginHeading.createEl("h3", { text: this.t("margins") });
     const locks = fineTune.createDiv({ cls: "resume-layout-locks" });
@@ -64,18 +66,11 @@ class LayoutPanel {
     this.undoLayoutButton.addEventListener("click", () => this.undoLayoutChange());
   }
 
-  setAppearanceInEditor(editing) {
-    const { details } = this.appearance;
-    const { editor, layoutElement } = this.view;
-    // A source refresh must leave the focused control in place.
-    if (details.parentElement === (editing ? editor.sourcePane : layoutElement)) return;
-    if (editing) {
-      editor.sourceField.before(details);
-      details.append(this.layoutActions);
-    } else {
-      this.fineTune.before(details);
-      layoutElement.append(this.layoutActions);
-    }
+  setAppearance(values, save = true) {
+    this.resetUndo.delete(this.view.selected.file);
+    this.current.appearance = appearanceFor(values);
+    if (save) this.commit();
+    else this.update();
   }
 
   selectResume(resume, prior, sameFile) {
@@ -116,17 +111,7 @@ class LayoutPanel {
     const theme = themeRow.createEl("label", { text: this.t("theme") });
     this.templateSelect = theme.createEl("select", { cls: "dropdown" });
     iconButton(themeRow, "settings", this.t("manageSettings"), () => this.view.plugin.showSettings());
-    this.templateSelect.addEventListener("change", () => {
-      this.current.template = this.templateSelect.value;
-      this.commit();
-    });
-    const paperLabel = controls.createEl("label", { text: this.t("paperSize") });
-    this.paperSelect = paperLabel.createEl("select", { cls: "dropdown" });
-    for (const value of Object.keys(PAPER_SIZES)) this.paperSelect.createEl("option", { value, text: value === "Letter" ? "US Letter" : value });
-    this.paperSelect.addEventListener("change", () => {
-      this.current.paper = this.paperSelect.value;
-      this.commit();
-    });
+    this.templateSelect.addEventListener("change", () => this.selectTemplate(this.templateSelect.value));
     controls.createSpan({ text: this.t("density") });
     const density = controls.createDiv({ cls: "resume-layout-density", attr: { role: "group", "aria-label": this.t("density") } });
     this.densityButtons = new Map();
@@ -135,11 +120,41 @@ class LayoutPanel {
       button.addEventListener("click", () => this.setDensity(value));
       this.densityButtons.set(value, button);
     }
+    controls.createSpan({ text: this.t("paperSize") });
+    const paper = controls.createDiv({ cls: "resume-layout-density", attr: { role: "group", "aria-label": this.t("paperSize") } });
+    this.paperButtons = new Map();
+    for (const value of Object.keys(PAPER_SIZES)) {
+      const button = paper.createEl("button", { text: value === "Letter" ? "US Letter" : value });
+      button.addEventListener("click", () => { this.current.paper = value; this.commit(); });
+      this.paperButtons.set(value, button);
+    }
+    this.sidebarHint = controls.createDiv({ cls: "resume-layout-hint", text: this.t("sidebarEmptyHint") });
     this.templateHint = controls.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
   }
 
+  selectTemplate(template) {
+    if (!this.view.selected || this.current.template === template) return;
+    const preview = this.view.preview;
+    const flow = preview.renderedFile === this.view.selected.file && preview.sectionLayout;
+    const previousMode = flow?.mode;
+    this.current.template = template;
+    preview.updateLayout(this.current);
+    if (previousMode !== "sidebar" && flow?.mode === "sidebar") {
+      const title = defaultSidebarSection(flow.sections, this.current.sections);
+      if (title) {
+        this.current.sections = changeSectionRule(this.current.sections, title, "region", "sidebar");
+        new Notice(this.t("sidebarAutoHint", { title }));
+      }
+    }
+    this.commit();
+    this.view.sections.render();
+  }
+
   setDensity(value) {
-    if (!this.view.selected || this.current.density === value) return;
+    if (!this.view.selected) return;
+    const overrides = this.current.appearance;
+    if (this.current.density === value && overrides.sectionGap == null && overrides.listGap == null) return;
+    this.current.appearance = withoutGapOverrides(overrides);
     const { classes, file } = this.view.selected;
     if (this.current.lineHeight === layoutFor(classes, { density: this.current.density }).lineHeight) {
       this.current.lineHeight = layoutFor(classes, { density: value }).lineHeight;
@@ -149,13 +164,17 @@ class LayoutPanel {
     this.commit();
   }
 
-  updateTemplateControls() {
-    if (!this.view.selected) return;
+  refreshTemplateOptions() {
     this.templateSelect.replaceChildren();
-    for (const theme of this.view.plugin.themes.templates.values()) {
+    for (const theme of this.view.plugin.themes.visibleTemplates(this.current.template)) {
       this.templateSelect.createEl("option", { value: theme.id, text: this.view.plugin.themes.themeName(theme) });
     }
     this.templateSelect.value = this.current.template;
+  }
+
+  updateTemplateControls() {
+    if (!this.view.selected) return;
+    this.refreshTemplateOptions();
     const declared = this.view.selected.template;
     this.templateHint.setText(declared && !this.view.plugin.themes.templateId(declared) && declared !== "紧凑"
       ? this.t("missingTheme", { name: declared }) : "");
@@ -308,16 +327,13 @@ class LayoutPanel {
   updateLayoutActions() {
     if (!this.layoutActions || !this.view.selected) return;
     const { protected: readOnly, recognized, file } = this.view.selected;
-    const needsManualSave = recognized && !this.view.plugin.settings.autoSaveLayout && !sameLayout(this.current, this.savedLayout);
-    this.applyTemplateButton.hidden = readOnly || (recognized && !needsManualSave);
-    this.applyTemplateButton.setText(recognized ? this.t("saveLayout") : this.t("applyLayout"));
+    this.applyTemplateButton.hidden = readOnly || recognized;
     this.applyTemplateButton.disabled = this.applyingLayout;
     this.undoLayoutButton.hidden = !this.layoutUndo.get(file)?.length;
     this.undoLayoutButton.disabled = !!this.undoingBody;
     const hint = readOnly ? this.t("localPreviewHelp")
       : this.applyingLayout || this.queuedLayout ? this.t("layoutSaving")
       : !recognized ? this.t("previewOnly")
-      : needsManualSave ? this.t("layoutUnsaved")
       : this.layoutFeedback || "";
     this.layoutHint.setText(hint);
   }
@@ -325,8 +341,9 @@ class LayoutPanel {
   update() {
     if (!this.view.selected || !this.current) return;
     const layout = this.current;
+    if ((layout.template === "简洁蓝") !== !!this.templateSelect.querySelector('option[value="简洁蓝"]')) this.refreshTemplateOptions();
     this.templateSelect.value = layout.template;
-    this.paperSelect.value = layout.paper;
+    for (const [value, button] of this.paperButtons) button.setAttribute("aria-pressed", String(value === layout.paper));
     for (const [density, button] of this.densityButtons) button.setAttribute("aria-pressed", String(density === layout.density));
     for (const { field, input, value } of this.controls.values()) {
       const number = layout[field.key];
@@ -341,14 +358,25 @@ class LayoutPanel {
       button.setAttribute("aria-pressed", String(this.marginLocks[side]));
     }
     this.view.preview.updateLayout(layout);
-    this.appearance.update(layout.appearance);
+    this.updateContextControls();
     const { file, classes } = this.view.selected;
     const defaults = layoutFor(classes, { density: layout.density });
     const canUndo = this.resetUndo.has(file);
     this.resetButton.setText(canUndo ? this.t("undoReset") : this.t("resetFineTuning"));
-    this.resetButton.hidden = !canUndo && FIELDS.every(({ key }) => layout[key] === defaults[key]);
+    this.resetButton.hidden = !canUndo && !Object.keys(layout.appearance).length && FIELDS.every(({ key }) => layout[key] === defaults[key]);
     this.updateLayoutActions();
     this.view.preview.measure();
+  }
+
+  updateContextControls() {
+    const preview = this.view.preview;
+    const flow = preview.renderedFile === this.view.selected?.file ? preview.sectionLayout : null;
+    this.appearance.update(this.current.appearance);
+    if (this.view.editor.edit) this.view.editor.toolbar.updatePhoto();
+    this.sidebarHint.hidden = flow?.mode !== "sidebar" || !!preview.rendered?.querySelector(".has-sidebar");
+    const hidden = (flow?.sections ?? []).filter(({ title }) =>
+      !flow.duplicates.has(title) && ruleFor(this.current.sections, title).hidden === true).length;
+    this.view.updateHiddenSections(hidden);
   }
 
   resetLayout() {
@@ -359,9 +387,9 @@ class LayoutPanel {
       this.resetUndo.delete(file);
       this.current = { ...this.current, ...prior };
     } else {
-      this.resetUndo.set(file, dimensions(this.current));
+      this.resetUndo.set(file, { ...dimensions(this.current), appearance: this.current.appearance });
       const defaults = layoutFor(classes, { density: this.current.density });
-      this.current = { ...this.current, ...dimensions(defaults) };
+      this.current = { ...this.current, ...dimensions(defaults), appearance: {} };
     }
     this.alignLocks();
     this.commit();
@@ -395,6 +423,7 @@ class LayoutPanel {
     };
     const decrement = (value, step, floor) => value <= floor
       ? value : Math.max(floor, Number((value - step).toFixed(2)));
+    this.current.appearance = withoutGapOverrides(this.current.appearance);
     this.current.density = "compact";
     this.current.lineHeight = DENSITIES.compact.lineHeight[language];
     let page = measure();
@@ -444,7 +473,7 @@ class LayoutPanel {
       if (readOnly) this.view.plugin.state.saveLocalLayout(file.path, this.current);
       else {
         this.rememberDraft();
-        if (recognized && this.view.plugin.settings.autoSaveLayout) this.queueLayoutSave(file);
+        if (recognized) this.queueLayoutSave(file);
       }
     }
     this.update();
@@ -514,7 +543,7 @@ class LayoutPanel {
       job.timer = undefined;
       try {
         if (this.view.selected?.file === job.file && this.view.selected.recognized && !this.view.selected.protected
-          && this.view.plugin.settings.autoSaveLayout && !sameLayout(this.current, this.savedLayout)) {
+          && !sameLayout(this.current, this.savedLayout)) {
           await this.saveNoteLayout(false);
         }
       } finally {

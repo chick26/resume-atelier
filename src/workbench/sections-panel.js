@@ -124,7 +124,7 @@ class SectionsPanel {
       const flow = this.view.preview.sectionLayout;
       if (flow?.mode === "sidebar") {
         const sidebar = rule.region === "sidebar";
-        this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? undefined : "sidebar");
+        this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? "main" : "sidebar");
       }
       if (flow?.sections[index]?.lists.length || rule.display === "tags") {
         const tags = rule.display === "tags";
@@ -147,7 +147,7 @@ class SectionsPanel {
 
   ruleButton(row, title, message, icon, key, value) {
     const label = this.t(message, { title });
-    const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === undefined) } });
+    const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === undefined || (key === "region" && value === "main")) } });
     setIcon(button, icon);
     button.addEventListener("click", () => {
       const layout = this.view.layout;

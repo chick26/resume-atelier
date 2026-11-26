@@ -28,6 +28,10 @@ class ThemeLibrary {
     };
   }
 
+  visibleTemplates(current) {
+    return [...this.templates.values()].filter(theme => theme.id !== "简洁蓝" || theme.id === current);
+  }
+
   themeName(theme) {
     return theme.builtIn ? this.t(BUILT_IN_THEME_MESSAGES[theme.id]) : theme.label;
   }
@@ -109,17 +113,19 @@ class ThemeLibrary {
     this.onChange();
   }
 
-  async restoreTemplate() {
-    const deleted = this.deletedTemplate;
-    if (!deleted) throw new Error(this.t("noThemeToRestore"));
-    const { theme, path, deletedPath } = deleted;
+  async restoreTemplate(deletedPath = this.deletedTemplate?.deletedPath) {
+    const files = await this.deletedThemeFiles();
+    const id = deletedPath?.split("/").at(-1)?.match(/^\d+-(.+)\.css$/)?.[1];
+    if (!files.includes(deletedPath) || !id || !TEMPLATE_NAME.test(id)) throw new Error(this.t("noThemeToRestore"));
     const adapter = this.app.vault.adapter;
+    const theme = this.themeRecord(id, await adapter.read(deletedPath));
+    const path = `${this.templateFolder}/${id}.css`;
     if (this.templateId(theme.id) || this.templateId(theme.label) || await adapter.exists(path)) {
       throw new Error(this.t("duplicateTheme"));
     }
     await adapter.rename(deletedPath, path);
     this.templates.set(theme.id, theme);
-    this.deletedTemplate = null;
+    if (this.deletedTemplate?.deletedPath === deletedPath) this.deletedTemplate = null;
     this.onChange();
     return theme.id;
   }

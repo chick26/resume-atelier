@@ -1,6 +1,7 @@
 const { Notice, setIcon } = require("obsidian");
 const { iconButton } = require("./dom");
-const { PhotoPicker } = require("./modals");
+const { mountPhotoControls } = require("./photo-controls");
+const { headerPhoto } = require("../resume/avatar");
 const {
   SOURCE_ENTRY_SEPARATOR, replaceSourceSelection, sourceEditorContext, sourceEntryTarget, sourceEntryMarkup,
   toggleSourceBold, toggleSourceList, toggleSourceHeading,
@@ -86,10 +87,34 @@ function mountSourceTools(editor, pane, tools, info, field) {
   setIcon(entry.createSpan({ cls: "resume-layout-source-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
   createSourceEntryPopover(pane, entry, field, popovers, { t, view, updateTools });
 
-  const photo = iconButton(tools, "image", t("choosePhoto"), () => {
-    if (!editor.edit || field.readOnly) return;
+  const photo = iconButton(tools, "image", t("photo"), () => openPhoto());
+  photo.setAttribute("aria-haspopup", "dialog");
+  photo.setAttribute("aria-expanded", "false");
+  const photoPanel = pane.createDiv({ cls: "resume-layout-source-popover resume-layout-photo-popover", attr: { role: "dialog", "aria-label": t("photo") } });
+  photoPanel.hidden = true;
+  const photoControls = mountPhotoControls(photoPanel, view);
+  function openPhoto() {
+    if (!editor.edit || field.readOnly || editor.edit.conflicted) return;
+    if (!photoPanel.hidden) {
+      popovers.close();
+      field.focus();
+      return;
+    }
+    if (!headerPhoto(field.value).photo && !(view.preview.renderedBody === field.value && view.preview.sectionLayout?.portrait)) {
+      popovers.close();
+      editor.changePhoto(true);
+      return;
+    }
+    photoControls.update();
+    popovers.show(photoPanel, photo);
+    photoControls.focus();
+  }
+  photoPanel.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
     popovers.close();
-    new PhotoPicker(editor, field).open();
+    field.focus({ preventScroll: true });
   });
   const help = iconButton(info, "circle-help", t("editorShortcuts"), () => {
     if (!helpPanel.hidden) return popovers.close();
@@ -125,7 +150,7 @@ function mountSourceTools(editor, pane, tools, info, field) {
   };
   function updateTools() {
     if (!editor.edit) return;
-    photo.disabled = field.readOnly;
+    photo.disabled = field.readOnly || !!editor.edit.conflicted;
     const context = sourceEditorContext(field);
     const isBold = !!context.bold?.span;
     const isList = !!context.list;
@@ -143,7 +168,7 @@ function mountSourceTools(editor, pane, tools, info, field) {
     entry.toggleClass("is-current-entry", editing);
     entry.title = editing ? t("editEntryHelp") : context.subheading ? t("addDateHelp") : t("insertEntry");
   }
-  return { update: updateTools, close: popovers.close };
+  return { update: updateTools, close: popovers.close, openPhoto, updatePhoto: photoControls.update };
 }
 
 function createSourceEntryPopover(pane, button, field, popovers, { t, view, updateTools }) {

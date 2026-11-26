@@ -13,6 +13,7 @@ class ResumeLayoutSettingTab extends PluginSettingTab {
     const el = this.containerEl;
     const plugin = this.plugin;
     const settings = plugin.settings;
+    const advancedOpen = el.querySelector(".resume-settings-advanced")?.open ?? false;
     el.empty();
     el.addClass("resume-layout-settings");
     new Setting(el).setName(this.t("workbench")).setDesc(this.t("workbenchHelp"))
@@ -23,7 +24,7 @@ class ResumeLayoutSettingTab extends PluginSettingTab {
     new Setting(el).setName(this.t("layoutDefaults")).setHeading();
     new Setting(el).setName(this.t("defaultTheme")).setDesc(this.t("defaultThemeHelp"))
       .addDropdown(dropdown => {
-        for (const theme of plugin.themes.templates.values()) dropdown.addOption(theme.id, plugin.themes.themeName(theme));
+        for (const theme of plugin.themes.visibleTemplates(settings.defaultTemplate)) dropdown.addOption(theme.id, plugin.themes.themeName(theme));
         dropdown.setValue(plugin.themes.templateId(settings.defaultTemplate) ?? BASE_TEMPLATE)
           .onChange(value => plugin.updateSetting("defaultTemplate", value));
       });
@@ -37,21 +38,22 @@ class ResumeLayoutSettingTab extends PluginSettingTab {
     new Setting(el).setName(this.t("customThemes"))
       .addButton(button => button.setButtonText(this.t("newTheme")).onClick(() => void plugin.openTheme("new")))
       .addButton(button => button.setButtonText(this.t("importCss")).onClick(() => this.importTheme()));
-    if (plugin.themes.deletedTemplate) {
-      new Setting(el).setName(this.t("themeDeleted", { name: plugin.themes.deletedTemplate.theme.label }))
-        .addButton(button => button.setButtonText(this.t("undoDelete")).onClick(() => this.run(() => plugin.themes.restoreTemplate())));
-    }
-    for (const theme of plugin.themes.templates.values()) this.addThemeRow(el, theme);
+    for (const theme of plugin.themes.templates.values()) if (!theme.builtIn) this.addThemeRow(el, theme);
+    const builtIns = el.createEl("details");
+    builtIns.createEl("summary", { text: this.t("copyBuiltIn") });
+    for (const theme of plugin.themes.visibleTemplates()) if (theme.builtIn) this.addThemeRow(builtIns, theme);
 
-    new Setting(el).setName(this.t("copiesAndProtection")).setHeading();
-    new Setting(el).setName(this.t("copyLocation")).setDesc(this.t("copyLocationHelp"))
+    const advanced = el.createEl("details", { cls: "resume-settings-advanced" });
+    advanced.open = advancedOpen;
+    advanced.createEl("summary", { text: this.t("advanced") });
+    new Setting(advanced).setName(this.t("copyLocation")).setDesc(this.t("copyLocationHelp"))
       .addDropdown(dropdown => dropdown.addOption("alongside", this.t("sameFolder")).addOption("folder", this.t("customFolder"))
         .setValue(settings.draftLocationMode).onChange(async value => {
           await plugin.updateSetting("draftLocationMode", value);
           this.display();
         }));
     if (settings.draftLocationMode === "folder") {
-      const row = new Setting(el).setName(this.t("draftFolderPath"));
+      const row = new Setting(advanced).setName(this.t("draftFolderPath"));
       row.addText(text => text.setValue(settings.draftFolder).onChange(value => {
         try {
           const folder = vaultFolder(value, this.t);
@@ -62,12 +64,6 @@ class ResumeLayoutSettingTab extends PluginSettingTab {
         }
       }));
     }
-    new Setting(el).setName(this.t("autoSaveLayout"))
-      .setDesc(this.t("autoSaveLayoutHelp"))
-      .addToggle(toggle => toggle.setValue(settings.autoSaveLayout).onChange(value => plugin.updateSetting("autoSaveLayout", value)));
-
-    const advanced = el.createEl("details");
-    advanced.createEl("summary", { text: this.t("advanced") });
     const row = new Setting(advanced).setName(this.t("extraProtectedFolders"));
     const description = this.t("extraProtectedFoldersHelp");
     row.setDesc(description).addTextArea(text => text.setValue(settings.protectedFolders.join("\n")).onChange(value => {
@@ -144,6 +140,13 @@ class ResumeLayoutSettingTab extends PluginSettingTab {
     try {
       const files = await this.plugin.themes.deletedThemeFiles();
       if (!files.length || !advanced.isConnected) return;
+      for (const path of files) {
+        const file = path.split("/").at(-1);
+        if (!/^\d+-.+\.css$/.test(file)) continue;
+        const label = file.replace(/^\d+-/, "").slice(0, -4);
+        new Setting(advanced).setName(this.t("themeDeleted", { name: label }))
+          .addButton(button => button.setButtonText(this.t("undoDelete")).onClick(() => this.run(() => this.plugin.themes.restoreTemplate(path))));
+      }
       const row = new Setting(advanced).setName(this.t("clearDeletedThemeCache"))
         .setDesc(this.t(files.length === 1 ? "fileCountOne" : "fileCountMany", { count: files.length }));
       let confirmed = false;

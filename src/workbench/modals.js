@@ -1,15 +1,16 @@
 const { FuzzySuggestModal, Modal } = require("obsidian");
 const { copySourceText } = require("./dom");
-const { avatarEdit } = require("../resume/avatar");
-const { replaceSourceSelection } = require("../editor/formatting");
-
 class PhotoPicker extends FuzzySuggestModal {
-  constructor(editor, field) {
-    super(editor.app);
-    this.editor = editor;
-    this.field = field;
-    this.edit = editor.edit;
-    this.setPlaceholder(editor.t("searchImages"));
+  constructor(app, t, choose, returnFocus) {
+    super(app);
+    this.choose = choose;
+    this.returnFocus = returnFocus;
+    this.setPlaceholder(t("searchImages"));
+  }
+
+  onClose() {
+    super.onClose();
+    this.contentEl.ownerDocument.defaultView.requestAnimationFrame(() => this.returnFocus());
   }
 
   getItems() {
@@ -19,11 +20,7 @@ class PhotoPicker extends FuzzySuggestModal {
   getItemText(file) { return file.path; }
 
   onChooseItem(file) {
-    if (!this.edit || this.editor.edit !== this.edit || this.field.readOnly) return;
-    const { start, end, text } = avatarEdit(this.field.value, this.edit.file.path, file.path);
-    this.field.focus({ preventScroll: true });
-    replaceSourceSelection(this.field, start, end, text, start + text.length, start + text.length);
-    this.editor.view.layout.appearance.openForPhoto();
+    this.choose(file);
   }
 }
 

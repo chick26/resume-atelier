@@ -15,6 +15,23 @@ function changeSectionRule(rules, title, key, value) {
   return next;
 }
 
+function defaultSidebarSection(sections, rules) {
+  if (Object.values(rules).some(rule => rule?.region === "sidebar" || rule?.region === "main")) return;
+  const duplicates = new Set(sectionRuleIssues(sections, {}).duplicate);
+  const primary = /^(?:核心技能|专业技能|技能|技能特长|技术栈|skills|core skills|technical skills)$/i;
+  const secondary = /^(?:专业证书|证书|荣誉证书|语言能力|教育背景|教育经历|certifications|languages|education|awards)$/i;
+  const eligible = [];
+  let group = [];
+  for (const section of sections) {
+    if (!ruleFor(rules, section.title).hidden) group.push(section.title);
+    if (section.breaks?.length || section === sections.at(-1)) {
+      if (group.length >= 2) eligible.push(...group.filter(title => !duplicates.has(title)));
+      group = [];
+    }
+  }
+  return eligible.find(title => primary.test(title)) ?? eligible.find(title => secondary.test(title));
+}
+
 function blockHeading(block) {
   if (block.matches("h2[data-heading]")) return block;
   return block.matches("div") && block.firstElementChild?.matches("h2[data-heading]") ? block.firstElementChild : null;
@@ -157,4 +174,4 @@ class SectionLayout {
   }
 }
 
-module.exports = { SectionLayout, changeSectionRule, ruleFor };
+module.exports = { SectionLayout, changeSectionRule, ruleFor, defaultSidebarSection };
