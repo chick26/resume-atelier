@@ -23,7 +23,7 @@ var require_localization = __commonJS({
       layoutLinkedResume: ["\u6392\u7248\u5173\u8054\u7B80\u5386", "Lay out linked resume"],
       previewAsResume: ["\u4EE5\u7B80\u5386\u6837\u5F0F\u9884\u89C8", "Preview as a resume"],
       workbench: ["\u6392\u7248\u5DE5\u4F5C\u53F0", "Resume workbench"],
-      workbenchHelp: ["\u5728\u5206\u5C4F A4 \u7EB8\u9762\u4E2D\u6392\u7248\u7B80\u5386\u3001\u8C03\u6574\u680F\u76EE\u987A\u5E8F\u6216\u5BFC\u51FA PDF\u3002", "Preview your A4 resume, reorder sections, or export a PDF."],
+      workbenchHelp: ["\u9884\u89C8\u7B80\u5386\u3001\u8C03\u6574\u680F\u76EE\u987A\u5E8F\u6216\u5BFC\u51FA PDF\u3002", "Preview your resume, reorder sections, or export a PDF."],
       openWorkbench: ["\u6253\u5F00\u5DE5\u4F5C\u53F0", "Open workbench"],
       layoutDefaults: ["\u9ED8\u8BA4\u7248\u5F0F", "Layout defaults"],
       defaultTheme: ["\u9ED8\u8BA4\u89C6\u89C9\u4E3B\u9898", "Default theme"],
@@ -90,7 +90,8 @@ var require_localization = __commonJS({
       hidePanel: ["\u6536\u8D77\u6392\u7248\u9762\u677F", "Hide layout panel"],
       showPanel: ["\u5C55\u5F00\u6392\u7248\u9762\u677F", "Show layout panel"],
       exportPdf: ["\u5BFC\u51FA PDF", "Export PDF"],
-      previewLabel: ["A4 \u7B80\u5386\u9884\u89C8", "A4 resume preview"],
+      previewLabel: ["\u7B80\u5386\u7EB8\u9762\u9884\u89C8", "Resume page preview"],
+      paperSize: ["\u7EB8\u5F20", "Paper size"],
       contentStale: ["\u5BF9\u5E94\u804C\u4F4D\u63CF\u8FF0\u6216\u7ECF\u5386\u5DF2\u66F4\u65B0\uFF0C\u5EFA\u8BAE\u5148\u6838\u5BF9\u5185\u5BB9", "The job description or work history has changed. Review your resume."],
       firstPageBreak: ["\u7B2C 1 \u9875\u5206\u9875\u7EBF", "Page 1 break"],
       layoutTab: ["\u7248\u5F0F", "Layout"],
@@ -299,8 +300,10 @@ var require_localization = __commonJS({
 // src/layout/geometry.js
 var require_geometry = __commonJS({
   "src/layout/geometry.js"(exports2, module2) {
-    var A4_WIDTH = 210;
-    var A4_HEIGHT = 297;
+    var PAPER_SIZES = { A4: { width: 210, height: 297 }, Letter: { width: 215.9, height: 279.4 } };
+    function paperSize(layout) {
+      return PAPER_SIZES[layout.paper] ?? PAPER_SIZES.A4;
+    }
     var PX_PER_MM = 96 / 25.4;
     var BASE_TEMPLATE = "LapisCV";
     var DENSITIES = {
@@ -371,9 +374,12 @@ var require_geometry = __commonJS({
       element.dataset.resumeDensity = layout.density;
     }
     function applyMargins(element, layout) {
+      const paper = paperSize(layout);
+      element.style.setProperty("--resume-paper-width", `${paper.width}mm`);
+      element.style.setProperty("--resume-paper-height", `${paper.height}mm`);
       for (const { key } of MARGINS) element.style.setProperty(`--resume-margin-${key}`, `${layout[key]}mm`);
     }
-    module2.exports = { A4_WIDTH, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
+    module2.exports = { PAPER_SIZES, paperSize, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
   }
 });
 
@@ -1560,7 +1566,7 @@ var require_presentation = __commonJS({
         const root = element.closest(".print > .markdown-preview-view");
         const file = this.app.vault.getAbstractFileByPath(sourcePath);
         if (root) {
-          this.styleNativePrint(root, file);
+          if (!element.closest(".internal-embed")) this.styleNativePrint(root, file);
           if (root.dataset.careerosPrint) decorateResumeMarkup(element, root.classList.contains("lapis-cv-zh"));
         } else {
           const resume = this.catalog.resume(file);
@@ -1593,17 +1599,29 @@ var require_presentation = __commonJS({
           }
           if (typeof noteView.printToPdf !== "function") throw new Error(this.t("nativeExportUnavailable"));
           const previous = vault.getConfig("pdfExportSettings");
+          const doc = noteView.containerEl?.ownerDocument;
+          const existingModals = new Set(doc?.querySelectorAll(".modal"));
           try {
             vault.setConfig("pdfExportSettings", {
               ...previous,
               includeName: false,
-              pageSize: "A4",
+              pageSize: layout.paper,
               landscape: false,
               margin: "1",
               downscalePercent: 100
             });
-            this.printRequest = { file, studioLeaf, layout };
+            const request = this.printRequest = { file, studioLeaf, layout };
             noteView.printToPdf();
+            const dialog = Array.from(doc?.querySelectorAll(".modal") ?? []).find((modal) => !existingModals.has(modal));
+            dialog?.addEventListener("click", (event) => {
+              if (!event.target.closest("button.mod-cta")) return;
+              const beforeClick = vault.getConfig("pdfExportSettings");
+              doc.defaultView.setTimeout(() => {
+                if (this.printRequest === request && vault.getConfig("pdfExportSettings") !== beforeClick) {
+                  vault.setConfig("pdfExportSettings", beforeClick);
+                }
+              }, 0);
+            }, true);
           } catch (error) {
             this.printRequest = null;
             throw error;
@@ -1674,6 +1692,8 @@ var require_presentation = __commonJS({
         this.readingClasses.delete(root);
         delete root.dataset.resumeDensity;
         for (const { key } of MARGINS) root.style.removeProperty(`--resume-margin-${key}`);
+        root.style.removeProperty("--resume-paper-width");
+        root.style.removeProperty("--resume-paper-height");
         root.style.removeProperty("--text-size");
         root.style.removeProperty("--line-height");
         applyTemplate(root, null);
@@ -1688,6 +1708,7 @@ var require_presentation = __commonJS({
         if (fromStudio) this.printRequest = null;
         root.dataset.careerosPrint = "true";
         root.classList.add("resume-layout-surface", "resume-layout-styled", ...resume.classes);
+        applyMargins(root, layout);
         applyTypography(root, layout);
         applyTemplate(root, this.themes.templates.get(layout.template)?.css);
         decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
@@ -1696,7 +1717,7 @@ var require_presentation = __commonJS({
         new SectionLayout(content, blocks).apply(layout);
         const { top, right, bottom, left } = layout;
         const style = root.ownerDocument.createElement("style");
-        style.textContent = `@media print { @page { size: A4 portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
+        style.textContent = `@media print { @page { size: ${layout.paper} portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
         root.append(style);
       }
     };
@@ -1740,7 +1761,8 @@ var require_layout_panel = __commonJS({
   "src/workbench/layout-panel.js"(exports2, module2) {
     var { Notice: Notice2 } = require("obsidian");
     var {
-      A4_WIDTH,
+      PAPER_SIZES,
+      paperSize,
       DENSITIES,
       MARGINS,
       MARGIN_PAIRS,
@@ -1839,6 +1861,13 @@ var require_layout_panel = __commonJS({
         iconButton(themeRow, "settings", this.t("manageSettings"), () => this.view.plugin.showSettings());
         this.templateSelect.addEventListener("change", () => {
           this.current.template = this.templateSelect.value;
+          this.commit();
+        });
+        const paperLabel = controls.createEl("label", { text: this.t("paperSize") });
+        this.paperSelect = paperLabel.createEl("select", { cls: "dropdown" });
+        for (const value of Object.keys(PAPER_SIZES)) this.paperSelect.createEl("option", { value, text: value === "Letter" ? "US Letter" : value });
+        this.paperSelect.addEventListener("change", () => {
+          this.current.paper = this.paperSelect.value;
           this.commit();
         });
         controls.createSpan({ text: this.t("density") });
@@ -1955,7 +1984,7 @@ var require_layout_panel = __commonJS({
           const fraction = vertical ? (event.clientX - box.left) / box.width : (event.clientY - box.top) / box.height;
           handle.style.setProperty("--guide-position", `${100 * Math.max(0.08, Math.min(0.92, fraction))}%`);
           if (!drag || drag.file !== this.view.selected?.file) return;
-          const pixelsPerMm = this.view.preview.paper.getBoundingClientRect().width / A4_WIDTH;
+          const pixelsPerMm = this.view.preview.paper.getBoundingClientRect().width / paperSize(drag.layout).width;
           if (!pixelsPerMm) return;
           const value = drag.layout[key] + direction * (coordinate(event) - drag.coordinate) / pixelsPerMm;
           this.resetUndo.delete(drag.file);
@@ -2022,6 +2051,7 @@ var require_layout_panel = __commonJS({
         if (!this.view.selected || !this.current) return;
         const layout = this.current;
         this.templateSelect.value = layout.template;
+        this.paperSelect.value = layout.paper;
         for (const [density, button] of this.densityButtons) button.setAttribute("aria-pressed", String(density === layout.density));
         for (const { field, input, value } of this.controls.values()) {
           const number = layout[field.key];
@@ -2074,7 +2104,7 @@ var require_layout_panel = __commonJS({
           this.commit(false);
           return;
         }
-        if (!this.view.preview.pageMetrics().overflow || this.view.preview.rendered.querySelector("hr")) return;
+        if (!this.view.preview.pageMetrics().overflow || this.view.preview.visiblePageBreaks()) return;
         const before = { ...this.current };
         const language = classes.includes("lapis-cv-zh") ? "zh" : "en";
         const lineHeightFloor = language === "zh" ? 1.32 : 1.24;
@@ -2189,7 +2219,7 @@ var require_layout_panel = __commonJS({
 var require_preview_pane = __commonJS({
   "src/workbench/preview-pane.js"(exports2, module2) {
     var { Component, MarkdownRenderer } = require("obsidian");
-    var { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
+    var { paperSize, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
     var { sourceParts, sourceText } = require_markdown();
     var { splitSectionBody } = require_structure();
     var { SectionLayout } = require_section_layout();
@@ -2337,14 +2367,15 @@ ${body}` : body, next, file.path, renderer);
         const margins = this.stage.ownerDocument.defaultView.getComputedStyle(this.stage);
         const width = this.stage.clientWidth - parseFloat(margins.paddingLeft) - parseFloat(margins.paddingRight);
         const height = this.stage.clientHeight - parseFloat(margins.paddingTop) - parseFloat(margins.paddingBottom);
-        const fitWidth = Math.max(0.12, width / (A4_WIDTH * PX_PER_MM));
-        const fitHeight = Math.max(0.12, height / (A4_HEIGHT * PX_PER_MM));
+        const paper = paperSize(this.view.layout.current);
+        const fitWidth = Math.max(0.12, width / (paper.width * PX_PER_MM));
+        const fitHeight = Math.max(0.12, height / (paper.height * PX_PER_MM));
         const zoom = this.zoomSelect.value === "actual" ? 1 : Math.min(1, fitWidth, this.zoomSelect.value === "page" ? fitHeight : Infinity);
         const scale = zoom.toFixed(4);
         if (this.paper.style.zoom !== scale) this.paper.style.zoom = scale;
         if (!this.rendered || this.renderedFile !== this.view.selected.file) return;
         const { used, printable, overflow } = this.pageMetrics();
-        const breaks = this.rendered.querySelectorAll("hr").length;
+        const breaks = this.visiblePageBreaks();
         const pages = Math.ceil(used / printable);
         const last = used - (pages - 1) * printable;
         const usage = Math.min(100, Math.round(100 * used / printable));
@@ -2361,8 +2392,12 @@ ${body}` : body, next, file.path, renderer);
       pageMetrics() {
         const scale = Number(this.paper.style.zoom) || 1;
         const used = this.rendered.getBoundingClientRect().height / scale / PX_PER_MM;
-        const printable = A4_HEIGHT - this.view.layout.current.top - this.view.layout.current.bottom;
+        const layout = this.view.layout.current;
+        const printable = paperSize(layout).height - layout.top - layout.bottom;
         return { used, printable, overflow: used - printable > 0.2 };
+      }
+      visiblePageBreaks() {
+        return [...this.rendered.querySelectorAll("hr")].filter((rule) => rule.getClientRects().length > 0).length;
       }
     };
     module2.exports = { PreviewPane };

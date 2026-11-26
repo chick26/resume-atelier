@@ -19,7 +19,7 @@ class ResumePresentation {
     const root = element.closest(".print > .markdown-preview-view");
     const file = this.app.vault.getAbstractFileByPath(sourcePath);
     if (root) {
-      this.styleNativePrint(root, file);
+      if (!element.closest(".internal-embed")) this.styleNativePrint(root, file);
       if (root.dataset.careerosPrint) decorateResumeMarkup(element, root.classList.contains("lapis-cv-zh"));
     } else {
       const resume = this.catalog.resume(file);
@@ -55,12 +55,26 @@ class ResumePresentation {
       }
       if (typeof noteView.printToPdf !== "function") throw new Error(this.t("nativeExportUnavailable"));
       const previous = vault.getConfig("pdfExportSettings");
+      const doc = noteView.containerEl?.ownerDocument;
+      const existingModals = new Set(doc?.querySelectorAll(".modal"));
       try {
         vault.setConfig("pdfExportSettings", {
-          ...previous, includeName: false, pageSize: "A4", landscape: false, margin: "1", downscalePercent: 100,
+          ...previous, includeName: false, pageSize: layout.paper, landscape: false, margin: "1", downscalePercent: 100,
         });
-        this.printRequest = { file, studioLeaf, layout };
+        const request = this.printRequest = { file, studioLeaf, layout };
         noteView.printToPdf();
+        const dialog = Array.from(doc?.querySelectorAll(".modal") ?? []).find(modal => !existingModals.has(modal));
+        // Obsidian saves the dialog values again when Export opens the file picker.
+        // Keep those values for this PDF while preserving the user's vault defaults.
+        dialog?.addEventListener("click", event => {
+          if (!event.target.closest("button.mod-cta")) return;
+          const beforeClick = vault.getConfig("pdfExportSettings");
+          doc.defaultView.setTimeout(() => {
+            if (this.printRequest === request && vault.getConfig("pdfExportSettings") !== beforeClick) {
+              vault.setConfig("pdfExportSettings", beforeClick);
+            }
+          }, 0);
+        }, true);
       } catch (error) {
         this.printRequest = null;
         throw error;
@@ -133,6 +147,8 @@ class ResumePresentation {
     this.readingClasses.delete(root);
     delete root.dataset.resumeDensity;
     for (const { key } of MARGINS) root.style.removeProperty(`--resume-margin-${key}`);
+    root.style.removeProperty("--resume-paper-width");
+    root.style.removeProperty("--resume-paper-height");
     root.style.removeProperty("--text-size");
     root.style.removeProperty("--line-height");
     applyTemplate(root, null);
@@ -150,6 +166,7 @@ class ResumePresentation {
     // The print root is removed by Obsidian when this export finishes.
     root.dataset.careerosPrint = "true";
     root.classList.add("resume-layout-surface", "resume-layout-styled", ...resume.classes);
+    applyMargins(root, layout);
     applyTypography(root, layout);
     applyTemplate(root, this.themes.templates.get(layout.template)?.css);
     decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
@@ -158,7 +175,7 @@ class ResumePresentation {
     new SectionLayout(content, blocks).apply(layout);
     const { top, right, bottom, left } = layout;
     const style = root.ownerDocument.createElement("style");
-    style.textContent = `@media print { @page { size: A4 portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
+    style.textContent = `@media print { @page { size: ${layout.paper} portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
     root.append(style);
   }
 }

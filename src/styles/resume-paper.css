@@ -117,7 +117,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   --list-indent-editing: 0;
   --list-indent: 3.2mm;
   --list-marker-color: color-mix(in srgb, var(--color-accent), var(--text-muted) 35%);
-  --file-line-width: 210mm;
+  --file-line-width: var(--resume-paper-width, 210mm);
 }
 
 .lapis-cv:where(.resume-layout-styled)[data-resume-density="comfortable"] {
@@ -140,7 +140,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   box-sizing: border-box;
   margin: 12px auto 24px;
   max-width: var(--file-line-width) !important;
-  min-height: 297mm;
+  min-height: var(--resume-paper-height, 297mm);
   padding: var(--file-margins);
   background: #ffffff;
   color: var(--text-normal);
@@ -155,7 +155,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   }
 
   .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) > .markdown-preview-sizer {
-    min-height: 297mm !important;
+    min-height: var(--resume-paper-height, 297mm) !important;
     padding: var(--file-margins) !important;
   }
 

@@ -391,8 +391,8 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
 .careeros-resume-layout .resume-layout-paper {
   box-sizing: border-box;
   position: relative;
-  width: 210mm;
-  min-height: 297mm;
+  width: var(--resume-paper-width, 210mm);
+  min-height: var(--resume-paper-height, 297mm);
   margin-inline: auto;
   padding: var(--resume-margin-top) var(--resume-margin-right) var(--resume-margin-bottom) var(--resume-margin-left);
   background: #fff;
@@ -401,7 +401,7 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
 }
 
 .careeros-resume-layout .resume-layout-paper.is-overflowing {
-  background-image: linear-gradient(to bottom, #fff 0 297mm, #e1e5eb 297mm, #fff calc(297mm + 2mm));
+  background-image: linear-gradient(to bottom, #fff 0 var(--resume-paper-height, 297mm), #e1e5eb var(--resume-paper-height, 297mm), #fff calc(var(--resume-paper-height, 297mm) + 2mm));
 }
 
 .careeros-resume-layout .resume-layout-rendered {
@@ -431,7 +431,7 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
   top: var(--resume-margin-top);
   right: var(--resume-margin-right);
   left: var(--resume-margin-left);
-  height: calc(297mm - var(--resume-margin-top) - var(--resume-margin-bottom));
+  height: calc(var(--resume-paper-height, 297mm) - var(--resume-margin-top) - var(--resume-margin-bottom));
   pointer-events: none;
   z-index: 1;
 }
@@ -495,7 +495,7 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
 
 .careeros-resume-layout .resume-layout-cutoff {
   position: absolute;
-  top: calc(297mm - var(--resume-margin-bottom));
+  top: calc(var(--resume-paper-height, 297mm) - var(--resume-margin-bottom));
   inset-inline: 3mm;
   border-top: 1px dashed #b14b43;
   pointer-events: none;
@@ -891,7 +891,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   --list-indent-editing: 0;
   --list-indent: 3.2mm;
   --list-marker-color: color-mix(in srgb, var(--color-accent), var(--text-muted) 35%);
-  --file-line-width: 210mm;
+  --file-line-width: var(--resume-paper-width, 210mm);
 }
 
 .lapis-cv:where(.resume-layout-styled)[data-resume-density="comfortable"] {
@@ -914,7 +914,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   box-sizing: border-box;
   margin: 12px auto 24px;
   max-width: var(--file-line-width) !important;
-  min-height: 297mm;
+  min-height: var(--resume-paper-height, 297mm);
   padding: var(--file-margins);
   background: #ffffff;
   color: var(--text-normal);
@@ -929,7 +929,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   }
 
   .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) > .markdown-preview-sizer {
-    min-height: 297mm !important;
+    min-height: var(--resume-paper-height, 297mm) !important;
     padding: var(--file-margins) !important;
   }
 

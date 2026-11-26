@@ -1,6 +1,6 @@
 const { Notice } = require("obsidian");
 const {
-  A4_WIDTH, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, noteLayoutKey, sameLayout,
+  PAPER_SIZES, paperSize, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, noteLayoutKey, sameLayout,
 } = require("../layout/geometry");
 const { iconButton } = require("./dom");
 
@@ -99,6 +99,13 @@ class LayoutPanel {
     iconButton(themeRow, "settings", this.t("manageSettings"), () => this.view.plugin.showSettings());
     this.templateSelect.addEventListener("change", () => {
       this.current.template = this.templateSelect.value;
+      this.commit();
+    });
+    const paperLabel = controls.createEl("label", { text: this.t("paperSize") });
+    this.paperSelect = paperLabel.createEl("select", { cls: "dropdown" });
+    for (const value of Object.keys(PAPER_SIZES)) this.paperSelect.createEl("option", { value, text: value === "Letter" ? "US Letter" : value });
+    this.paperSelect.addEventListener("change", () => {
+      this.current.paper = this.paperSelect.value;
       this.commit();
     });
     controls.createSpan({ text: this.t("density") });
@@ -224,7 +231,7 @@ class LayoutPanel {
       const fraction = vertical ? (event.clientX - box.left) / box.width : (event.clientY - box.top) / box.height;
       handle.style.setProperty("--guide-position", `${100 * Math.max(0.08, Math.min(0.92, fraction))}%`);
       if (!drag || drag.file !== this.view.selected?.file) return;
-      const pixelsPerMm = this.view.preview.paper.getBoundingClientRect().width / A4_WIDTH;
+      const pixelsPerMm = this.view.preview.paper.getBoundingClientRect().width / paperSize(drag.layout).width;
       if (!pixelsPerMm) return;
       const value = drag.layout[key] + direction * (coordinate(event) - drag.coordinate) / pixelsPerMm;
       this.resetUndo.delete(drag.file);
@@ -299,6 +306,7 @@ class LayoutPanel {
     if (!this.view.selected || !this.current) return;
     const layout = this.current;
     this.templateSelect.value = layout.template;
+    this.paperSelect.value = layout.paper;
     for (const [density, button] of this.densityButtons) button.setAttribute("aria-pressed", String(density === layout.density));
     for (const { field, input, value } of this.controls.values()) {
       const number = layout[field.key];
@@ -353,7 +361,7 @@ class LayoutPanel {
       this.commit(false);
       return;
     }
-    if (!this.view.preview.pageMetrics().overflow || this.view.preview.rendered.querySelector("hr")) return;
+    if (!this.view.preview.pageMetrics().overflow || this.view.preview.visiblePageBreaks()) return;
 
     const before = { ...this.current };
     const language = classes.includes("lapis-cv-zh") ? "zh" : "en";

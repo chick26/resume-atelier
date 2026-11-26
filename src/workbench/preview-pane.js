@@ -1,5 +1,5 @@
 const { Component, MarkdownRenderer } = require("obsidian");
-const { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require("../layout/geometry");
+const { paperSize, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require("../layout/geometry");
 const { sourceParts, sourceText } = require("../resume/markdown");
 const { splitSectionBody } = require("../resume/structure");
 const { SectionLayout } = require("../resume/section-layout");
@@ -160,8 +160,9 @@ class PreviewPane {
     const margins = this.stage.ownerDocument.defaultView.getComputedStyle(this.stage);
     const width = this.stage.clientWidth - parseFloat(margins.paddingLeft) - parseFloat(margins.paddingRight);
     const height = this.stage.clientHeight - parseFloat(margins.paddingTop) - parseFloat(margins.paddingBottom);
-    const fitWidth = Math.max(0.12, width / (A4_WIDTH * PX_PER_MM));
-    const fitHeight = Math.max(0.12, height / (A4_HEIGHT * PX_PER_MM));
+    const paper = paperSize(this.view.layout.current);
+    const fitWidth = Math.max(0.12, width / (paper.width * PX_PER_MM));
+    const fitHeight = Math.max(0.12, height / (paper.height * PX_PER_MM));
     const zoom = this.zoomSelect.value === "actual" ? 1
       : Math.min(1, fitWidth, this.zoomSelect.value === "page" ? fitHeight : Infinity);
     const scale = zoom.toFixed(4);
@@ -169,7 +170,7 @@ class PreviewPane {
     if (!this.rendered || this.renderedFile !== this.view.selected.file) return;
 
     const { used, printable, overflow } = this.pageMetrics();
-    const breaks = this.rendered.querySelectorAll("hr").length;
+    const breaks = this.visiblePageBreaks();
     const pages = Math.ceil(used / printable);
     const last = used - (pages - 1) * printable;
     const usage = Math.min(100, Math.round(100 * used / printable));
@@ -190,8 +191,13 @@ class PreviewPane {
   pageMetrics() {
     const scale = Number(this.paper.style.zoom) || 1;
     const used = this.rendered.getBoundingClientRect().height / scale / PX_PER_MM;
-    const printable = A4_HEIGHT - this.view.layout.current.top - this.view.layout.current.bottom;
+    const layout = this.view.layout.current;
+    const printable = paperSize(layout).height - layout.top - layout.bottom;
     return { used, printable, overflow: used - printable > 0.2 };
+  }
+
+  visiblePageBreaks() {
+    return [...this.rendered.querySelectorAll("hr")].filter(rule => rule.getClientRects().length > 0).length;
   }
 }
 

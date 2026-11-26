@@ -249,6 +249,29 @@ test("native PDF export uses A4 and restores the vault preferences on error", as
   assert.equal(plugin.presentation.printRequest, null);
 });
 
+test("a native Letter export keeps dialog changes specific to this PDF when the file picker opens", async () => {
+  const file = note("Letter.md", { type: "resume-draft" });
+  const { plugin, vault, workspace } = await loadPlugin({ notes: new Map([[file.path, file]]) });
+  const original = { includeName: true, pageSize: "A5", landscape: true, downscalePercent: 89 };
+  let config = original;
+  vault.getConfig = () => config;
+  vault.setConfig = (_, next) => { config = next; };
+  let capture;
+  const dialog = { addEventListener(type, fn, before) { if (type === "click" && before) capture = fn; } };
+  const modals = [];
+  const view = new MarkdownView();
+  view.file = file;
+  view.containerEl = { ownerDocument: { querySelectorAll: () => modals, defaultView: { setTimeout } } };
+  view.printToPdf = () => { assert.equal(config.pageSize, "Letter"); modals.push(dialog); };
+  workspace.getLeavesOfType = () => [{ view, getViewState: () => ({ state: { file: file.path } }) }];
+  await plugin.presentation.openNativeExport(file, { view: { file } }, layoutFor([], { paper: "Letter" }));
+  assert.equal(config, original);
+  capture({ target: { closest: () => dialog } });
+  vault.setConfig("pdfExportSettings", { pageSize: "Letter", includeName: false });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(config, original);
+});
+
 test("margin handles measure the displayed paper at both zooms and preserve locks, cancellation and undo", async () => {
   const { plugin, viewFactory } = await loadPlugin();
   const file = note("Draft.md", { type: "resume-draft" });

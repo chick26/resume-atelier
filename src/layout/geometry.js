@@ -1,5 +1,7 @@
-const A4_WIDTH = 210;
-const A4_HEIGHT = 297;
+const PAPER_SIZES = { A4: { width: 210, height: 297 }, Letter: { width: 215.9, height: 279.4 } };
+function paperSize(layout) {
+  return PAPER_SIZES[layout.paper] ?? PAPER_SIZES.A4;
+}
 const PX_PER_MM = 96 / 25.4;
 const BASE_TEMPLATE = "LapisCV";
 const DENSITIES = {
@@ -81,8 +83,11 @@ function applyTypography(element, layout) {
 }
 
 function applyMargins(element, layout) {
+  const paper = paperSize(layout);
+  element.style.setProperty("--resume-paper-width", `${paper.width}mm`);
+  element.style.setProperty("--resume-paper-height", `${paper.height}mm`);
   for (const { key } of MARGINS) element.style.setProperty(`--resume-margin-${key}`, `${layout[key]}mm`);
 }
 
 
-module.exports = { A4_WIDTH, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
+module.exports = { PAPER_SIZES, paperSize, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
