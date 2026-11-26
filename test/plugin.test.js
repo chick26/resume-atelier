@@ -321,3 +321,35 @@ test("margin handles measure the displayed paper at both zooms and preserve lock
     }
   }
 });
+
+test("quick styles and save actions follow the source editor without remounting on every edit", async () => {
+  const { plugin, viewFactory } = await loadPlugin();
+  const view = viewFactory({ app: plugin.app });
+  const { editor, layout } = view;
+  const actions = layout.layoutActions = {};
+  view.layoutElement = { append(node) { node.parentElement = this; } };
+  const details = { parentElement: view.layoutElement, append(node) { node.parentElement = this; } };
+  layout.appearance = { details };
+  const moves = [];
+  const anchor = parent => ({ before(node) { moves.push(parent); node.parentElement = parent; } });
+  editor.sourcePane = {};
+  editor.sourceField = anchor(editor.sourcePane);
+  layout.fineTune = anchor(view.layoutElement);
+  editor.toolbar = { close() {} };
+  view.body = { toggleClass() {} };
+  view.editButton = { setText() {} };
+  view.inspectorButton = {};
+  view.toggleInspector = () => {};
+
+  editor.edit = { file: note("Draft.md", { type: "resume-draft" }) };
+  editor.syncSourceControls();
+  editor.syncSourceControls();
+  assert.deepEqual(moves, [editor.sourcePane]);
+  assert.equal(actions.parentElement, details);
+  assert.equal(editor.sourcePane.hidden, false);
+
+  editor.edit = null;
+  editor.syncSourceControls();
+  assert.deepEqual(moves, [editor.sourcePane, view.layoutElement]);
+  assert.equal(actions.parentElement, view.layoutElement);
+});

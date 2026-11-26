@@ -23,6 +23,7 @@ class PhotoPicker extends FuzzySuggestModal {
     const { start, end, text } = avatarEdit(this.field.value, this.edit.file.path, file.path);
     this.field.focus({ preventScroll: true });
     replaceSourceSelection(this.field, start, end, text, start + text.length, start + text.length);
+    this.editor.view.layout.appearance.openForPhoto();
   }
 }
 

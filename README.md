@@ -29,7 +29,7 @@ Run **Resume Atelier → Open workbench** from the command palette and choose a 
 1. For a master or confirmed application résumé, choose **Copy and edit** to create a draft. On a regular note, try the layout and then choose **Apply layout to this note** to save it.
 2. Use `# Name`, an optional contact blockquote, and `##` for each section. Write `### Senior Designer · Example Studio | 2022 – Present` for an experience entry. The toolbar writes the same Markdown and can edit older HTML entries. In **Edit text**, click a line on the page to select its source.
 3. Choose **Modern sidebar**, open **Sections** and move Skills to the sidebar. A flat bullet list can become tags. Hide a section for this application or show it again. The Markdown and the native Reading View keep the full text. Switching to **Experience timeline** places dates beside their entries.
-4. Use **Choose vault photo** to insert a local image as `![avatar](photo.jpg)`. **Quick styles and photo** controls its crop and position, the accent, and section and list spacing. **Restore theme styling** restores the theme’s values for these controls.
+4. In **Edit text**, use **Choose vault photo** to insert a local image as `![avatar](photo.jpg)`. **Quick styles and photo** opens above the Markdown so you can adjust the ratio, corners and position while watching the preview. You can reopen it there at any time. It also controls the accent and spacing. **Restore theme styling** restores the theme’s values.
 5. Select **A4** or **US Letter** under **Paper size**. The continuous preview shows page numbers, with a solid guide at a manual break (`---` on its own between blank lines) and a dashed guide at an estimated automatic break. **Export PDF** opens Obsidian’s native dialog. For a matching export from the note menu, use the same paper size, portrait, 100% scale, no filename title and no added PDF margins. Check the finished PDF for final pagination.
 
 Save an example in your vault to try the layouts. [English · Letter timeline](examples/sample-resume.en.md) · [中文 · A4 双栏](examples/sample-resume.zh.md)
@@ -55,7 +55,7 @@ Save an example in your vault to try the layouts. [English · Letter timeline](e
 1. 在母版或已确认的投递稿上选「创建副本并编辑」。普通笔记可以先试排，满意后选「将版式写入此笔记」。
 2. 用 `# 姓名` 开头，可接一段引用写联系方式。用 `##` 划分栏目，用 `### 高级产品设计师 · 示例工作室 | 2022 – 至今` 写经历。工具栏使用同一写法，也能编辑旧 HTML 经历块。在「编辑正文」中点击纸面可选中对应源码。
 3. 选「双栏现代」，在「栏目」里把技能放进侧栏，将普通项目列表显示为标签，或隐藏本次投递用不到的栏目。源稿和 Obsidian 阅读视图始终可查全文。切到「经历时间轴」即可把日期排在各段经历旁边。
-4. 在编辑工具栏用「选择库内头像」插入 `![avatar](photo.jpg)`。「快捷样式与头像」可调头像比例、圆角、位置、强调色、栏目前间距及列表间距。「恢复主题样式」可还原这些选项。
+4. 在「编辑正文」里用「选择库内头像」插入 `![avatar](photo.jpg)`。选好后，正文上方会自动展开「快捷样式与头像」，可以边看纸面边调比例、圆角和位置。继续写正文时可收起，之后也能在同一处展开。这里还可以调强调色和间距，或点「恢复主题样式」还原。
 5. 在「纸张」选 A4 或 US Letter。连续纸面上的页码方便定位，实线对应手动分页（前后留空行的 `---`），虚线对应预计的自动分页。「导出 PDF」会打开 Obsidian 原生窗口。如果从笔记菜单导出，请选相同纸张、纵向、100% 缩放，关闭文件名标题，并将附加页边距选为「无」。最终页界以导出的 PDF 为准。
 
 把示例保存到自己的库后即可试排。[中文 · A4 双栏](examples/sample-resume.zh.md) · [English · Letter 时间轴](examples/sample-resume.en.md)

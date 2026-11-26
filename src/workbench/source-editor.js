@@ -129,6 +129,7 @@ class SourceEditor {
     const editing = !!this.edit;
     if (!editing) this.toolbar.close();
     this.sourcePane.hidden = !editing;
+    this.view.layout.setAppearanceInEditor(editing);
     this.view.body.toggleClass("is-source-editing", editing);
     this.view.editButton.setText(editing ? this.t("doneEditing") : this.view.selected?.protected ? this.t("copyAndEdit") : this.t("editSource"));
     this.view.editButton.title = editing ? this.t("doneEditingHelp") : this.t("editSourceHelp");

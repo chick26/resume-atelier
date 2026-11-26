@@ -1966,17 +1966,6 @@ var require_appearance_controls = __commonJS({
         if (save) panel.commit();
         else panel.update();
       };
-      const color = label("accent").createEl("input", { type: "color" });
-      color.addEventListener("input", () => set("accent", color.value, false));
-      color.addEventListener("change", () => set("accent", color.value));
-      for (const [key, max] of Object.entries(GAP_LIMITS)) {
-        const row = label(key);
-        const value = row.createEl("output");
-        const input = row.createEl("input", { type: "range", attr: { min: "0", max: String(max), step: "0.1", "aria-label": t(key) } });
-        input.addEventListener("input", () => set(key, input.valueAsNumber, false));
-        input.addEventListener("change", () => set(key, input.valueAsNumber));
-        inputs.set(key, { input, value });
-      }
       const selects = /* @__PURE__ */ new Map();
       for (const [key, options] of [
         ["avatarRatio", Object.keys(PHOTO_RATIOS)],
@@ -1989,12 +1978,23 @@ var require_appearance_controls = __commonJS({
         select.addEventListener("change", () => set(key, select.value || void 0));
         selects.set(key, select);
       }
+      const color = label("accent").createEl("input", { type: "color" });
+      color.addEventListener("input", () => set("accent", color.value, false));
+      color.addEventListener("change", () => set("accent", color.value));
+      for (const [key, max] of Object.entries(GAP_LIMITS)) {
+        const row = label(key);
+        const value = row.createEl("output");
+        const input = row.createEl("input", { type: "range", attr: { min: "0", max: String(max), step: "0.1", "aria-label": t(key) } });
+        input.addEventListener("input", () => set(key, input.valueAsNumber, false));
+        input.addEventListener("change", () => set(key, input.valueAsNumber));
+        inputs.set(key, { input, value });
+      }
       const reset = body.createEl("button", { text: t("resetAppearance") });
       reset.addEventListener("click", () => {
         panel.current.appearance = {};
         panel.commit();
       });
-      return (values) => {
+      function update(values) {
         const root = panel.view.preview.rendered;
         const css = root?.ownerDocument.defaultView.getComputedStyle(root);
         const accent = values.accent || css?.getPropertyValue("--color-accent").trim();
@@ -2009,7 +2009,13 @@ var require_appearance_controls = __commonJS({
         }
         for (const [key, select] of selects) select.value = values[key] ?? "";
         reset.disabled = !Object.keys(values).length;
-      };
+      }
+      function openForPhoto() {
+        details.open = true;
+        details.scrollTop = 0;
+        selects.get("avatarRatio").focus({ preventScroll: true });
+      }
+      return { details, update, openForPhoto };
     }
     module2.exports = { mountAppearanceControls };
   }
@@ -2056,8 +2062,8 @@ var require_layout_panel = __commonJS({
       }
       mount(layout) {
         this.addTemplateControls(layout);
-        this.updateAppearance = mountAppearanceControls(layout, this);
-        const fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
+        this.appearance = mountAppearanceControls(layout, this);
+        const fineTune = this.fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
         fineTune.createEl("summary", { text: this.t("fineTune") });
         const marginHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
         marginHeading.createEl("h3", { text: this.t("margins") });
@@ -2087,6 +2093,18 @@ var require_layout_panel = __commonJS({
         this.layoutHint = this.layoutActions.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
         this.undoLayoutButton = this.layoutActions.createEl("button", { text: this.t("undo"), attr: { "aria-label": this.t("undoLayout") } });
         this.undoLayoutButton.addEventListener("click", () => this.undoLayoutChange());
+      }
+      setAppearanceInEditor(editing) {
+        const { details } = this.appearance;
+        const { editor, layoutElement } = this.view;
+        if (details.parentElement === (editing ? editor.sourcePane : layoutElement)) return;
+        if (editing) {
+          editor.sourceField.before(details);
+          details.append(this.layoutActions);
+        } else {
+          this.fineTune.before(details);
+          layoutElement.append(this.layoutActions);
+        }
       }
       selectResume(resume, prior, sameFile) {
         if (!sameFile) this.fitButton.hidden = true;
@@ -2327,7 +2345,7 @@ var require_layout_panel = __commonJS({
           button.setAttribute("aria-pressed", String(this.marginLocks[side]));
         }
         this.view.preview.updateLayout(layout);
-        this.updateAppearance(layout.appearance);
+        this.appearance.update(layout.appearance);
         const { file, classes } = this.view.selected;
         const defaults = layoutFor(classes, { density: layout.density });
         const canUndo = this.resetUndo.has(file);
@@ -3089,6 +3107,7 @@ var require_modals = __commonJS({
         const { start, end, text } = avatarEdit(this.field.value, this.edit.file.path, file.path);
         this.field.focus({ preventScroll: true });
         replaceSourceSelection(this.field, start, end, text, start + text.length, start + text.length);
+        this.editor.view.layout.appearance.openForPhoto();
       }
     };
     var SourceRecoveryModal = class extends Modal {
@@ -3545,6 +3564,7 @@ var require_source_editor = __commonJS({
         const editing = !!this.edit;
         if (!editing) this.toolbar.close();
         this.sourcePane.hidden = !editing;
+        this.view.layout.setAppearanceInEditor(editing);
         this.view.body.toggleClass("is-source-editing", editing);
         this.view.editButton.setText(editing ? this.t("doneEditing") : this.view.selected?.protected ? this.t("copyAndEdit") : this.t("editSource"));
         this.view.editButton.title = editing ? this.t("doneEditingHelp") : this.t("editSourceHelp");

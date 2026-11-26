@@ -12,17 +12,6 @@ function mountAppearanceControls(parent, panel) {
     if (save) panel.commit();
     else panel.update();
   };
-  const color = label("accent").createEl("input", { type: "color" });
-  color.addEventListener("input", () => set("accent", color.value, false));
-  color.addEventListener("change", () => set("accent", color.value));
-  for (const [key, max] of Object.entries(GAP_LIMITS)) {
-    const row = label(key);
-    const value = row.createEl("output");
-    const input = row.createEl("input", { type: "range", attr: { min: "0", max: String(max), step: "0.1", "aria-label": t(key) } });
-    input.addEventListener("input", () => set(key, input.valueAsNumber, false));
-    input.addEventListener("change", () => set(key, input.valueAsNumber));
-    inputs.set(key, { input, value });
-  }
   const selects = new Map();
   for (const [key, options] of [
     ["avatarRatio", Object.keys(PHOTO_RATIOS)],
@@ -35,12 +24,23 @@ function mountAppearanceControls(parent, panel) {
     select.addEventListener("change", () => set(key, select.value || undefined));
     selects.set(key, select);
   }
+  const color = label("accent").createEl("input", { type: "color" });
+  color.addEventListener("input", () => set("accent", color.value, false));
+  color.addEventListener("change", () => set("accent", color.value));
+  for (const [key, max] of Object.entries(GAP_LIMITS)) {
+    const row = label(key);
+    const value = row.createEl("output");
+    const input = row.createEl("input", { type: "range", attr: { min: "0", max: String(max), step: "0.1", "aria-label": t(key) } });
+    input.addEventListener("input", () => set(key, input.valueAsNumber, false));
+    input.addEventListener("change", () => set(key, input.valueAsNumber));
+    inputs.set(key, { input, value });
+  }
   const reset = body.createEl("button", { text: t("resetAppearance") });
   reset.addEventListener("click", () => {
     panel.current.appearance = {};
     panel.commit();
   });
-  return values => {
+  function update(values) {
     const root = panel.view.preview.rendered;
     const css = root?.ownerDocument.defaultView.getComputedStyle(root);
     const accent = values.accent || css?.getPropertyValue("--color-accent").trim();
@@ -55,7 +55,14 @@ function mountAppearanceControls(parent, panel) {
     }
     for (const [key, select] of selects) select.value = values[key] ?? "";
     reset.disabled = !Object.keys(values).length;
-  };
+  }
+
+  function openForPhoto() {
+    details.open = true;
+    details.scrollTop = 0;
+    selects.get("avatarRatio").focus({ preventScroll: true });
+  }
+  return { details, update, openForPhoto };
 }
 
 module.exports = { mountAppearanceControls };

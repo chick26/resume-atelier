@@ -29,8 +29,8 @@ class LayoutPanel {
 
   mount(layout) {
     this.addTemplateControls(layout);
-    this.updateAppearance = mountAppearanceControls(layout, this);
-    const fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
+    this.appearance = mountAppearanceControls(layout, this);
+    const fineTune = this.fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
     fineTune.createEl("summary", { text: this.t("fineTune") });
     const marginHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
     marginHeading.createEl("h3", { text: this.t("margins") });
@@ -62,6 +62,20 @@ class LayoutPanel {
     this.layoutHint = this.layoutActions.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
     this.undoLayoutButton = this.layoutActions.createEl("button", { text: this.t("undo"), attr: { "aria-label": this.t("undoLayout") } });
     this.undoLayoutButton.addEventListener("click", () => this.undoLayoutChange());
+  }
+
+  setAppearanceInEditor(editing) {
+    const { details } = this.appearance;
+    const { editor, layoutElement } = this.view;
+    // A source refresh must leave the focused control in place.
+    if (details.parentElement === (editing ? editor.sourcePane : layoutElement)) return;
+    if (editing) {
+      editor.sourceField.before(details);
+      details.append(this.layoutActions);
+    } else {
+      this.fineTune.before(details);
+      layoutElement.append(this.layoutActions);
+    }
   }
 
   selectResume(resume, prior, sameFile) {
@@ -323,7 +337,7 @@ class LayoutPanel {
       button.setAttribute("aria-pressed", String(this.marginLocks[side]));
     }
     this.view.preview.updateLayout(layout);
-    this.updateAppearance(layout.appearance);
+    this.appearance.update(layout.appearance);
     const { file, classes } = this.view.selected;
     const defaults = layoutFor(classes, { density: layout.density });
     const canUndo = this.resetUndo.has(file);
