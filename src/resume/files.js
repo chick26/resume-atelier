@@ -2,6 +2,7 @@ const { normalizePath, stringifyYaml } = require("obsidian");
 const { geometryForSave, layoutMetadata, noteLayoutKey } = require("../layout/geometry");
 const { DRAFT_FOLDER } = require("../settings/store");
 const { sourceText, sourceParts, editableBody, withEditedBody } = require("./markdown");
+const { rebaseAvatar } = require("./avatar");
 
 function vaultFolder(value, t) {
   const trimmed = value.trim().replace(/^[/\\]+|[/\\]+$/g, "");
@@ -43,13 +44,14 @@ class ResumeFiles {
   }
 
   async copyForEditing(resume, layout, body) {
+    const source = body === undefined ? resume.source ?? resume.file : resume.file;
     if (body === undefined) {
-      const source = resume.source ?? resume.file;
       if (resume.sourceLink && !resume.source) throw new Error(this.t("missingMasterSource"));
       body = sourceParts(await this.app.vault.read(source)).body;
     }
     const title = resume.label.replace(/[\\/:*?"<>|]/g, " ").trim().slice(0, 90) || this.t("resume");
     const path = await this.draftPath(resume.file, this.t("draftName", { name: title }));
+    body = rebaseAvatar(body, source.path, path, (link, origin) => this.app.metadataCache.getFirstLinkpathDest(link, origin));
     const zh = resume.classes.includes("lapis-cv-zh");
     const properties = {
       type: "resume-draft", language: zh ? "zh" : "en",

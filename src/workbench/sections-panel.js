@@ -2,7 +2,6 @@ const { Notice, setIcon } = require("obsidian");
 const { editableBody, sourceParts, splitSectionBody } = require("../resume/markdown");
 const { sectionRuleIssues } = require("../resume/structure");
 const { changeSectionRule, ruleFor } = require("../resume/section-layout");
-const { SIDEBAR_TEMPLATE } = require("../themes/built-ins");
 const { runWithNotice } = require("./dom");
 
 class SectionsPanel {
@@ -123,9 +122,14 @@ class SectionsPanel {
     if (unique) {
       const layout = this.view.layout.current;
       const rule = ruleFor(layout.sections, title);
-      if (layout.template === SIDEBAR_TEMPLATE) {
+      const flow = this.view.preview.sectionLayout;
+      if (flow?.mode === "sidebar") {
         const sidebar = rule.region === "sidebar";
         this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? undefined : "sidebar");
+      }
+      if (flow?.sections[index]?.lists.length || rule.display === "tags") {
+        const tags = rule.display === "tags";
+        this.ruleButton(row, title, tags ? "sectionAsList" : "sectionAsTags", "tags", "display", tags ? undefined : "tags");
       }
       const hidden = rule.hidden === true;
       jump.disabled = hidden;

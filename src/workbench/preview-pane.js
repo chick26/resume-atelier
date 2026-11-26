@@ -136,8 +136,8 @@ class PreviewPane {
 
   updateLayout(layout) {
     applyMargins(this.paper, layout);
-    if (this.renderedFile === this.view.selected?.file) this.sectionLayout?.apply(layout);
     if (this.rendered) this.stylePreview(this.rendered);
+    if (this.renderedFile === this.view.selected?.file) this.sectionLayout?.apply(layout);
   }
 
   stylePreview(root) {

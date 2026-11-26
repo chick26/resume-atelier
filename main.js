@@ -208,6 +208,25 @@ var require_localization = __commonJS({
       sectionNameRequired: ["\u8BF7\u586B\u5199\u4E00\u884C\u680F\u76EE\u540D\u79F0\u3002", "Enter a section name on one line."],
       sectionNameDuplicate: ["\u5DF2\u7ECF\u6709\u540C\u540D\u680F\u76EE\u3002", "A section with this name already exists."],
       themeSidebar: ["\u53CC\u680F\u73B0\u4EE3", "Modern sidebar"],
+      themeTimeline: ["\u7ECF\u5386\u65F6\u95F4\u8F74", "Experience timeline"],
+      sectionAsTags: ["\u5C06\u300C{title}\u300D\u6E05\u5355\u663E\u793A\u4E3A\u6807\u7B7E", "Show {title} list as tags"],
+      sectionAsList: ["\u5C06\u300C{title}\u300D\u6807\u7B7E\u6062\u590D\u4E3A\u6E05\u5355", "Show {title} tags as a list"],
+      quickStyles: ["\u5FEB\u6377\u6837\u5F0F\u4E0E\u5934\u50CF", "Quick styles and photo"],
+      accent: ["\u5F3A\u8C03\u8272", "Accent color"],
+      sectionGap: ["\u680F\u76EE\u524D\u95F4\u8DDD", "Section spacing"],
+      listGap: ["\u5217\u8868\u9879\u95F4\u8DDD", "List spacing"],
+      avatarRatio: ["\u5934\u50CF\u6BD4\u4F8B", "Photo ratio"],
+      avatarShape: ["\u5934\u50CF\u5706\u89D2", "Photo corners"],
+      avatarPosition: ["\u5934\u50CF\u4F4D\u7F6E", "Photo placement"],
+      choosePhoto: ["\u9009\u62E9\u5E93\u5185\u5934\u50CF", "Choose vault photo"],
+      searchImages: ["\u641C\u7D22\u5E93\u5185\u56FE\u7247", "Search vault images"],
+      headerRight: ["\u540D\u7247\u53F3\u4FA7", "Header right"],
+      sidebar: ["\u53CC\u680F\u6A21\u677F\u7684\u4FA7\u680F", "Sidebar in a two-column theme"],
+      square: ["\u76F4\u89D2", "Square"],
+      rounded: ["\u5C0F\u5706\u89D2", "Rounded"],
+      round: ["\u5706\u5F62\uFF0F\u692D\u5706", "Round"],
+      useThemeValue: ["\u4E3B\u9898\u9ED8\u8BA4", "Theme default"],
+      resetAppearance: ["\u6062\u590D\u4E3B\u9898\u6837\u5F0F", "Restore theme styling"],
       hideSection: ["\u9690\u85CF\u300C{title}\u300D", "Hide {title}"],
       showSection: ["\u663E\u793A\u300C{title}\u300D", "Show {title}"],
       sectionToSidebar: ["\u5C06\u300C{title}\u300D\u79FB\u5230\u4FA7\u680F", "Move {title} to the sidebar"],
@@ -297,9 +316,52 @@ var require_localization = __commonJS({
   }
 });
 
+// src/layout/appearance.js
+var require_appearance = __commonJS({
+  "src/layout/appearance.js"(exports2, module2) {
+    var PHOTO_RATIOS = { "1:1": 1, "3:4": 4 / 3, "4:5": 1.25 };
+    var PHOTO_CORNERS = { square: "0", rounded: "2mm", round: "50%" };
+    var GAP_LIMITS = { sectionGap: 12, listGap: 4 };
+    var APPEARANCE_KEYS = ["accent", ...Object.keys(GAP_LIMITS), "avatarRatio", "avatarShape", "avatarPosition"];
+    function appearanceFor(value = {}) {
+      const result = {};
+      if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+      if (typeof value.accent === "string" && /^#[a-f\d]{6}$/i.test(value.accent)) result.accent = value.accent.toLowerCase();
+      for (const [key, max] of Object.entries(GAP_LIMITS)) {
+        if (Number.isFinite(value[key])) result[key] = Math.max(0, Math.min(max, value[key]));
+      }
+      if (Object.hasOwn(PHOTO_RATIOS, value.avatarRatio)) result.avatarRatio = value.avatarRatio;
+      if (Object.hasOwn(PHOTO_CORNERS, value.avatarShape)) result.avatarShape = value.avatarShape;
+      if (value.avatarPosition === "sidebar") result.avatarPosition = "sidebar";
+      return result;
+    }
+    function savedAppearance(current, previous) {
+      const result = previous && typeof previous === "object" && !Array.isArray(previous) ? { ...previous } : {};
+      for (const key of APPEARANCE_KEYS) delete result[key];
+      return Object.assign(result, appearanceFor(current));
+    }
+    function applyAppearance(root, values = {}) {
+      const overrides = {
+        "--color-accent": values.accent,
+        "--resume-heading-top": values.sectionGap == null ? null : `${values.sectionGap}mm`,
+        "--resume-list-gap": values.listGap == null ? null : `${values.listGap}mm`,
+        "--resume-avatar-height-factor": PHOTO_RATIOS[values.avatarRatio],
+        "--resume-avatar-radius": PHOTO_CORNERS[values.avatarShape]
+      };
+      for (const [key, value] of Object.entries(overrides)) {
+        if (value == null) root.style.removeProperty(key);
+        else root.style.setProperty(key, String(value));
+      }
+      root.classList.toggle("resume-portrait-ratio", !!values.avatarRatio && values.avatarRatio !== "1:1");
+    }
+    module2.exports = { PHOTO_RATIOS, PHOTO_CORNERS, GAP_LIMITS, appearanceFor, savedAppearance, applyAppearance };
+  }
+});
+
 // src/layout/geometry.js
 var require_geometry = __commonJS({
   "src/layout/geometry.js"(exports2, module2) {
+    var { appearanceFor, savedAppearance, applyAppearance } = require_appearance();
     var PAPER_SIZES = { A4: { width: 210, height: 297 }, Letter: { width: 215.9, height: 279.4 } };
     function paperSize(layout) {
       return PAPER_SIZES[layout.paper] ?? PAPER_SIZES.A4;
@@ -337,7 +399,8 @@ var require_geometry = __commonJS({
         density,
         template: saved?.template ?? BASE_TEMPLATE,
         paper: saved?.paper === "Letter" ? "Letter" : "A4",
-        sections: saved?.sections ?? {}
+        sections: saved?.sections ?? {},
+        appearance: appearanceFor(saved?.appearance)
       };
       for (const { key, min, max } of FIELDS) {
         if (Number.isFinite(saved?.[key])) {
@@ -350,7 +413,11 @@ var require_geometry = __commonJS({
       return Object.fromEntries(FIELDS.map(({ key }) => [key, layout[key]]));
     }
     function geometryForSave(layout, previous) {
-      return { ...previous, ...dimensions(layout), paper: layout.paper };
+      const geometry = { ...previous, ...dimensions(layout), paper: layout.paper };
+      const appearance = savedAppearance(layout.appearance, previous?.appearance);
+      if (Object.keys(appearance).length) geometry.appearance = appearance;
+      else delete geometry.appearance;
+      return geometry;
     }
     function layoutMetadata(frontmatter) {
       const template = typeof frontmatter.resume_style === "string" ? frontmatter.resume_style.trim() : "";
@@ -363,12 +430,13 @@ var require_geometry = __commonJS({
       return { template, density, geometry, sections, stored };
     }
     function noteLayoutKey({ template, density, geometry, sections }) {
-      return JSON.stringify([template, density, geometry?.paper ?? "A4", sections ?? {}, ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
+      return JSON.stringify([template, density, geometry?.paper ?? "A4", sections ?? {}, appearanceFor(geometry?.appearance), ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
     }
     function sameLayout(left, right) {
-      return left?.template === right?.template && left?.density === right?.density && left?.paper === right?.paper && JSON.stringify(left?.sections) === JSON.stringify(right?.sections) && FIELDS.every(({ key }) => left?.[key] === right?.[key]);
+      return left?.template === right?.template && left?.density === right?.density && left?.paper === right?.paper && JSON.stringify(left?.sections) === JSON.stringify(right?.sections) && JSON.stringify(appearanceFor(left?.appearance)) === JSON.stringify(appearanceFor(right?.appearance)) && FIELDS.every(({ key }) => left?.[key] === right?.[key]);
     }
     function applyTypography(element, layout) {
+      applyAppearance(element, layout.appearance);
       element.style.setProperty("--text-size", `${layout.fontSize}pt`);
       element.style.setProperty("--line-height", String(layout.lineHeight));
       element.dataset.resumeDensity = layout.density;
@@ -564,6 +632,64 @@ var require_markdown = __commonJS({
   }
 });
 
+// src/resume/avatar.js
+var require_avatar = __commonJS({
+  "src/resume/avatar.js"(exports2, module2) {
+    var { MARKDOWN_FENCE, splitSectionBody } = require_structure();
+    function relativeImage(notePath, imagePath) {
+      const parent = notePath.split("/").slice(0, -1);
+      const asset = imagePath.split("/");
+      let shared = 0;
+      while (shared < parent.length && parent[shared] === asset[shared]) shared++;
+      const folders = parent.slice(shared).map(() => "..");
+      const parts = asset.slice(shared).map((part) => encodeURIComponent(part).replace(/[()]/g, (c) => c === "(" ? "%28" : "%29"));
+      return [...folders, ...parts].join("/");
+    }
+    function headerPhoto(body) {
+      const { intro } = splitSectionBody(body);
+      let titleEnd = 0;
+      let offset = 0;
+      let fence = "";
+      let comment = false;
+      for (const line of intro.split("\n")) {
+        const marker = line.match(MARKDOWN_FENCE);
+        if (fence) {
+          if (marker?.[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
+        } else if (comment || /^\s*<!--/.test(line)) comment = !line.includes("-->");
+        else if (marker) fence = marker[1];
+        else if (/^ {0,3}!\[avatar\]\(.+\)\s*$/.test(line)) return { titleEnd, photo: { start: offset, line } };
+        else if (!titleEnd && /^ {0,3}#\s+/.test(line)) titleEnd = offset + line.length;
+        offset += line.length + 1;
+      }
+      return { titleEnd };
+    }
+    function avatarEdit(body, notePath, imagePath) {
+      const markdown = `![avatar](${relativeImage(notePath, imagePath)})`;
+      const { titleEnd, photo } = headerPhoto(body);
+      if (photo) return { start: photo.start, end: photo.start + photo.line.length, text: markdown };
+      const tail = body.slice(titleEnd);
+      const after = !tail || tail.startsWith("\n\n") ? "" : tail.startsWith("\n") ? "\n" : "\n\n";
+      return { start: titleEnd, end: titleEnd, text: (titleEnd ? "\n\n" : "") + markdown + after };
+    }
+    function rebaseAvatar(body, sourcePath, targetPath, resolve) {
+      if (sourcePath.split("/").slice(0, -1).join("/") === targetPath.split("/").slice(0, -1).join("/")) return body;
+      const { photo } = headerPhoto(body);
+      const link = photo?.line.match(/^( {0,3}!\[avatar\]\()([^\s()<>]+)(\)\s*)$/);
+      if (!link || /^(?:[a-z][a-z\d+.-]*:|[/#])/i.test(link[2])) return body;
+      let asset;
+      try {
+        asset = resolve(decodeURIComponent(link[2]), sourcePath);
+      } catch {
+        return body;
+      }
+      if (!asset) return body;
+      const start = photo.start + link[1].length;
+      return body.slice(0, start) + relativeImage(targetPath, asset.path) + body.slice(start + link[2].length);
+    }
+    module2.exports = { avatarEdit, rebaseAvatar };
+  }
+});
+
 // src/resume/files.js
 var require_files = __commonJS({
   "src/resume/files.js"(exports2, module2) {
@@ -571,6 +697,7 @@ var require_files = __commonJS({
     var { geometryForSave, layoutMetadata, noteLayoutKey } = require_geometry();
     var { DRAFT_FOLDER } = require_store();
     var { sourceText, sourceParts, editableBody, withEditedBody } = require_markdown();
+    var { rebaseAvatar } = require_avatar();
     function vaultFolder(value, t) {
       const trimmed = value.trim().replace(/^[/\\]+|[/\\]+$/g, "");
       if (!trimmed) return "";
@@ -604,13 +731,14 @@ var require_files = __commonJS({
         return this.app.vault.create(path, this.exampleMarkdown);
       }
       async copyForEditing(resume, layout, body) {
+        const source = body === void 0 ? resume.source ?? resume.file : resume.file;
         if (body === void 0) {
-          const source = resume.source ?? resume.file;
           if (resume.sourceLink && !resume.source) throw new Error(this.t("missingMasterSource"));
           body = sourceParts(await this.app.vault.read(source)).body;
         }
         const title = resume.label.replace(/[\\/:*?"<>|]/g, " ").trim().slice(0, 90) || this.t("resume");
         const path = await this.draftPath(resume.file, this.t("draftName", { name: title }));
+        body = rebaseAvatar(body, source.path, path, (link, origin) => this.app.metadataCache.getFirstLinkpathDest(link, origin));
         const zh = resume.classes.includes("lapis-cv-zh");
         const properties = {
           type: "resume-draft",
@@ -935,20 +1063,29 @@ var require_built_ins = __commonJS({
   "src/themes/built-ins.js"(exports2, module2) {
     var { BASE_TEMPLATE } = require_geometry();
     var SIDEBAR_TEMPLATE = "\u53CC\u680F\u73B0\u4EE3";
+    var TIMELINE_TEMPLATE = "\u65F6\u95F4\u8F74";
     var THEME_LABELS = { [BASE_TEMPLATE]: "\u7ECF\u5178\u886C\u7EBF", "\u9ED1\u767D ATS": "\u9ED1\u767D\u7B80\u7EA6\uFF08ATS \u53CB\u597D\uFF09" };
     var BUILT_IN_THEME_MESSAGES = {
       [BASE_TEMPLATE]: "themeClassic",
       "\u7B80\u6D01\u84DD": "themeBlue",
       "\u73B0\u4EE3\u65E0\u886C\u7EBF": "themeSans",
       "\u9ED1\u767D ATS": "themeAts",
-      [SIDEBAR_TEMPLATE]: "themeSidebar"
+      [SIDEBAR_TEMPLATE]: "themeSidebar",
+      [TIMELINE_TEMPLATE]: "themeTimeline"
     };
     var BUILT_IN_TEMPLATE_CSS = {
       [BASE_TEMPLATE]: "",
       [SIDEBAR_TEMPLATE]: `:scope {
+  --resume-structure: sidebar;
   --title-font: var(--resume-sans-font);
   --color-accent: #205c63;
   --border-color: #a1bdbf;
+}`,
+      [TIMELINE_TEMPLATE]: `:scope {
+  --resume-structure: timeline;
+  --timeline-date-width: 24mm;
+  --title-font: var(--resume-sans-font);
+  --color-accent: #3d5968;
 }`,
       "\u7B80\u6D01\u84DD": `:scope {
   --color-accent: #254f78;
@@ -1035,6 +1172,8 @@ var require_scoped_css = __commonJS({
         const host = scope + modifier;
         return [
           anchored,
+          `${host} > :where(.resume-header) > ${target}`,
+          `.print > ${host} > :where(.resume-header) > :where(div:not([class])) > ${target}`,
           `.print > ${host} > :where(div:not([class])) > ${target}`,
           `${host} > :where([class^="el-"]) > ${target}`,
           `${host} > :where(.markdown-preview-sizer) > ${target}`,
@@ -1451,7 +1590,6 @@ var require_rendered_markup = __commonJS({
 var require_section_layout = __commonJS({
   "src/resume/section-layout.js"(exports2, module2) {
     var { sectionTitle, sectionRuleIssues } = require_structure();
-    var { SIDEBAR_TEMPLATE } = require_built_ins();
     function ruleFor(rules, title) {
       const rule = Object.hasOwn(rules, title) && rules[title];
       return rule && typeof rule === "object" && !Array.isArray(rule) ? rule : {};
@@ -1478,6 +1616,32 @@ var require_section_layout = __commonJS({
       element.className = className;
       return element;
     }
+    function paragraphWithPortrait(block) {
+      const paragraph = block.matches("p") ? block : block.firstElementChild;
+      if (!paragraph?.matches("p")) return false;
+      const photo = paragraph.querySelector('img[alt="avatar"], .internal-embed[alt="avatar"], img.avatar');
+      return !!photo && [...paragraph.childNodes].every((node) => node.contains(photo) || !node.textContent.trim());
+    }
+    function tagLists(nodes) {
+      return nodes.map((node) => node.matches("ul") ? node : node.matches("div") ? node.firstElementChild : null).filter((list) => list?.matches("ul") && !list.querySelector("ul,ol,.task-list-item"));
+    }
+    function addSection(section, nodes, timeline) {
+      let body = section;
+      for (const node of nodes) {
+        if (beginsEntry(node)) {
+          const entry = container(section, "div", "resume-entry");
+          section.append(entry);
+          entry.append(node);
+          body = entry;
+          if (timeline) {
+            body = container(section, "div", "resume-entry-body");
+            entry.append(body);
+          }
+        } else {
+          body.append(node);
+        }
+      }
+    }
     var SectionLayout = class {
       constructor(root, blocks, titles) {
         this.root = root;
@@ -1494,50 +1658,78 @@ var require_section_layout = __commonJS({
           }
           nodes.push(block);
         }
+        this.portrait = this.intro.find(paragraphWithPortrait);
+        this.portrait?.classList.add("resume-portrait-block");
+        for (const [index, section] of this.sections.entries()) {
+          section.breaks = [];
+          if (index < this.sections.length - 1) {
+            while (section.nodes.at(-1)?.matches("hr,.el-hr")) section.breaks.unshift(section.nodes.pop());
+          }
+          section.lists = tagLists(section.nodes);
+        }
         this.duplicates = new Set(sectionRuleIssues(this.sections, {}).duplicate);
       }
       apply(layout) {
-        const dual = layout.template === SIDEBAR_TEMPLATE;
+        const declared = this.root.ownerDocument.defaultView.getComputedStyle(this.root).getPropertyValue("--resume-structure").trim();
+        const mode = declared === "sidebar" || declared === "timeline" ? declared : "single";
         const rules = this.sections.map(({ title }) => this.duplicates.has(title) ? {} : ruleFor(layout.sections, title));
-        const key = JSON.stringify([dual, rules.map((rule) => [rule.hidden === true, rule.region === "sidebar"])]);
+        const sidePhoto = !!this.portrait && mode === "sidebar" && layout.appearance?.avatarPosition === "sidebar";
+        const key = JSON.stringify([mode, sidePhoto, rules.map((rule) => [rule.hidden === true, rule.region === "sidebar", rule.display === "tags"])]);
         if (this.key === key) return;
         this.key = key;
+        this.mode = mode;
         if (this.wrapper) {
           this.wrapper.before(...this.blocks);
           this.wrapper.remove();
           this.wrapper = null;
         }
-        for (const [index, { nodes }] of this.sections.entries()) {
+        for (const [index, { nodes, lists }] of this.sections.entries()) {
           for (const node of nodes) node.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
+          for (const list of lists) list.classList.toggle("resume-section-tags", rules[index].display === "tags");
         }
-        if (!dual || !this.sections.length) return;
-        const wrapper = container(this.root, "div", "resume-layout-document");
+        const structured = mode !== "single" && this.sections.length > 0;
+        if (!structured && !this.portrait) return;
+        const header = container(this.root, "header", "resume-header");
+        if (this.portrait && !(structured && sidePhoto)) header.classList.add("has-portrait");
+        const wrapper = structured ? container(this.root, "div", "resume-layout-document") : header;
         this.blocks[0].before(wrapper);
         this.wrapper = wrapper;
-        const header = container(this.root, "header", "resume-header");
         header.append(...this.intro);
+        if (!structured) return;
+        wrapper.append(header);
+        const timeline = mode === "timeline";
+        wrapper.classList.toggle("resume-timeline", timeline);
+        let group = [];
+        let photo = sidePhoto ? this.portrait : null;
+        for (const [index, section] of this.sections.entries()) {
+          group.push({ section, rule: rules[index] });
+          if (section.breaks.length || index === this.sections.length - 1) {
+            wrapper.append(this.columnsFor(group, mode, photo), ...section.breaks);
+            group = [];
+            photo = null;
+          }
+        }
+      }
+      columnsFor(group, mode, photo) {
         const columns = container(this.root, "div", "resume-layout-columns");
         const main = container(this.root, "div", "resume-main");
         const sidebar = container(this.root, "aside", "resume-sidebar");
-        for (const [index, { title, nodes }] of this.sections.entries()) {
+        if (photo) sidebar.append(photo);
+        for (const { section: { title, nodes }, rule } of group) {
           const section = container(this.root, "section", "resume-section");
           section.dataset.resumeSection = title;
-          section.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
-          let parent = section;
-          for (const node of nodes) {
-            if (beginsEntry(node)) {
-              parent = container(this.root, "div", "resume-entry");
-              section.append(parent);
-            }
-            parent.append(node);
+          section.classList.toggle("resume-layout-section-hidden", rule.hidden === true);
+          addSection(section, nodes, mode === "timeline");
+          (mode === "sidebar" && rule.region === "sidebar" ? sidebar : main).append(section);
+        }
+        columns.append(main);
+        if (mode === "sidebar") {
+          if (main.querySelector("section:not(.resume-layout-section-hidden)") && (photo || sidebar.querySelector("section:not(.resume-layout-section-hidden)"))) {
+            columns.classList.add("has-sidebar");
           }
-          (rules[index].region === "sidebar" ? sidebar : main).append(section);
+          columns.append(sidebar);
         }
-        if (main.querySelector("section:not(.resume-layout-section-hidden)") && sidebar.querySelector("section:not(.resume-layout-section-hidden)")) {
-          columns.classList.add("has-sidebar");
-        }
-        columns.append(main, sidebar);
-        wrapper.append(header, columns);
+        return columns;
       }
     };
     module2.exports = { SectionLayout, changeSectionRule, ruleFor };
@@ -1553,6 +1745,7 @@ var require_presentation = __commonJS({
     var { editableBody } = require_markdown();
     var { decorateResumeMarkup } = require_rendered_markup();
     var { SectionLayout } = require_section_layout();
+    var { applyAppearance } = require_appearance();
     var ResumePresentation2 = class {
       constructor(app, catalog, layouts, themes, t) {
         this.app = app;
@@ -1690,6 +1883,7 @@ var require_presentation = __commonJS({
           if (!declaredClasses.includes(cssClass)) root.classList.remove(cssClass);
         }
         this.readingClasses.delete(root);
+        applyAppearance(root);
         delete root.dataset.resumeDensity;
         for (const { key } of MARGINS) root.style.removeProperty(`--resume-margin-${key}`);
         root.style.removeProperty("--resume-paper-width");
@@ -1756,6 +1950,71 @@ var require_dom = __commonJS({
   }
 });
 
+// src/workbench/appearance-controls.js
+var require_appearance_controls = __commonJS({
+  "src/workbench/appearance-controls.js"(exports2, module2) {
+    var { PHOTO_RATIOS, PHOTO_CORNERS, GAP_LIMITS, appearanceFor } = require_appearance();
+    function mountAppearanceControls(parent, panel) {
+      const { t } = panel;
+      const details = parent.createEl("details", { cls: "resume-layout-fine-tune resume-layout-appearance" });
+      details.createEl("summary", { text: t("quickStyles") });
+      const body = details.createDiv({ cls: "resume-layout-appearance-fields" });
+      const inputs = /* @__PURE__ */ new Map();
+      const label = (key) => body.createEl("label", { text: t(key) });
+      const set = (key, value, save = true) => {
+        panel.current.appearance = appearanceFor({ ...panel.current.appearance, [key]: value });
+        if (save) panel.commit();
+        else panel.update();
+      };
+      const color = label("accent").createEl("input", { type: "color" });
+      color.addEventListener("input", () => set("accent", color.value, false));
+      color.addEventListener("change", () => set("accent", color.value));
+      for (const [key, max] of Object.entries(GAP_LIMITS)) {
+        const row = label(key);
+        const value = row.createEl("output");
+        const input = row.createEl("input", { type: "range", attr: { min: "0", max: String(max), step: "0.1", "aria-label": t(key) } });
+        input.addEventListener("input", () => set(key, input.valueAsNumber, false));
+        input.addEventListener("change", () => set(key, input.valueAsNumber));
+        inputs.set(key, { input, value });
+      }
+      const selects = /* @__PURE__ */ new Map();
+      for (const [key, options] of [
+        ["avatarRatio", Object.keys(PHOTO_RATIOS)],
+        ["avatarShape", Object.keys(PHOTO_CORNERS)],
+        ["avatarPosition", ["sidebar"]]
+      ]) {
+        const select = label(key).createEl("select", { cls: "dropdown" });
+        select.createEl("option", { value: "", text: t(key === "avatarPosition" ? "headerRight" : "useThemeValue") });
+        for (const value of options) select.createEl("option", { value, text: key === "avatarRatio" ? value : t(value) });
+        select.addEventListener("change", () => set(key, select.value || void 0));
+        selects.set(key, select);
+      }
+      const reset = body.createEl("button", { text: t("resetAppearance") });
+      reset.addEventListener("click", () => {
+        panel.current.appearance = {};
+        panel.commit();
+      });
+      return (values) => {
+        const root = panel.view.preview.rendered;
+        const css = root?.ownerDocument.defaultView.getComputedStyle(root);
+        const accent = values.accent || css?.getPropertyValue("--color-accent").trim();
+        color.value = /^#[\da-f]{6}$/i.test(accent) ? accent : "#1f4478";
+        for (const [key, { input, value }] of inputs) {
+          const variable = key === "sectionGap" ? "--resume-heading-top" : "--resume-list-gap";
+          const current = values[key] ?? parseFloat(css?.getPropertyValue(variable));
+          input.value = String(Number.isFinite(current) ? current : 0);
+          const text = values[key] == null ? t("useThemeValue") : `${values[key]} mm`;
+          value.textContent = text;
+          input.setAttribute("aria-valuetext", text);
+        }
+        for (const [key, select] of selects) select.value = values[key] ?? "";
+        reset.disabled = !Object.keys(values).length;
+      };
+    }
+    module2.exports = { mountAppearanceControls };
+  }
+});
+
 // src/workbench/layout-panel.js
 var require_layout_panel = __commonJS({
   "src/workbench/layout-panel.js"(exports2, module2) {
@@ -1775,6 +2034,7 @@ var require_layout_panel = __commonJS({
       sameLayout
     } = require_geometry();
     var { iconButton } = require_dom();
+    var { mountAppearanceControls } = require_appearance_controls();
     var LayoutPanel = class {
       constructor(view) {
         this.view = view;
@@ -1796,6 +2056,7 @@ var require_layout_panel = __commonJS({
       }
       mount(layout) {
         this.addTemplateControls(layout);
+        this.updateAppearance = mountAppearanceControls(layout, this);
         const fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
         fineTune.createEl("summary", { text: this.t("fineTune") });
         const marginHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
@@ -2066,6 +2327,7 @@ var require_layout_panel = __commonJS({
           button.setAttribute("aria-pressed", String(this.marginLocks[side]));
         }
         this.view.preview.updateLayout(layout);
+        this.updateAppearance(layout.appearance);
         const { file, classes } = this.view.selected;
         const defaults = layoutFor(classes, { density: layout.density });
         const canUndo = this.resetUndo.has(file);
@@ -2431,8 +2693,8 @@ ${body}` : body, next, file.path, renderer);
       }
       updateLayout(layout) {
         applyMargins(this.paper, layout);
-        if (this.renderedFile === this.view.selected?.file) this.sectionLayout?.apply(layout);
         if (this.rendered) this.stylePreview(this.rendered);
+        if (this.renderedFile === this.view.selected?.file) this.sectionLayout?.apply(layout);
       }
       stylePreview(root) {
         const layout = this.view.layout.current;
@@ -2806,6 +3068,29 @@ var require_modals = __commonJS({
   "src/workbench/modals.js"(exports2, module2) {
     var { FuzzySuggestModal, Modal } = require("obsidian");
     var { copySourceText } = require_dom();
+    var { avatarEdit } = require_avatar();
+    var { replaceSourceSelection } = require_formatting();
+    var PhotoPicker = class extends FuzzySuggestModal {
+      constructor(editor, field) {
+        super(editor.app);
+        this.editor = editor;
+        this.field = field;
+        this.edit = editor.edit;
+        this.setPlaceholder(editor.t("searchImages"));
+      }
+      getItems() {
+        return this.app.vault.getFiles().filter((file) => /^(?:png|jpe?g|gif|webp|avif|svg)$/i.test(file.extension));
+      }
+      getItemText(file) {
+        return file.path;
+      }
+      onChooseItem(file) {
+        if (!this.edit || this.editor.edit !== this.edit || this.field.readOnly) return;
+        const { start, end, text } = avatarEdit(this.field.value, this.edit.file.path, file.path);
+        this.field.focus({ preventScroll: true });
+        replaceSourceSelection(this.field, start, end, text, start + text.length, start + text.length);
+      }
+    };
     var SourceRecoveryModal = class extends Modal {
       constructor(editor, edit) {
         super(editor.app);
@@ -2883,7 +3168,7 @@ var require_modals = __commonJS({
         void this.view.bindFile(file);
       }
     };
-    module2.exports = { SourceRecoveryModal, ResumePicker };
+    module2.exports = { SourceRecoveryModal, ResumePicker, PhotoPicker };
   }
 });
 
@@ -2892,6 +3177,7 @@ var require_source_toolbar = __commonJS({
   "src/workbench/source-toolbar.js"(exports2, module2) {
     var { Notice: Notice2, setIcon } = require("obsidian");
     var { iconButton } = require_dom();
+    var { PhotoPicker } = require_modals();
     var {
       SOURCE_ENTRY_SEPARATOR,
       replaceSourceSelection,
@@ -2983,6 +3269,11 @@ var require_source_toolbar = __commonJS({
       const entryLabel = entry.createSpan();
       setIcon(entry.createSpan({ cls: "resume-layout-source-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
       createSourceEntryPopover(pane, entry, field, popovers, { t, view, updateTools });
+      const photo = iconButton(tools, "image", t("choosePhoto"), () => {
+        if (!editor.edit || field.readOnly) return;
+        popovers.close();
+        new PhotoPicker(editor, field).open();
+      });
       const help = iconButton(info, "circle-help", t("editorShortcuts"), () => {
         if (!helpPanel.hidden) return popovers.close();
         popovers.show(helpPanel, help);
@@ -3020,6 +3311,7 @@ var require_source_toolbar = __commonJS({
       };
       function updateTools() {
         if (!editor.edit) return;
+        photo.disabled = field.readOnly;
         const context = sourceEditorContext(field);
         const isBold = !!context.bold?.span;
         const isList = !!context.list;
@@ -3512,7 +3804,6 @@ var require_sections_panel = __commonJS({
     var { editableBody, sourceParts, splitSectionBody } = require_markdown();
     var { sectionRuleIssues } = require_structure();
     var { changeSectionRule, ruleFor } = require_section_layout();
-    var { SIDEBAR_TEMPLATE } = require_built_ins();
     var { runWithNotice } = require_dom();
     var SectionsPanel = class {
       constructor(view) {
@@ -3623,9 +3914,14 @@ var require_sections_panel = __commonJS({
         if (unique) {
           const layout = this.view.layout.current;
           const rule = ruleFor(layout.sections, title);
-          if (layout.template === SIDEBAR_TEMPLATE) {
+          const flow = this.view.preview.sectionLayout;
+          if (flow?.mode === "sidebar") {
             const sidebar = rule.region === "sidebar";
             this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? void 0 : "sidebar");
+          }
+          if (flow?.sections[index]?.lists.length || rule.display === "tags") {
+            const tags = rule.display === "tags";
+            this.ruleButton(row, title, tags ? "sectionAsList" : "sectionAsTags", "tags", "display", tags ? void 0 : "tags");
           }
           const hidden = rule.hidden === true;
           jump.disabled = hidden;

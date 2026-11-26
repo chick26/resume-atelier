@@ -1,3 +1,4 @@
+const { appearanceFor, savedAppearance, applyAppearance } = require("./appearance");
 const PAPER_SIZES = { A4: { width: 210, height: 297 }, Letter: { width: 215.9, height: 279.4 } };
 function paperSize(layout) {
   return PAPER_SIZES[layout.paper] ?? PAPER_SIZES.A4;
@@ -37,6 +38,7 @@ function layoutFor(classes, saved) {
     template: saved?.template ?? BASE_TEMPLATE,
     paper: saved?.paper === "Letter" ? "Letter" : "A4",
     sections: saved?.sections ?? {},
+    appearance: appearanceFor(saved?.appearance),
   };
 
   for (const { key, min, max } of FIELDS) {
@@ -52,7 +54,11 @@ function dimensions(layout) {
 }
 
 function geometryForSave(layout, previous) {
-  return { ...previous, ...dimensions(layout), paper: layout.paper };
+  const geometry = { ...previous, ...dimensions(layout), paper: layout.paper };
+  const appearance = savedAppearance(layout.appearance, previous?.appearance);
+  if (Object.keys(appearance).length) geometry.appearance = appearance;
+  else delete geometry.appearance;
+  return geometry;
 }
 
 function layoutMetadata(frontmatter) {
@@ -67,16 +73,18 @@ function layoutMetadata(frontmatter) {
 }
 
 function noteLayoutKey({ template, density, geometry, sections }) {
-  return JSON.stringify([template, density, geometry?.paper ?? "A4", sections ?? {}, ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
+  return JSON.stringify([template, density, geometry?.paper ?? "A4", sections ?? {}, appearanceFor(geometry?.appearance), ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
 }
 
 function sameLayout(left, right) {
   return left?.template === right?.template && left?.density === right?.density
     && left?.paper === right?.paper && JSON.stringify(left?.sections) === JSON.stringify(right?.sections)
+    && JSON.stringify(appearanceFor(left?.appearance)) === JSON.stringify(appearanceFor(right?.appearance))
     && FIELDS.every(({ key }) => left?.[key] === right?.[key]);
 }
 
 function applyTypography(element, layout) {
+  applyAppearance(element, layout.appearance);
   element.style.setProperty("--text-size", `${layout.fontSize}pt`);
   element.style.setProperty("--line-height", String(layout.lineHeight));
   element.dataset.resumeDensity = layout.density;

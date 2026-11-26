@@ -4,6 +4,7 @@ const { applyTemplate } = require("../themes/scoped-css");
 const { editableBody } = require("../resume/markdown");
 const { decorateResumeMarkup } = require("../resume/rendered-markup");
 const { SectionLayout } = require("../resume/section-layout");
+const { applyAppearance } = require("../layout/appearance");
 
 class ResumePresentation {
   constructor(app, catalog, layouts, themes, t) {
@@ -145,6 +146,7 @@ class ResumePresentation {
       if (!declaredClasses.includes(cssClass)) root.classList.remove(cssClass);
     }
     this.readingClasses.delete(root);
+    applyAppearance(root);
     delete root.dataset.resumeDensity;
     for (const { key } of MARGINS) root.style.removeProperty(`--resume-margin-${key}`);
     root.style.removeProperty("--resume-paper-width");

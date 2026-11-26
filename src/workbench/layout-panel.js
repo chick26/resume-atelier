@@ -3,6 +3,7 @@ const {
   PAPER_SIZES, paperSize, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, noteLayoutKey, sameLayout,
 } = require("../layout/geometry");
 const { iconButton } = require("./dom");
+const { mountAppearanceControls } = require("./appearance-controls");
 
 class LayoutPanel {
   constructor(view) {
@@ -28,6 +29,7 @@ class LayoutPanel {
 
   mount(layout) {
     this.addTemplateControls(layout);
+    this.updateAppearance = mountAppearanceControls(layout, this);
     const fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
     fineTune.createEl("summary", { text: this.t("fineTune") });
     const marginHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
@@ -321,6 +323,7 @@ class LayoutPanel {
       button.setAttribute("aria-pressed", String(this.marginLocks[side]));
     }
     this.view.preview.updateLayout(layout);
+    this.updateAppearance(layout.appearance);
     const { file, classes } = this.view.selected;
     const defaults = layoutFor(classes, { density: layout.density });
     const canUndo = this.resetUndo.has(file);

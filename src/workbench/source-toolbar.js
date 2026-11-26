@@ -1,5 +1,6 @@
 const { Notice, setIcon } = require("obsidian");
 const { iconButton } = require("./dom");
+const { PhotoPicker } = require("./modals");
 const {
   SOURCE_ENTRY_SEPARATOR, replaceSourceSelection, sourceEditorContext, sourceEntryTarget, sourceEntryMarkup,
   toggleSourceBold, toggleSourceList, toggleSourceHeading,
@@ -85,6 +86,11 @@ function mountSourceTools(editor, pane, tools, info, field) {
   setIcon(entry.createSpan({ cls: "resume-layout-source-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
   createSourceEntryPopover(pane, entry, field, popovers, { t, view, updateTools });
 
+  const photo = iconButton(tools, "image", t("choosePhoto"), () => {
+    if (!editor.edit || field.readOnly) return;
+    popovers.close();
+    new PhotoPicker(editor, field).open();
+  });
   const help = iconButton(info, "circle-help", t("editorShortcuts"), () => {
     if (!helpPanel.hidden) return popovers.close();
     popovers.show(helpPanel, help);
@@ -119,6 +125,7 @@ function mountSourceTools(editor, pane, tools, info, field) {
   };
   function updateTools() {
     if (!editor.edit) return;
+    photo.disabled = field.readOnly;
     const context = sourceEditorContext(field);
     const isBold = !!context.bold?.span;
     const isList = !!context.list;

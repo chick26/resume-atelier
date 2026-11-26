@@ -1,5 +1,4 @@
 const { sectionTitle, sectionRuleIssues } = require("./structure");
-const { SIDEBAR_TEMPLATE } = require("../themes/built-ins");
 
 function ruleFor(rules, title) {
   const rule = Object.hasOwn(rules, title) && rules[title];
@@ -32,7 +31,37 @@ function container(root, tag, className) {
   return element;
 }
 
-// Keep the original native block nodes, including embeds and their event handlers.
+function paragraphWithPortrait(block) {
+  const paragraph = block.matches("p") ? block : block.firstElementChild;
+  if (!paragraph?.matches("p")) return false;
+  const photo = paragraph.querySelector('img[alt="avatar"], .internal-embed[alt="avatar"], img.avatar');
+  return !!photo && [...paragraph.childNodes].every(node => node.contains(photo) || !node.textContent.trim());
+}
+
+function tagLists(nodes) {
+  return nodes.map(node => node.matches("ul") ? node : node.matches("div") ? node.firstElementChild : null)
+    .filter(list => list?.matches("ul") && !list.querySelector("ul,ol,.task-list-item"));
+}
+
+function addSection(section, nodes, timeline) {
+  let body = section;
+  for (const node of nodes) {
+    if (beginsEntry(node)) {
+      const entry = container(section, "div", "resume-entry");
+      section.append(entry);
+      entry.append(node);
+      body = entry;
+      if (timeline) {
+        body = container(section, "div", "resume-entry-body");
+        entry.append(body);
+      }
+    } else {
+      body.append(node);
+    }
+  }
+}
+
+// Reuse native nodes so embeds, links and editor bindings keep their identity.
 class SectionLayout {
   constructor(root, blocks, titles) {
     this.root = root;
@@ -49,51 +78,82 @@ class SectionLayout {
       }
       nodes.push(block);
     }
+    this.portrait = this.intro.find(paragraphWithPortrait);
+    this.portrait?.classList.add("resume-portrait-block");
+    for (const [index, section] of this.sections.entries()) {
+      section.breaks = [];
+      // A trailing rule before the next heading separates document pages. Keep
+      // it outside the region that can be hidden or moved into the sidebar.
+      if (index < this.sections.length - 1) {
+        while (section.nodes.at(-1)?.matches("hr,.el-hr")) section.breaks.unshift(section.nodes.pop());
+      }
+      section.lists = tagLists(section.nodes);
+    }
     this.duplicates = new Set(sectionRuleIssues(this.sections, {}).duplicate);
   }
 
   apply(layout) {
-    const dual = layout.template === SIDEBAR_TEMPLATE;
+    const declared = this.root.ownerDocument.defaultView.getComputedStyle(this.root).getPropertyValue("--resume-structure").trim();
+    const mode = declared === "sidebar" || declared === "timeline" ? declared : "single";
     const rules = this.sections.map(({ title }) => this.duplicates.has(title) ? {} : ruleFor(layout.sections, title));
-    const key = JSON.stringify([dual, rules.map(rule => [rule.hidden === true, rule.region === "sidebar"])]);
+    const sidePhoto = !!this.portrait && mode === "sidebar" && layout.appearance?.avatarPosition === "sidebar";
+    const key = JSON.stringify([mode, sidePhoto, rules.map(rule => [rule.hidden === true, rule.region === "sidebar", rule.display === "tags"])]);
     if (this.key === key) return;
     this.key = key;
+    this.mode = mode;
     if (this.wrapper) {
       this.wrapper.before(...this.blocks);
       this.wrapper.remove();
       this.wrapper = null;
     }
-    for (const [index, { nodes }] of this.sections.entries()) {
+    for (const [index, { nodes, lists }] of this.sections.entries()) {
       for (const node of nodes) node.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
+      for (const list of lists) list.classList.toggle("resume-section-tags", rules[index].display === "tags");
     }
-    if (!dual || !this.sections.length) return;
-    const wrapper = container(this.root, "div", "resume-layout-document");
+    const structured = mode !== "single" && this.sections.length > 0;
+    if (!structured && !this.portrait) return;
+    const header = container(this.root, "header", "resume-header");
+    if (this.portrait && !(structured && sidePhoto)) header.classList.add("has-portrait");
+    const wrapper = structured ? container(this.root, "div", "resume-layout-document") : header;
     this.blocks[0].before(wrapper);
     this.wrapper = wrapper;
-    const header = container(this.root, "header", "resume-header");
     header.append(...this.intro);
+    if (!structured) return;
+    wrapper.append(header);
+    const timeline = mode === "timeline";
+    wrapper.classList.toggle("resume-timeline", timeline);
+    let group = [];
+    let photo = sidePhoto ? this.portrait : null;
+    for (const [index, section] of this.sections.entries()) {
+      group.push({ section, rule: rules[index] });
+      if (section.breaks.length || index === this.sections.length - 1) {
+        wrapper.append(this.columnsFor(group, mode, photo), ...section.breaks);
+        group = [];
+        photo = null;
+      }
+    }
+  }
+
+  columnsFor(group, mode, photo) {
     const columns = container(this.root, "div", "resume-layout-columns");
     const main = container(this.root, "div", "resume-main");
     const sidebar = container(this.root, "aside", "resume-sidebar");
-    for (const [index, { title, nodes }] of this.sections.entries()) {
+    if (photo) sidebar.append(photo);
+    for (const { section: { title, nodes }, rule } of group) {
       const section = container(this.root, "section", "resume-section");
       section.dataset.resumeSection = title;
-      section.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
-      let parent = section;
-      for (const node of nodes) {
-        if (beginsEntry(node)) {
-          parent = container(this.root, "div", "resume-entry");
-          section.append(parent);
-        }
-        parent.append(node);
+      section.classList.toggle("resume-layout-section-hidden", rule.hidden === true);
+      addSection(section, nodes, mode === "timeline");
+      (mode === "sidebar" && rule.region === "sidebar" ? sidebar : main).append(section);
+    }
+    columns.append(main);
+    if (mode === "sidebar") {
+      if (main.querySelector("section:not(.resume-layout-section-hidden)") && (photo || sidebar.querySelector("section:not(.resume-layout-section-hidden)"))) {
+        columns.classList.add("has-sidebar");
       }
-      (rules[index].region === "sidebar" ? sidebar : main).append(section);
+      columns.append(sidebar);
     }
-    if (main.querySelector("section:not(.resume-layout-section-hidden)") && sidebar.querySelector("section:not(.resume-layout-section-hidden)")) {
-      columns.classList.add("has-sidebar");
-    }
-    columns.append(main, sidebar);
-    wrapper.append(header, columns);
+    return columns;
   }
 }
 

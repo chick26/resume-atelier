@@ -9,8 +9,8 @@
   object-fit: cover;
   overflow: hidden;
   width: var(--avatar-width);
-  height: var(--avatar-width);
-  border-radius: 50%;
+  height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  border-radius: var(--resume-avatar-radius, 50%);
   border: 0;
   box-shadow: none;
   margin: -23mm 0 0 3mm;
@@ -22,6 +22,37 @@
   padding: 0;
   margin: 0;
 }
+
+.lapis-cv.resume-portrait-ratio :is(img[alt="avatar"], .image-embed[alt="avatar"] img) { border-radius: var(--resume-avatar-radius, 2mm); }
+.resume-layout-styled .resume-header.has-portrait {
+  position: relative;
+  min-height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  padding-inline-end: calc(var(--avatar-width) + 4mm);
+}
+.resume-layout-styled .resume-header.has-portrait > .resume-portrait-block {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+}
+.lapis-cv.resume-layout-styled .resume-portrait-block,
+.lapis-cv.resume-layout-styled .resume-portrait-block p {
+  width: var(--avatar-width);
+  height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  margin: 0;
+  padding: 0;
+}
+.lapis-cv.resume-layout-styled .resume-portrait-block img {
+  display: block;
+  float: none;
+  position: static;
+  margin: 0;
+  width: var(--avatar-width);
+  height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: var(--resume-avatar-radius, 50%);
+}
+.lapis-cv.resume-portrait-ratio .resume-portrait-block img { border-radius: var(--resume-avatar-radius, 2mm); }
 
 /* Editing-mode details from the upstream Obsidian stylesheet */
 .lapis-cv:where(.resume-layout-styled) .cm-line:has(br) {

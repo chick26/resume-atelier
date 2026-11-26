@@ -130,3 +130,59 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
 .lapis-cv.resume-layout-styled .resume-layout-columns.has-sidebar :is(.entry-title, div[alt="entry-title"]) > h3 {
   flex: 0 1 auto;
 }
+
+.resume-layout-styled .resume-timeline .resume-entry {
+  --timeline-indent: calc(var(--timeline-date-width, 24mm) + 5mm);
+  position: relative;
+}
+.resume-layout-styled .resume-timeline .resume-entry::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--timeline-indent) - 3mm);
+  border-inline-start: .6pt solid var(--border-color);
+}
+.resume-layout-styled .resume-timeline .resume-entry::after {
+  content: "";
+  position: absolute;
+  inset-block-start: .45em;
+  inset-inline-start: calc(var(--timeline-indent) - 3.6mm);
+  width: 1.4mm;
+  height: 1.4mm;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+.lapis-cv.resume-layout-styled .resume-timeline .resume-entry :is(h3.resume-entry-heading, .entry-title, div[alt="entry-title"]) {
+  display: grid;
+  grid-template-columns: var(--timeline-date-width, 24mm) minmax(0, 1fr);
+  gap: 5mm;
+  align-items: baseline;
+}
+.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-main,h3) { grid-area: 1 / 2; }
+.lapis-cv.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-date,p) {
+  grid-area: 1 / 1;
+  text-align: start;
+  white-space: normal;
+}
+.resume-layout-styled .resume-timeline .resume-entry-body,
+.resume-layout-styled .resume-timeline .resume-entry > h3:not(.resume-entry-heading),
+.resume-layout-styled .resume-timeline .resume-entry > div:not(.entry-title,[alt="entry-title"]) > h3[data-heading]:not(.resume-entry-heading) {
+  padding-inline-start: var(--timeline-indent);
+}
+.lapis-cv.resume-layout-styled ul.resume-section-tags {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.5mm;
+  row-gap: var(--resume-list-gap);
+  padding: 0 !important;
+  list-style: none;
+}
+.lapis-cv.resume-layout-styled ul.resume-section-tags > li {
+  max-width: 100%;
+  margin: 0 !important;
+  padding: .25mm 1.6mm !important;
+  border: .5pt solid var(--border-color);
+  border-radius: 1.5mm;
+  overflow-wrap: anywhere;
+}
+.lapis-cv.resume-layout-styled ul.resume-section-tags > li::marker { content: ""; }

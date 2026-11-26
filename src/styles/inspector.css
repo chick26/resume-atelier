@@ -127,6 +127,19 @@
   gap: 10px;
   align-content: start;
 }
+.careeros-resume-layout .resume-layout-appearance-fields { display: grid; gap: 7px; padding-bottom: 9px; }
+.careeros-resume-layout .resume-layout-appearance-fields label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 6px;
+}
+.careeros-resume-layout .resume-layout-appearance-fields :is(select, input[type="range"]) {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+}
+.careeros-resume-layout .resume-layout-appearance-fields output { color: var(--studio-muted); font-variant-numeric: tabular-nums; }
 
 .careeros-resume-layout .resume-layout-section-list { display: grid; gap: 6px; }
 

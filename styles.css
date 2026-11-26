@@ -657,6 +657,19 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
   gap: 10px;
   align-content: start;
 }
+.careeros-resume-layout .resume-layout-appearance-fields { display: grid; gap: 7px; padding-bottom: 9px; }
+.careeros-resume-layout .resume-layout-appearance-fields label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 6px;
+}
+.careeros-resume-layout .resume-layout-appearance-fields :is(select, input[type="range"]) {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+}
+.careeros-resume-layout .resume-layout-appearance-fields output { color: var(--studio-muted); font-variant-numeric: tabular-nums; }
 
 .careeros-resume-layout .resume-layout-section-list { display: grid; gap: 6px; }
 
@@ -1384,6 +1397,62 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   flex: 0 1 auto;
 }
 
+.resume-layout-styled .resume-timeline .resume-entry {
+  --timeline-indent: calc(var(--timeline-date-width, 24mm) + 5mm);
+  position: relative;
+}
+.resume-layout-styled .resume-timeline .resume-entry::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--timeline-indent) - 3mm);
+  border-inline-start: .6pt solid var(--border-color);
+}
+.resume-layout-styled .resume-timeline .resume-entry::after {
+  content: "";
+  position: absolute;
+  inset-block-start: .45em;
+  inset-inline-start: calc(var(--timeline-indent) - 3.6mm);
+  width: 1.4mm;
+  height: 1.4mm;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+.lapis-cv.resume-layout-styled .resume-timeline .resume-entry :is(h3.resume-entry-heading, .entry-title, div[alt="entry-title"]) {
+  display: grid;
+  grid-template-columns: var(--timeline-date-width, 24mm) minmax(0, 1fr);
+  gap: 5mm;
+  align-items: baseline;
+}
+.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-main,h3) { grid-area: 1 / 2; }
+.lapis-cv.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-date,p) {
+  grid-area: 1 / 1;
+  text-align: start;
+  white-space: normal;
+}
+.resume-layout-styled .resume-timeline .resume-entry-body,
+.resume-layout-styled .resume-timeline .resume-entry > h3:not(.resume-entry-heading),
+.resume-layout-styled .resume-timeline .resume-entry > div:not(.entry-title,[alt="entry-title"]) > h3[data-heading]:not(.resume-entry-heading) {
+  padding-inline-start: var(--timeline-indent);
+}
+.lapis-cv.resume-layout-styled ul.resume-section-tags {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.5mm;
+  row-gap: var(--resume-list-gap);
+  padding: 0 !important;
+  list-style: none;
+}
+.lapis-cv.resume-layout-styled ul.resume-section-tags > li {
+  max-width: 100%;
+  margin: 0 !important;
+  padding: .25mm 1.6mm !important;
+  border: .5pt solid var(--border-color);
+  border-radius: 1.5mm;
+  overflow-wrap: anywhere;
+}
+.lapis-cv.resume-layout-styled ul.resume-section-tags > li::marker { content: ""; }
+
 /* Optional avatar from the upstream template */
 .lapis-cv:where(.resume-layout-styled) :is(.avatar, img[alt="avatar"]) {
   display: block;
@@ -1395,8 +1464,8 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   object-fit: cover;
   overflow: hidden;
   width: var(--avatar-width);
-  height: var(--avatar-width);
-  border-radius: 50%;
+  height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  border-radius: var(--resume-avatar-radius, 50%);
   border: 0;
   box-shadow: none;
   margin: -23mm 0 0 3mm;
@@ -1408,6 +1477,37 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   padding: 0;
   margin: 0;
 }
+
+.lapis-cv.resume-portrait-ratio :is(img[alt="avatar"], .image-embed[alt="avatar"] img) { border-radius: var(--resume-avatar-radius, 2mm); }
+.resume-layout-styled .resume-header.has-portrait {
+  position: relative;
+  min-height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  padding-inline-end: calc(var(--avatar-width) + 4mm);
+}
+.resume-layout-styled .resume-header.has-portrait > .resume-portrait-block {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+}
+.lapis-cv.resume-layout-styled .resume-portrait-block,
+.lapis-cv.resume-layout-styled .resume-portrait-block p {
+  width: var(--avatar-width);
+  height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  margin: 0;
+  padding: 0;
+}
+.lapis-cv.resume-layout-styled .resume-portrait-block img {
+  display: block;
+  float: none;
+  position: static;
+  margin: 0;
+  width: var(--avatar-width);
+  height: calc(var(--avatar-width) * var(--resume-avatar-height-factor, 1));
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: var(--resume-avatar-radius, 50%);
+}
+.lapis-cv.resume-portrait-ratio .resume-portrait-block img { border-radius: var(--resume-avatar-radius, 2mm); }
 
 /* Editing-mode details from the upstream Obsidian stylesheet */
 .lapis-cv:where(.resume-layout-styled) .cm-line:has(br) {

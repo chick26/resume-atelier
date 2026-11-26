@@ -1,5 +1,6 @@
 const { BASE_TEMPLATE } = require("../layout/geometry");
 const SIDEBAR_TEMPLATE = "双栏现代";
+const TIMELINE_TEMPLATE = "时间轴";
 
 const THEME_LABELS = { [BASE_TEMPLATE]: "经典衬线", "黑白 ATS": "黑白简约（ATS 友好）" };
 const BUILT_IN_THEME_MESSAGES = {
@@ -8,14 +9,22 @@ const BUILT_IN_THEME_MESSAGES = {
   "现代无衬线": "themeSans",
   "黑白 ATS": "themeAts",
   [SIDEBAR_TEMPLATE]: "themeSidebar",
+  [TIMELINE_TEMPLATE]: "themeTimeline",
 };
 
 const BUILT_IN_TEMPLATE_CSS = {
   [BASE_TEMPLATE]: "",
   [SIDEBAR_TEMPLATE]: `:scope {
+  --resume-structure: sidebar;
   --title-font: var(--resume-sans-font);
   --color-accent: #205c63;
   --border-color: #a1bdbf;
+}`,
+  [TIMELINE_TEMPLATE]: `:scope {
+  --resume-structure: timeline;
+  --timeline-date-width: 24mm;
+  --title-font: var(--resume-sans-font);
+  --color-accent: #3d5968;
 }`,
   "简洁蓝": `:scope {
   --color-accent: #254f78;
