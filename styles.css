@@ -1095,6 +1095,23 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
 }
 
 /* Entry headers (role/org/date, project/stack/context, school/degree/date) */
+.lapis-cv:where(.resume-layout-styled) h3.resume-entry-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2.5mm;
+  margin-top: var(--resume-entry-gap) !important;
+}
+.lapis-cv:where(.resume-layout-styled) .resume-entry-heading .entry-main { min-width: 0; }
+.lapis-cv:where(.resume-layout-styled) .resume-entry-heading .entry-sub { font-family: var(--text-font); font-weight: 400; color: var(--text-muted); }
+.lapis-cv:where(.resume-layout-styled) .resume-entry-heading .entry-date {
+  flex: 0 1 auto;
+  text-align: end;
+  font: normal 400 var(--text-size)/var(--line-height) var(--text-font);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) {
   display: flex;
   justify-content: space-between;

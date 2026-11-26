@@ -15,18 +15,12 @@ resume_density: comfortable
 
 ## 工作经历
 
-<div alt="entry-title">
-    <h3>高级产品设计师 <span class="entry-sep">·</span><span class="entry-sub">示例工作室</span></h3>
-    <p>2022.06 – 至今</p>
-</div>
+### 高级产品设计师 · 示例工作室 | 2022.06 – 至今
 
 - 重新设计客服工作台，帮助团队快速找到待处理的请求。
 - 建立可复用的组件与交互规范，整理常见场景的使用示例。
 
-<div alt="entry-title">
-    <h3>产品设计师 <span class="entry-sep">·</span><span class="entry-sub">示例设计实验室</span></h3>
-    <p>2019.07 – 2022.05</p>
-</div>
+### 产品设计师 · 示例设计实验室 | 2019.07 – 2022.05
 
 - 访谈新用户，设计并验证分步骤的新手引导。
 - 与业务团队梳理指标定义，设计运营分析仪表盘。

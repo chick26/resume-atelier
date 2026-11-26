@@ -26,6 +26,8 @@ Run **Resume Atelier → Open workbench** from the command palette and choose a 
 
 Use **Edit text** to work beside the preview. For a regular note opened in preview, choose **Apply layout to this note** when you’re ready to save its layout. Use **Export PDF** when you’re ready to share the résumé.
 
+Write an experience heading as `### Senior Designer · Example Studio | 2022 – Present`. The toolbar uses the same Markdown. Existing HTML experience blocks also open for editing.
+
 To try a ready-made layout in an existing vault, save one of these Markdown notes into your vault and open it in the workbench. [English sample](examples/sample-resume.en.md) · [中文示例](examples/sample-resume.zh.md)
 
 ## 简体中文
@@ -43,6 +45,8 @@ To try a ready-made layout in an existing vault, save one of these Markdown note
 ### 开始排版
 
 从命令面板运行「Resume Atelier → 打开工作台」，选择一份 Markdown 笔记。空库可点击「新建示例简历」。普通笔记可以先试排，满意后点击「将版式写入此笔记」。完成后用「导出 PDF」打开 Obsidian 原生导出窗口。
+
+经历头可以写成 `### 高级产品设计师 · 示例工作室 | 2022 – 至今`。工具栏使用同一写法，也兼容已有 HTML 经历块。
 
 也可以把示例 Markdown 保存到已有的库，再用工作台打开。 [中文示例](examples/sample-resume.zh.md) · [英文示例](examples/sample-resume.en.md)
 

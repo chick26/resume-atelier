@@ -1195,11 +1195,117 @@ var require_resolution = __commonJS({
   }
 });
 
+// src/resume/entry.js
+var require_entry = __commonJS({
+  "src/resume/entry.js"(exports2, module2) {
+    function entryFields(label) {
+      let bracketDepth = 0;
+      let destinationDepth = 0;
+      let angle = false;
+      let dot = -1;
+      let pipe = -1;
+      for (let i = 0; i < label.length; i++) {
+        const char = label[i];
+        if (char === "\\") {
+          i++;
+          continue;
+        }
+        if (char === "`" || char === "*" || char === "_" || char === "~") {
+          const run = label.slice(i).match(/^(`+|\*+|_+|~+)/)[0];
+          let closing = label.indexOf(run, i + run.length);
+          while (closing >= 0 && (label[closing - 1] === char || label[closing + run.length] === char)) {
+            closing = label.indexOf(run, closing + run.length);
+          }
+          i += run.length - 1;
+          if (closing >= 0) i = closing + run.length - 1;
+          continue;
+        }
+        if (angle) {
+          if (char === ">") angle = false;
+          continue;
+        }
+        if (char === "<" && /^<(?:[a-z/!]|https?:)/i.test(label.slice(i))) {
+          angle = true;
+          continue;
+        }
+        if (char === "[") {
+          bracketDepth++;
+          continue;
+        }
+        if (char === "]" && bracketDepth) {
+          bracketDepth--;
+          continue;
+        }
+        if (bracketDepth) continue;
+        if (char === "(" && (destinationDepth || label[i - 1] === "]")) {
+          destinationDepth++;
+          continue;
+        }
+        if (destinationDepth) {
+          if (char === ")") destinationDepth--;
+          continue;
+        }
+        const spaced = /\s/.test(label[i - 1] ?? "") && /\s/.test(label[i + 1] ?? "");
+        if (char === "\uFF5C" || spaced && char === "|") pipe = i;
+        if (spaced && char === "\xB7" && dot < 0) dot = i;
+      }
+      const end = pipe < 0 ? label.length : pipe;
+      if (dot >= end) dot = -1;
+      const title = label.slice(0, dot < 0 ? end : dot).trim();
+      const subtitle = dot < 0 ? "" : label.slice(dot + 1, end).trim();
+      const right = pipe < 0 ? "" : label.slice(pipe + 1).trim();
+      if (!title || pipe >= 0 && !right) return null;
+      return { title, subtitle, right };
+    }
+    module2.exports = { entryFields };
+  }
+});
+
 // src/resume/rendered-markup.js
 var require_rendered_markup = __commonJS({
   "src/resume/rendered-markup.js"(exports2, module2) {
+    var { entryFields } = require_entry();
     var ENTRY_HEADER_SELECTOR = '.entry-title, [alt="entry-title"]';
+    function headingSuffix(parent, separator, expected, className) {
+      const doc = parent.ownerDocument;
+      for (const node of [...parent.childNodes].reverse()) {
+        if (node.nodeType !== 3) continue;
+        for (let i = node.length - 1; i >= 0; i--) {
+          if (!separator.includes(node.data[i])) continue;
+          const range = doc.createRange();
+          range.selectNodeContents(parent);
+          range.setStart(node, i + 1);
+          if (previewMatchText(range.toString()) !== previewMatchText(expected)) continue;
+          const suffix = doc.createElement("span");
+          suffix.className = className;
+          suffix.append(range.extractContents());
+          node.deleteData(i, 1);
+          return suffix;
+        }
+      }
+      return null;
+    }
+    function decorateEntryHeadings(root) {
+      const selector = "h3[data-heading]:not(.resume-entry-heading)";
+      const headings = root.matches(selector) ? [root] : root.querySelectorAll(selector);
+      for (const heading of headings) {
+        if (heading.closest(ENTRY_HEADER_SELECTOR)) continue;
+        const fields = entryFields(heading.dataset.heading);
+        if (!fields || !fields.right && !fields.subtitle) continue;
+        const date = fields.right && headingSuffix(heading, "|\uFF5C", fields.right, "entry-date");
+        if (fields.right && !date) continue;
+        const subtitle = fields.subtitle && headingSuffix(heading, "\xB7", fields.subtitle, "entry-sub");
+        const main = heading.ownerDocument.createElement("span");
+        main.className = "entry-main";
+        for (const child of [...heading.childNodes]) main.append(child);
+        if (subtitle) main.append(" \xB7 ", subtitle);
+        heading.append(main);
+        if (date) heading.append(date);
+        heading.classList.add("resume-entry-heading");
+      }
+    }
     function decorateResumeMarkup(root, chinese) {
+      decorateEntryHeadings(root);
       const doc = root.ownerDocument;
       const blocks = [...root.querySelectorAll("h2, blockquote")];
       if (root.matches("h2, blockquote")) blocks.unshift(root);
@@ -2184,6 +2290,7 @@ var require_theme_editor = __commonJS({
 var require_formatting = __commonJS({
   "src/editor/formatting.js"(exports2, module2) {
     var { MARKDOWN_FENCE } = require_markdown();
+    var { entryFields } = require_entry();
     var SOURCE_LIST_PREFIX = /^([ \t]*)([-+*]|\d{1,9}[.)])[ \t]+(?:(\[[ xX]\])(?:[ \t]+|$))?/;
     var SOURCE_HEADING_PREFIX = /^ {0,3}(#{1,6})(?:[ \t]+|$)/;
     var SOURCE_ENTRY_BLOCK = /^ {0,3}<div (alt|class)="entry-title">[ \t]*\n((?:[^\n]*\n)*?)[ \t]*<\/div>[ \t]*$/gm;
@@ -2326,11 +2433,12 @@ ${indent}${next} ${checklist ? "[ ] " : ""}`;
       const canFormat = !field.readOnly && !fenced && !entry && singleLine;
       const heading = canFormat ? line.text.match(SOURCE_HEADING_PREFIX) : null;
       const subtitleLine = heading?.[1] === "###" ? line.text.slice(heading[0].length).replace(/[ \t]+#+[ \t]*$/, "").trim() : "";
-      const subheading = /[*_`[\]<>]/.test(subtitleLine) ? "" : subtitleLine;
+      const subheading = subtitleLine;
       return {
         line,
         entry,
         subheading,
+        headingFields: subheading ? entryFields(subheading) : null,
         canFormat,
         canUseEntry: !field.readOnly && !fenced && (entry ? !!entry.fields : singleLine),
         list: canFormat ? line.text.match(SOURCE_LIST_PREFIX) : null,
@@ -2361,6 +2469,10 @@ ${indent}${next} ${checklist ? "[ ] " : ""}`;
         };
       }
       if (selectionEnd <= line.end) {
+        if (subheading) {
+          const fields = context.headingFields ?? { title: subheading, subtitle: "", right: "" };
+          return { ...fields, start: line.start, end: line.end, updating: true };
+        }
         const selected = value.slice(selectionStart, selectionEnd).trim();
         const title = subheading || (selected === line.text.trim() && !/^[#>*+\-]/.test(selected) ? selected : "");
         if (title && !/[*_`[\]<>]/.test(title)) return { start: line.start, end: line.end, title };
@@ -2371,7 +2483,8 @@ ${indent}${next} ${checklist ? "[ ] " : ""}`;
       const position = boundary === -1 ? value.length : lastLine.end + boundary;
       return { start: position, end: position };
     }
-    function sourceEntryMarkup(title, subtitle, right, attribute = "alt", separator = SOURCE_ENTRY_SEPARATOR) {
+    function sourceEntryMarkup(title, subtitle, right, attribute, separator = SOURCE_ENTRY_SEPARATOR) {
+      if (!attribute) return `### ${title}${subtitle ? " \xB7 " + subtitle : ""}${right ? " | " + right : ""}`;
       const escape = (text) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
       const detail = subtitle ? ` <span class="entry-sep">${separator}</span><span class="entry-sub">${escape(subtitle)}</span>` : "";
       const date = right ? `
@@ -2610,7 +2723,7 @@ var require_source_toolbar = __commonJS({
         update(bold, isBold, t("boldShortcut", { action: t(isBold ? "unbold" : "bold") }), !context.bold);
         update(list, isList, isList ? t("removeList") : t("makeBulletList"), !context.canFormat);
         update(heading, isHeading, isHeading ? t("removeSectionFormat") : t("makeSection"), !context.canFormat);
-        const editing = !!context.entry?.fields;
+        const editing = !!(context.entry?.fields || context.headingFields?.right || context.headingFields?.subtitle);
         const label = editing ? t("editEntry") : t("entry");
         if (entryLabel.textContent !== label) {
           entryLabel.setText(label);
@@ -3593,14 +3706,14 @@ var require_view = __commonJS({
 // examples/sample-resume.en.md
 var require_sample_resume_en = __commonJS({
   "examples/sample-resume.en.md"(exports2, module2) {
-    module2.exports = '---\ntype: resume-draft\nlanguage: en\nresume_style: \u7B80\u6D01\u84DD\nresume_density: comfortable\n---\n\n# Alex Morgan\n\nProduct Designer \xB7 Hong Kong\n\n## Profile\n\nProduct designer focused on making complex tools easier to use. I work across research, interaction design, and design systems.\n\n## Experience\n\n<div alt="entry-title">\n    <h3>Senior Product Designer <span class="entry-sep">\xB7</span><span class="entry-sub">Example Studio</span></h3>\n    <p>2022 \u2013 Present</p>\n</div>\n\n- Redesigned a support workspace used by three teams to triage requests.\n- Built reusable components and documented how to apply them across the product.\n\n<div alt="entry-title">\n    <h3>Product Designer <span class="entry-sep">\xB7</span><span class="entry-sub">Example Labs</span></h3>\n    <p>2019 \u2013 2022</p>\n</div>\n\n- Interviewed new users and prototyped a guided onboarding flow.\n- Designed a reporting dashboard with clear metric definitions.\n\n## Selected Project\n\n**Research library** \xB7 Built a searchable catalog of interview findings so teams could reuse past research.\n\n## Skills\n\nInteraction design \xB7 Prototyping \xB7 User research \xB7 Design systems\n';
+    module2.exports = "---\ntype: resume-draft\nlanguage: en\nresume_style: \u7B80\u6D01\u84DD\nresume_density: comfortable\n---\n\n# Alex Morgan\n\nProduct Designer \xB7 Hong Kong\n\n## Profile\n\nProduct designer focused on making complex tools easier to use. I work across research, interaction design, and design systems.\n\n## Experience\n\n### Senior Product Designer \xB7 Example Studio | 2022 \u2013 Present\n\n- Redesigned a support workspace used by three teams to triage requests.\n- Built reusable components and documented how to apply them across the product.\n\n### Product Designer \xB7 Example Labs | 2019 \u2013 2022\n\n- Interviewed new users and prototyped a guided onboarding flow.\n- Designed a reporting dashboard with clear metric definitions.\n\n## Selected Project\n\n**Research library** \xB7 Built a searchable catalog of interview findings so teams could reuse past research.\n\n## Skills\n\nInteraction design \xB7 Prototyping \xB7 User research \xB7 Design systems\n";
   }
 });
 
 // examples/sample-resume.zh.md
 var require_sample_resume_zh = __commonJS({
   "examples/sample-resume.zh.md"(exports2, module2) {
-    module2.exports = '---\ntype: resume-draft\nlanguage: zh\nresume_style: \u7B80\u6D01\u84DD\nresume_density: comfortable\n---\n\n# \u6797\u5B89\n\n\u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u9999\u6E2F\n\n## \u4E2A\u4EBA\u7B80\u4ECB\n\n\u64C5\u957F\u4ECE\u7528\u6237\u8BBF\u8C08\u548C\u6570\u636E\u4E2D\u68B3\u7406\u95EE\u9898\uFF0C\u8D1F\u8D23\u4EA4\u4E92\u8BBE\u8BA1\u3001\u539F\u578B\u9A8C\u8BC1\u548C\u8BBE\u8BA1\u89C4\u8303\u3002\n\n## \u5DE5\u4F5C\u7ECF\u5386\n\n<div alt="entry-title">\n    <h3>\u9AD8\u7EA7\u4EA7\u54C1\u8BBE\u8BA1\u5E08 <span class="entry-sep">\xB7</span><span class="entry-sub">\u793A\u4F8B\u5DE5\u4F5C\u5BA4</span></h3>\n    <p>2022.06 \u2013 \u81F3\u4ECA</p>\n</div>\n\n- \u91CD\u65B0\u8BBE\u8BA1\u5BA2\u670D\u5DE5\u4F5C\u53F0\uFF0C\u5E2E\u52A9\u56E2\u961F\u5FEB\u901F\u627E\u5230\u5F85\u5904\u7406\u7684\u8BF7\u6C42\u3002\n- \u5EFA\u7ACB\u53EF\u590D\u7528\u7684\u7EC4\u4EF6\u4E0E\u4EA4\u4E92\u89C4\u8303\uFF0C\u6574\u7406\u5E38\u89C1\u573A\u666F\u7684\u4F7F\u7528\u793A\u4F8B\u3002\n\n<div alt="entry-title">\n    <h3>\u4EA7\u54C1\u8BBE\u8BA1\u5E08 <span class="entry-sep">\xB7</span><span class="entry-sub">\u793A\u4F8B\u8BBE\u8BA1\u5B9E\u9A8C\u5BA4</span></h3>\n    <p>2019.07 \u2013 2022.05</p>\n</div>\n\n- \u8BBF\u8C08\u65B0\u7528\u6237\uFF0C\u8BBE\u8BA1\u5E76\u9A8C\u8BC1\u5206\u6B65\u9AA4\u7684\u65B0\u624B\u5F15\u5BFC\u3002\n- \u4E0E\u4E1A\u52A1\u56E2\u961F\u68B3\u7406\u6307\u6807\u5B9A\u4E49\uFF0C\u8BBE\u8BA1\u8FD0\u8425\u5206\u6790\u4EEA\u8868\u76D8\u3002\n\n## \u9879\u76EE\u7ECF\u5386\n\n**\u7528\u6237\u7814\u7A76\u7D22\u5F15** \xB7 \u6574\u7406\u8BBF\u8C08\u8BB0\u5F55\u548C\u7814\u7A76\u7ED3\u8BBA\uFF0C\u65B9\u4FBF\u4EA7\u54C1\u56E2\u961F\u68C0\u7D22\u53CA\u590D\u7528\u3002\n\n## \u6838\u5FC3\u6280\u80FD\n\n\u4EA4\u4E92\u8BBE\u8BA1 \xB7 \u539F\u578B\u8BBE\u8BA1 \xB7 \u7528\u6237\u7814\u7A76 \xB7 \u8BBE\u8BA1\u7CFB\u7EDF\n';
+    module2.exports = "---\ntype: resume-draft\nlanguage: zh\nresume_style: \u7B80\u6D01\u84DD\nresume_density: comfortable\n---\n\n# \u6797\u5B89\n\n\u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u9999\u6E2F\n\n## \u4E2A\u4EBA\u7B80\u4ECB\n\n\u64C5\u957F\u4ECE\u7528\u6237\u8BBF\u8C08\u548C\u6570\u636E\u4E2D\u68B3\u7406\u95EE\u9898\uFF0C\u8D1F\u8D23\u4EA4\u4E92\u8BBE\u8BA1\u3001\u539F\u578B\u9A8C\u8BC1\u548C\u8BBE\u8BA1\u89C4\u8303\u3002\n\n## \u5DE5\u4F5C\u7ECF\u5386\n\n### \u9AD8\u7EA7\u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u793A\u4F8B\u5DE5\u4F5C\u5BA4 | 2022.06 \u2013 \u81F3\u4ECA\n\n- \u91CD\u65B0\u8BBE\u8BA1\u5BA2\u670D\u5DE5\u4F5C\u53F0\uFF0C\u5E2E\u52A9\u56E2\u961F\u5FEB\u901F\u627E\u5230\u5F85\u5904\u7406\u7684\u8BF7\u6C42\u3002\n- \u5EFA\u7ACB\u53EF\u590D\u7528\u7684\u7EC4\u4EF6\u4E0E\u4EA4\u4E92\u89C4\u8303\uFF0C\u6574\u7406\u5E38\u89C1\u573A\u666F\u7684\u4F7F\u7528\u793A\u4F8B\u3002\n\n### \u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u793A\u4F8B\u8BBE\u8BA1\u5B9E\u9A8C\u5BA4 | 2019.07 \u2013 2022.05\n\n- \u8BBF\u8C08\u65B0\u7528\u6237\uFF0C\u8BBE\u8BA1\u5E76\u9A8C\u8BC1\u5206\u6B65\u9AA4\u7684\u65B0\u624B\u5F15\u5BFC\u3002\n- \u4E0E\u4E1A\u52A1\u56E2\u961F\u68B3\u7406\u6307\u6807\u5B9A\u4E49\uFF0C\u8BBE\u8BA1\u8FD0\u8425\u5206\u6790\u4EEA\u8868\u76D8\u3002\n\n## \u9879\u76EE\u7ECF\u5386\n\n**\u7528\u6237\u7814\u7A76\u7D22\u5F15** \xB7 \u6574\u7406\u8BBF\u8C08\u8BB0\u5F55\u548C\u7814\u7A76\u7ED3\u8BBA\uFF0C\u65B9\u4FBF\u4EA7\u54C1\u56E2\u961F\u68C0\u7D22\u53CA\u590D\u7528\u3002\n\n## \u6838\u5FC3\u6280\u80FD\n\n\u4EA4\u4E92\u8BBE\u8BA1 \xB7 \u539F\u578B\u8BBE\u8BA1 \xB7 \u7528\u6237\u7814\u7A76 \xB7 \u8BBE\u8BA1\u7CFB\u7EDF\n";
   }
 });
 

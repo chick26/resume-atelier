@@ -1,4 +1,5 @@
 const { MARKDOWN_FENCE } = require("../resume/markdown");
+const { entryFields } = require("../resume/entry");
 
 const SOURCE_LIST_PREFIX = /^([ \t]*)([-+*]|\d{1,9}[.)])[ \t]+(?:(\[[ xX]\])(?:[ \t]+|$))?/;
 const SOURCE_HEADING_PREFIX = /^ {0,3}(#{1,6})(?:[ \t]+|$)/;
@@ -150,9 +151,9 @@ function sourceEditorContext(field) {
   const canFormat = !field.readOnly && !fenced && !entry && singleLine;
   const heading = canFormat ? line.text.match(SOURCE_HEADING_PREFIX) : null;
   const subtitleLine = heading?.[1] === "###" ? line.text.slice(heading[0].length).replace(/[ \t]+#+[ \t]*$/, "").trim() : "";
-  const subheading = /[*_`[\]<>]/.test(subtitleLine) ? "" : subtitleLine;
+  const subheading = subtitleLine;
   return {
-    line, entry, subheading, canFormat,
+    line, entry, subheading, headingFields: subheading ? entryFields(subheading) : null, canFormat,
     canUseEntry: !field.readOnly && !fenced && (entry ? !!entry.fields : singleLine),
     list: canFormat ? line.text.match(SOURCE_LIST_PREFIX) : null,
     heading, bold: canFormat ? sourceBoldSelection(field, line) : null,
@@ -177,6 +178,10 @@ function sourceEntryTarget(field, context) {
   }
 
   if (selectionEnd <= line.end) {
+    if (subheading) {
+      const fields = context.headingFields ?? { title: subheading, subtitle: "", right: "" };
+      return { ...fields, start: line.start, end: line.end, updating: true };
+    }
     const selected = value.slice(selectionStart, selectionEnd).trim();
     const title = subheading || (selected === line.text.trim() && !/^[#>*+\-]/.test(selected) ? selected : "");
     if (title && !/[*_`[\]<>]/.test(title)) return { start: line.start, end: line.end, title };
@@ -188,7 +193,8 @@ function sourceEntryTarget(field, context) {
   return { start: position, end: position };
 }
 
-function sourceEntryMarkup(title, subtitle, right, attribute = "alt", separator = SOURCE_ENTRY_SEPARATOR) {
+function sourceEntryMarkup(title, subtitle, right, attribute, separator = SOURCE_ENTRY_SEPARATOR) {
+  if (!attribute) return `### ${title}${subtitle ? " · " + subtitle : ""}${right ? " | " + right : ""}`;
   const escape = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const detail = subtitle ? ` <span class="entry-sep">${separator}</span><span class="entry-sub">${escape(subtitle)}</span>` : "";
   const date = right ? `\n    <p>${escape(right)}</p>` : "";

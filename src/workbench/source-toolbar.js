@@ -126,7 +126,7 @@ function mountSourceTools(editor, pane, tools, info, field) {
     update(bold, isBold, t("boldShortcut", { action: t(isBold ? "unbold" : "bold") }), !context.bold);
     update(list, isList, isList ? t("removeList") : t("makeBulletList"), !context.canFormat);
     update(heading, isHeading, isHeading ? t("removeSectionFormat") : t("makeSection"), !context.canFormat);
-    const editing = !!context.entry?.fields;
+    const editing = !!(context.entry?.fields || context.headingFields?.right || context.headingFields?.subtitle);
     const label = editing ? t("editEntry") : t("entry");
     if (entryLabel.textContent !== label) {
       entryLabel.setText(label);

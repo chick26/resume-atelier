@@ -124,7 +124,7 @@ test("the sample notes used by the UI come from the downloadable Markdown files"
     await plugin.files.createExampleResume();
     assert.equal(writes[0].filePath, title + ".md");
     assert.equal(writes[0].contents, readFileSync(path.join(root, "examples", `sample-resume.${language}.md`), "utf8"));
-    assert.match(writes[0].contents, /<div alt="entry-title">/);
+    assert.match(writes[0].contents, /^### .+ · .+ \| .+$/m);
   }
 });
 

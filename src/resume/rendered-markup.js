@@ -1,6 +1,48 @@
+const { entryFields } = require("./entry");
 const ENTRY_HEADER_SELECTOR = '.entry-title, [alt="entry-title"]';
 
+function headingSuffix(parent, separator, expected, className) {
+  const doc = parent.ownerDocument;
+  for (const node of [...parent.childNodes].reverse()) {
+    if (node.nodeType !== 3) continue;
+    for (let i = node.length - 1; i >= 0; i--) {
+      if (!separator.includes(node.data[i])) continue;
+      const range = doc.createRange();
+      range.selectNodeContents(parent);
+      range.setStart(node, i + 1);
+      if (previewMatchText(range.toString()) !== previewMatchText(expected)) continue;
+      const suffix = doc.createElement("span");
+      suffix.className = className;
+      suffix.append(range.extractContents());
+      node.deleteData(i, 1);
+      return suffix;
+    }
+  }
+  return null;
+}
+
+function decorateEntryHeadings(root) {
+  const selector = "h3[data-heading]:not(.resume-entry-heading)";
+  const headings = root.matches(selector) ? [root] : root.querySelectorAll(selector);
+  for (const heading of headings) {
+    if (heading.closest(ENTRY_HEADER_SELECTOR)) continue;
+    const fields = entryFields(heading.dataset.heading);
+    if (!fields || (!fields.right && !fields.subtitle)) continue;
+    const date = fields.right && headingSuffix(heading, "|｜", fields.right, "entry-date");
+    if (fields.right && !date) continue;
+    const subtitle = fields.subtitle && headingSuffix(heading, "·", fields.subtitle, "entry-sub");
+    const main = heading.ownerDocument.createElement("span");
+    main.className = "entry-main";
+    for (const child of [...heading.childNodes]) main.append(child);
+    if (subtitle) main.append(" · ", subtitle);
+    heading.append(main);
+    if (date) heading.append(date);
+    heading.classList.add("resume-entry-heading");
+  }
+}
+
 function decorateResumeMarkup(root, chinese) {
+  decorateEntryHeadings(root);
   const doc = root.ownerDocument;
   const blocks = [...root.querySelectorAll("h2, blockquote")];
   if (root.matches("h2, blockquote")) blocks.unshift(root);
