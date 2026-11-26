@@ -1,6 +1,5 @@
 const { Notice, Scope } = require("obsidian");
 const { editableBody, withEditedBody } = require("../resume/markdown");
-const { locatePreviewBlocks } = require("../resume/rendered-markup");
 const { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold } = require("../editor/formatting");
 const { copySourceText, runWithNotice } = require("./dom");
 const { SourceRecoveryModal } = require("./modals");
@@ -317,11 +316,10 @@ class SourceEditor {
   followCursor() {
     const edit = this.edit;
     if (!edit || !this.view.preview.rendered || edit.file !== this.view.preview.renderedFile || edit.text !== this.view.preview.renderedBody) return;
-    this.previewBlocks ??= locatePreviewBlocks(this.view.preview.rendered, this.view.preview.renderedBody);
     const field = this.sourceField;
     const head = field.selectionDirection === "backward" ? field.selectionStart : field.selectionEnd;
     const line = edit.text.slice(0, head).split("\n").length - 1;
-    const block = this.previewBlocks.findLast(location => location.line <= line)?.element;
+    const block = this.previewBlocks?.findLast(location => location.line <= line)?.element;
     if (block === this.highlightedBlock) return;
     this.highlightedBlock?.classList.remove("resume-layout-current-block");
     this.highlightedBlock = block;
@@ -338,8 +336,7 @@ class SourceEditor {
     const edit = this.edit;
     if (!edit || edit.file !== this.view.preview.renderedFile || edit.text !== this.view.preview.renderedBody
       || !this.view.preview.rendered?.contains(event.target) || this.sourceField.readOnly) return;
-    this.previewBlocks ??= locatePreviewBlocks(this.view.preview.rendered, this.view.preview.renderedBody);
-    const location = this.previewBlocks.findLast(block => block.element.contains(event.target));
+    const location = this.previewBlocks?.findLast(block => block.element.contains(event.target));
     if (!location) return;
     event.preventDefault();
     const lines = edit.text.split("\n");

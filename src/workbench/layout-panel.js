@@ -1,6 +1,6 @@
 const { Notice } = require("obsidian");
 const {
-  A4_WIDTH, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, noteLayoutKey, sameLayout,
+  A4_WIDTH, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, noteLayoutKey, sameLayout,
 } = require("../layout/geometry");
 const { iconButton } = require("./dom");
 
@@ -140,7 +140,7 @@ class LayoutPanel {
     const resume = this.view.selected;
     if (!resume || resume.protected || this.applyingLayout) return false;
     const layout = { ...this.current };
-    const properties = { template: layout.template, density: layout.density, geometry: dimensions(layout) };
+    const properties = { template: layout.template, density: layout.density, geometry: geometryForSave(layout, resume.geometry), sections: layout.sections };
     this.layoutWrite = { file: resume.file, key: noteLayoutKey(properties) };
     this.applyingLayout = true;
     this.updateLayoutActions();

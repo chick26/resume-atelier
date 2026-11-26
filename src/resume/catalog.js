@@ -12,16 +12,16 @@ class ResumeCatalog {
     this.detectedLanguages = new WeakMap();
   }
 
-  resume(file, allowAny = false) {
+  resume(file, allowAny = false, properties) {
     if (file?.extension !== "md") return null;
-    const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+    const frontmatter = properties ?? this.app.metadataCache.getFileCache(file)?.frontmatter ?? {};
     const declaredClasses = [frontmatter?.cssclasses].flat().filter((entry) => typeof entry === "string")
       .flatMap((entry) => entry.split(/[\s,]+/)).filter(Boolean);
     const classes = [...declaredClasses];
     const metadata = layoutMetadata(frontmatter);
     const master = classes.includes("lapis-cv-master") || frontmatter.type === "master-resume";
     const legacy = classes.includes("lapis-cv") && classes.includes("careeros-resume");
-    const recognized = legacy || !!(metadata.template || metadata.geometry || metadata.density)
+    const recognized = legacy || !!(metadata.template || metadata.geometry || metadata.density || Object.keys(metadata.sections).length)
       || master || ["resume-draft", "tailored-resume"].includes(frontmatter.type);
     if (!recognized && !allowAny) return null;
     for (const required of ["lapis-cv", "careeros-resume"]) {

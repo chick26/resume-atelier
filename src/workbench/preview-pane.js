@@ -1,7 +1,8 @@
 const { Component, MarkdownRenderer } = require("obsidian");
 const { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require("../layout/geometry");
 const { sourceParts, sourceText } = require("../resume/markdown");
-const { decorateResumeMarkup } = require("../resume/rendered-markup");
+const { splitSectionBody } = require("../resume/structure");
+const { decorateResumeMarkup, locatePreviewBlocks } = require("../resume/rendered-markup");
 const { applyTemplate } = require("../themes/scoped-css");
 
 class PreviewPane {
@@ -73,6 +74,7 @@ class PreviewPane {
     }
     this.renderedFile = null;
     this.renderedBody = null;
+    this.sourceHeadings = [];
     this.view.editor.clearPreviewSelection();
   }
 
@@ -89,6 +91,9 @@ class PreviewPane {
       // The file's YAML is already separated. A second leading delimiter belongs to the body.
       await MarkdownRenderer.render(this.app, sourceParts(body).hasYaml ? `\n${body}` : body, next, file.path, renderer);
       if (version !== this.renderVersion) return;
+      const bindings = locatePreviewBlocks(next, sourceText(body));
+      const headingByLine = new Map(bindings.filter(({ element }) => element.matches("h2")).map(({ line, element }) => [line, element]));
+      const headings = splitSectionBody(body).sections.map(({ startLine }) => headingByLine.get(startLine));
       decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
       this.stylePreview(next);
 
@@ -96,6 +101,8 @@ class PreviewPane {
       this.clearPreview();
       next.removeClass("resume-layout-buffer");
       this.rendered = next;
+      this.sourceHeadings = headings;
+      this.view.editor.previewBlocks = bindings;
       this.renderedFile = file;
       this.renderer = renderer;
       this.view.sourceMarkdown = markdown;

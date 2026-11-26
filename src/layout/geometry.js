@@ -33,6 +33,8 @@ function layoutFor(classes, saved) {
     lineHeight: DENSITIES[density].lineHeight[language],
     density,
     template: saved?.template ?? BASE_TEMPLATE,
+    paper: saved?.paper === "Letter" ? "Letter" : "A4",
+    sections: saved?.sections ?? {},
   };
 
   for (const { key, min, max } of FIELDS) {
@@ -47,21 +49,28 @@ function dimensions(layout) {
   return Object.fromEntries(FIELDS.map(({ key }) => [key, layout[key]]));
 }
 
+function geometryForSave(layout, previous) {
+  return { ...previous, ...dimensions(layout), paper: layout.paper };
+}
+
 function layoutMetadata(frontmatter) {
   const template = typeof frontmatter.resume_style === "string" ? frontmatter.resume_style.trim() : "";
   const density = Object.hasOwn(DENSITIES, frontmatter.resume_density) ? frontmatter.resume_density : "";
   const value = frontmatter.resume_layout;
   const geometry = value && typeof value === "object" && !Array.isArray(value) ? value : null;
   const stored = !!template && !!density && FIELDS.every(({ key }) => Number.isFinite(geometry?.[key]));
-  return { template, density, geometry, stored };
+  const rules = frontmatter.resume_sections;
+  const sections = rules && typeof rules === "object" && !Array.isArray(rules) ? rules : {};
+  return { template, density, geometry, sections, stored };
 }
 
-function noteLayoutKey({ template, density, geometry }) {
-  return JSON.stringify([template, density, ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
+function noteLayoutKey({ template, density, geometry, sections }) {
+  return JSON.stringify([template, density, geometry?.paper ?? "A4", sections ?? {}, ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
 }
 
 function sameLayout(left, right) {
   return left?.template === right?.template && left?.density === right?.density
+    && left?.paper === right?.paper && JSON.stringify(left?.sections) === JSON.stringify(right?.sections)
     && FIELDS.every(({ key }) => left?.[key] === right?.[key]);
 }
 
@@ -76,4 +85,4 @@ function applyMargins(element, layout) {
 }
 
 
-module.exports = { A4_WIDTH, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
+module.exports = { A4_WIDTH, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };

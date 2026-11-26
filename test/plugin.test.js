@@ -34,6 +34,7 @@ async function loadPlugin({ language = "en", data, notes = new Map() } = {}) {
       assert.equal(name, "obsidian");
       return {
         FileView, MarkdownView, getFrontMatterInfo: frontMatterInfo,
+        stringifyYaml: JSON.stringify,
         getLanguage: () => language, normalizePath: value => value,
         Plugin: class {}, PluginSettingTab: class {}, FuzzySuggestModal: class {},
         Modal: class {}, Notice: class {},
@@ -82,7 +83,9 @@ async function loadPlugin({ language = "en", data, notes = new Map() } = {}) {
   let command;
   Object.assign(plugin, {
     manifest,
-    app: { workspace, metadataCache, vault },
+    app: { workspace, metadataCache, vault, fileManager: {
+      async processFrontMatter(file, update) { update(file.properties); },
+    } },
     loadData: async () => data,
     saveData: async value => { persisted.push(structuredClone(value)); },
     registerView(type, factory) {
@@ -172,6 +175,46 @@ test("atomic source edits preserve the YAML and reject concurrent edits", async 
   assert.equal(file.contents, yaml + after.replaceAll("\n", "\r\n"));
   await assert.rejects(plugin.files.writeSourceBody(file, before, "Lost update"), { code: "CONFLICT" });
   assert.equal(file.contents, yaml + after.replaceAll("\n", "\r\n"));
+});
+
+test("layout save, undo and editable copies preserve paper, section rules and geometry extensions", async () => {
+  const body = "# Example\n\n## Skills\n- Writing\n";
+  const rules = { Skills: { region: "sidebar", display: "tags", future: ["keep"] }, Honors: { hidden: true } };
+  const initial = { type: "resume-draft", custom: "untouched",
+    resume_layout: { top: 10, paper: "Letter", future: { spacing: 2 } }, resume_sections: rules };
+  const file = note("Source.md", structuredClone(initial), body);
+  const { plugin, writes } = await loadPlugin({ notes: new Map([[file.path, file]]) });
+  plugin.files.onLayoutChange = () => {};
+  const selected = () => plugin.catalog.resume(file);
+  const readLayout = () => plugin.layouts.noteLayout(selected());
+  const original = readLayout();
+  assert.equal(original.paper, "Letter");
+  const expected = noteLayoutKey(selected());
+  await plugin.files.writeNoteLayout(file, expected, { ...original, left: 17 });
+  assert.equal(file.properties.resume_layout.left, 17);
+  assert.equal(file.properties.resume_layout.paper, "Letter");
+  assert.deepEqual(file.properties.resume_sections, rules);
+  assert.deepEqual(file.properties.resume_layout.future, { spacing: 2 });
+  await plugin.files.writeNoteLayout(file, noteLayoutKey(selected()), original);
+  assert.equal(file.properties.resume_layout.left, original.left);
+  assert.equal(file.properties.custom, "untouched");
+  const beforeExternal = noteLayoutKey(selected());
+  file.properties.resume_sections = { ...rules, Honors: { hidden: false } };
+  await assert.rejects(plugin.files.writeNoteLayout(file, beforeExternal, original));
+  assert.equal(file.properties.resume_sections.Honors.hidden, false);
+  file.properties.resume_protected = true;
+  await assert.rejects(plugin.files.writeNoteLayout(file, noteLayoutKey(selected()), original));
+  await plugin.files.copyForEditing(selected(), readLayout());
+  const contents = writes[0].contents;
+  const end = contents.indexOf("\n---\n", 4);
+  const copy = JSON.parse(contents.slice(4, end));
+  assert.equal(contents.slice(end + 5), body);
+  assert.deepEqual(copy.resume_sections, file.properties.resume_sections);
+  assert.deepEqual(copy.resume_layout, structuredClone(file.properties.resume_layout));
+  assert.equal(copy.type, "resume-draft");
+  assert.equal(copy.draft_source, "[[Source.md]]");
+  assert.equal(copy.resume_protected, undefined);
+  assert.equal(file.contents, body);
 });
 
 test("an application with frozen materials protects the linked resume", async () => {

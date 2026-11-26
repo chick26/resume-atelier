@@ -1,38 +1,6 @@
 const { getFrontMatterInfo } = require("obsidian");
 
-const MARKDOWN_FENCE = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/;
-
-function splitSectionBody(body) {
-  const headings = [];
-  let fence = "";
-  let inComment = false;
-  let offset = 0;
-  for (const line of body.match(/[^\n]*\n|[^\n]+$/g) ?? []) {
-    const marker = line.match(MARKDOWN_FENCE);
-    if (fence) {
-      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
-    } else if (inComment || /^\s*<!--/.test(line)) {
-      inComment = !line.includes("-->");
-    } else if (marker) {
-      fence = marker[1];
-    } else {
-      const heading = line.match(/^ {0,3}##[ \t]+(.+?)[ \t]*(?:\r?\n)?$/);
-      if (heading) {
-        const title = heading[1].replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
-        headings.push({ offset, title });
-      }
-    }
-    offset += line.length;
-  }
-  return {
-    intro: body.slice(0, headings[0]?.offset ?? body.length),
-    sections: headings.map((heading, index) => ({
-      title: heading.title,
-      markdown: body.slice(heading.offset, headings[index + 1]?.offset ?? body.length),
-    })),
-  };
-}
-
+const { MARKDOWN_FENCE, splitSectionBody } = require("./structure");
 
 function sourceText(markdown) {
   return markdown.replace(/\r\n?/g, "\n");

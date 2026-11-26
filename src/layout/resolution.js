@@ -9,6 +9,7 @@ class ResumeLayouts {
   noteLayout(resume) {
     return layoutFor(resume.classes, {
       ...resume.geometry,
+      sections: resume.sections,
       density: resume.density || (resume.template === "紧凑" ? "compact" : this.state.settings.defaultDensity),
       template: this.themes.templateId(resume.template) ?? this.themes.templateId(this.state.settings.defaultTemplate) ?? BASE_TEMPLATE,
     });
@@ -23,7 +24,7 @@ class ResumeLayouts {
         ...canonical, ...saved, template: this.themes.templateId(saved.template) ?? canonical.template,
       });
     }
-    const values = resume.geometry || resume.density ? canonical : { ...canonical, ...saved };
+    const values = resume.geometry || resume.density || Object.keys(resume.sections).length ? canonical : { ...canonical, ...saved };
     return layoutFor(resume.classes, {
       ...values,
       density: resume.density || (resume.template === "紧凑" || (!resume.template && saved.template === "紧凑") ? "compact" : canonical.density),

@@ -188,6 +188,8 @@ const MESSAGES = {
   moveSectionDown: ["下移{title}", "Move “{title}” down"],
   sectionNameRequired: ["请填写一行栏目名称。", "Enter a section name on one line."],
   sectionNameDuplicate: ["已经有同名栏目。", "A section with this name already exists."],
+  duplicateSectionRule: ["有多个「{title}」栏目。请用不同的标题区分它们，再指定栏位或显隐。", "Several sections are named “{title}”. Give them distinct headings to control their placement or visibility."],
+  missingSectionRule: ["版式属性引用的「{title}」在正文中找不到。请核对栏目标题。", "The layout refers to “{title}”, which has no matching section heading."],
   sectionAdded: ["已新增栏目", "Section added"],
   sectionsChanged: ["栏目已变化，请重新操作。", "The sections changed. Try again."],
   sectionsReordered: ["已调整栏目顺序", "Sections reordered"],

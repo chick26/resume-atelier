@@ -203,6 +203,8 @@ var require_localization = __commonJS({
       moveSectionDown: ["\u4E0B\u79FB{title}", "Move \u201C{title}\u201D down"],
       sectionNameRequired: ["\u8BF7\u586B\u5199\u4E00\u884C\u680F\u76EE\u540D\u79F0\u3002", "Enter a section name on one line."],
       sectionNameDuplicate: ["\u5DF2\u7ECF\u6709\u540C\u540D\u680F\u76EE\u3002", "A section with this name already exists."],
+      duplicateSectionRule: ["\u6709\u591A\u4E2A\u300C{title}\u300D\u680F\u76EE\u3002\u8BF7\u7528\u4E0D\u540C\u7684\u6807\u9898\u533A\u5206\u5B83\u4EEC\uFF0C\u518D\u6307\u5B9A\u680F\u4F4D\u6216\u663E\u9690\u3002", "Several sections are named \u201C{title}\u201D. Give them distinct headings to control their placement or visibility."],
+      missingSectionRule: ["\u7248\u5F0F\u5C5E\u6027\u5F15\u7528\u7684\u300C{title}\u300D\u5728\u6B63\u6587\u4E2D\u627E\u4E0D\u5230\u3002\u8BF7\u6838\u5BF9\u680F\u76EE\u6807\u9898\u3002", "The layout refers to \u201C{title}\u201D, which has no matching section heading."],
       sectionAdded: ["\u5DF2\u65B0\u589E\u680F\u76EE", "Section added"],
       sectionsChanged: ["\u680F\u76EE\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u64CD\u4F5C\u3002", "The sections changed. Try again."],
       sectionsReordered: ["\u5DF2\u8C03\u6574\u680F\u76EE\u987A\u5E8F", "Sections reordered"],
@@ -325,7 +327,9 @@ var require_geometry = __commonJS({
         fontSize: language === "zh" ? 8.85 : 9.05,
         lineHeight: DENSITIES[density].lineHeight[language],
         density,
-        template: saved?.template ?? BASE_TEMPLATE
+        template: saved?.template ?? BASE_TEMPLATE,
+        paper: saved?.paper === "Letter" ? "Letter" : "A4",
+        sections: saved?.sections ?? {}
       };
       for (const { key, min, max } of FIELDS) {
         if (Number.isFinite(saved?.[key])) {
@@ -337,19 +341,24 @@ var require_geometry = __commonJS({
     function dimensions(layout) {
       return Object.fromEntries(FIELDS.map(({ key }) => [key, layout[key]]));
     }
+    function geometryForSave(layout, previous) {
+      return { ...previous, ...dimensions(layout), paper: layout.paper };
+    }
     function layoutMetadata(frontmatter) {
       const template = typeof frontmatter.resume_style === "string" ? frontmatter.resume_style.trim() : "";
       const density = Object.hasOwn(DENSITIES, frontmatter.resume_density) ? frontmatter.resume_density : "";
       const value = frontmatter.resume_layout;
       const geometry = value && typeof value === "object" && !Array.isArray(value) ? value : null;
       const stored = !!template && !!density && FIELDS.every(({ key }) => Number.isFinite(geometry?.[key]));
-      return { template, density, geometry, stored };
+      const rules = frontmatter.resume_sections;
+      const sections = rules && typeof rules === "object" && !Array.isArray(rules) ? rules : {};
+      return { template, density, geometry, sections, stored };
     }
-    function noteLayoutKey({ template, density, geometry }) {
-      return JSON.stringify([template, density, ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
+    function noteLayoutKey({ template, density, geometry, sections }) {
+      return JSON.stringify([template, density, geometry?.paper ?? "A4", sections ?? {}, ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
     }
     function sameLayout(left, right) {
-      return left?.template === right?.template && left?.density === right?.density && FIELDS.every(({ key }) => left?.[key] === right?.[key]);
+      return left?.template === right?.template && left?.density === right?.density && left?.paper === right?.paper && JSON.stringify(left?.sections) === JSON.stringify(right?.sections) && FIELDS.every(({ key }) => left?.[key] === right?.[key]);
     }
     function applyTypography(element, layout) {
       element.style.setProperty("--text-size", `${layout.fontSize}pt`);
@@ -359,7 +368,7 @@ var require_geometry = __commonJS({
     function applyMargins(element, layout) {
       for (const { key } of MARGINS) element.style.setProperty(`--resume-margin-${key}`, `${layout[key]}mm`);
     }
-    module2.exports = { A4_WIDTH, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
+    module2.exports = { A4_WIDTH, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
   }
 });
 
@@ -445,16 +454,17 @@ var require_store = __commonJS({
   }
 });
 
-// src/resume/markdown.js
-var require_markdown = __commonJS({
-  "src/resume/markdown.js"(exports2, module2) {
-    var { getFrontMatterInfo } = require("obsidian");
+// src/resume/structure.js
+var require_structure = __commonJS({
+  "src/resume/structure.js"(exports2, module2) {
     var MARKDOWN_FENCE = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/;
+    var LEGACY_ENTRY = /^ {0,3}<div\b[^>]*\b(?:alt|class)=["']entry-title["'][^>]*>/i;
     function splitSectionBody(body) {
       const headings = [];
       let fence = "";
       let inComment = false;
       let offset = 0;
+      let lineNumber = 0;
       for (const line of body.match(/[^\n]*\n|[^\n]+$/g) ?? []) {
         const marker = line.match(MARKDOWN_FENCE);
         if (fence) {
@@ -464,22 +474,49 @@ var require_markdown = __commonJS({
         } else if (marker) {
           fence = marker[1];
         } else {
-          const heading = line.match(/^ {0,3}##[ \t]+(.+?)[ \t]*(?:\r?\n)?$/);
-          if (heading) {
-            const title = heading[1].replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
-            headings.push({ offset, title });
+          const heading = line.match(/^ {0,3}(#{2,3})[ \t]+(.+?)[ \t]*(?:\r?\n)?$/);
+          if (heading?.[1] === "##") {
+            const title = heading[2].replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
+            headings.push({ title, offset, startLine: lineNumber, entries: [] });
+          } else if (headings.length && (heading || LEGACY_ENTRY.test(line))) {
+            headings.at(-1).entries.push(lineNumber);
           }
         }
         offset += line.length;
+        lineNumber++;
       }
       return {
         intro: body.slice(0, headings[0]?.offset ?? body.length),
-        sections: headings.map((heading, index) => ({
-          title: heading.title,
-          markdown: body.slice(heading.offset, headings[index + 1]?.offset ?? body.length)
-        }))
+        sections: headings.map((heading, index) => {
+          const next = headings[index + 1];
+          const endLine = next?.startLine ?? lineNumber;
+          return {
+            title: heading.title,
+            markdown: body.slice(heading.offset, next?.offset ?? body.length),
+            startLine: heading.startLine,
+            endLine,
+            entries: heading.entries.map((startLine, at) => ({ startLine, endLine: heading.entries[at + 1] ?? endLine }))
+          };
+        })
       };
     }
+    function sectionRuleIssues(sections, rules) {
+      const counts = /* @__PURE__ */ new Map();
+      for (const { title } of sections) counts.set(title, (counts.get(title) ?? 0) + 1);
+      return {
+        duplicate: [...counts.keys()].filter((title) => counts.get(title) > 1),
+        missing: Object.keys(rules).filter((title) => !counts.has(title))
+      };
+    }
+    module2.exports = { MARKDOWN_FENCE, splitSectionBody, sectionRuleIssues };
+  }
+});
+
+// src/resume/markdown.js
+var require_markdown = __commonJS({
+  "src/resume/markdown.js"(exports2, module2) {
+    var { getFrontMatterInfo } = require("obsidian");
+    var { MARKDOWN_FENCE, splitSectionBody } = require_structure();
     function sourceText(markdown) {
       return markdown.replace(/\r\n?/g, "\n");
     }
@@ -516,8 +553,8 @@ var require_markdown = __commonJS({
 // src/resume/files.js
 var require_files = __commonJS({
   "src/resume/files.js"(exports2, module2) {
-    var { normalizePath } = require("obsidian");
-    var { dimensions, layoutMetadata, noteLayoutKey } = require_geometry();
+    var { normalizePath, stringifyYaml } = require("obsidian");
+    var { geometryForSave, layoutMetadata, noteLayoutKey } = require_geometry();
     var { DRAFT_FOLDER } = require_store();
     var { sourceText, sourceParts, editableBody, withEditedBody } = require_markdown();
     function vaultFolder(value, t) {
@@ -561,21 +598,20 @@ var require_files = __commonJS({
         const title = resume.label.replace(/[\\/:*?"<>|]/g, " ").trim().slice(0, 90) || this.t("resume");
         const path = await this.draftPath(resume.file, this.t("draftName", { name: title }));
         const zh = resume.classes.includes("lapis-cv-zh");
-        const meta = [
-          "---",
-          "type: resume-draft",
-          `language: ${zh ? "zh" : "en"}`,
-          `resume_style: ${JSON.stringify(layout.template)}`,
-          `resume_density: ${layout.density}`,
-          "resume_layout:",
-          ...Object.entries(dimensions(layout)).map(([key, value]) => `  ${key}: ${value}`),
-          `draft_source: ${JSON.stringify(`[[${resume.file.path}]]`)}`,
-          "cssclasses: [lapis-cv, careeros-resume" + (zh ? ", lapis-cv-zh]" : "]"),
-          "---",
-          "",
-          ""
-        ].join("\n");
-        return this.app.vault.create(path, meta + body);
+        const properties = {
+          type: "resume-draft",
+          language: zh ? "zh" : "en",
+          resume_style: layout.template,
+          resume_density: layout.density,
+          resume_layout: geometryForSave(layout, resume.geometry),
+          ...Object.keys(layout.sections).length ? { resume_sections: layout.sections } : {},
+          draft_source: `[[${resume.file.path}]]`,
+          cssclasses: ["lapis-cv", "careeros-resume", ...zh ? ["lapis-cv-zh"] : []]
+        };
+        return this.app.vault.create(path, `---
+${stringifyYaml(properties).trimEnd()}
+---
+${body}`);
       }
       async writeNoteLayout(file, expected, layout) {
         const resume = this.catalog.resume(file, true);
@@ -584,12 +620,17 @@ var require_files = __commonJS({
         }
         this.assertEditorInSync(file, await this.app.vault.read(file));
         await this.app.fileManager.processFrontMatter(file, (properties) => {
+          if (this.catalog.isProtected(this.catalog.resume(file, true, properties))) {
+            throw new Error(this.t("editableLayoutRequired"));
+          }
           if (noteLayoutKey(layoutMetadata(properties)) !== expected) {
             throw new Error(this.t("noteLayoutChanged"));
           }
           properties.resume_style = layout.template;
           properties.resume_density = layout.density;
-          properties.resume_layout = dimensions(layout);
+          properties.resume_layout = geometryForSave(layout, properties.resume_layout);
+          if (Object.keys(layout.sections).length) properties.resume_sections = layout.sections;
+          else delete properties.resume_sections;
         });
         if (this.state.layouts.delete(file.path)) this.state.saveSettings();
         this.onLayoutChange();
@@ -792,15 +833,15 @@ var require_catalog = __commonJS({
         this.uiLanguage = uiLanguage;
         this.detectedLanguages = /* @__PURE__ */ new WeakMap();
       }
-      resume(file, allowAny = false) {
+      resume(file, allowAny = false, properties) {
         if (file?.extension !== "md") return null;
-        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+        const frontmatter = properties ?? this.app.metadataCache.getFileCache(file)?.frontmatter ?? {};
         const declaredClasses = [frontmatter?.cssclasses].flat().filter((entry) => typeof entry === "string").flatMap((entry) => entry.split(/[\s,]+/)).filter(Boolean);
         const classes = [...declaredClasses];
         const metadata = layoutMetadata(frontmatter);
         const master = classes.includes("lapis-cv-master") || frontmatter.type === "master-resume";
         const legacy = classes.includes("lapis-cv") && classes.includes("careeros-resume");
-        const recognized = legacy || !!(metadata.template || metadata.geometry || metadata.density) || master || ["resume-draft", "tailored-resume"].includes(frontmatter.type);
+        const recognized = legacy || !!(metadata.template || metadata.geometry || metadata.density || Object.keys(metadata.sections).length) || master || ["resume-draft", "tailored-resume"].includes(frontmatter.type);
         if (!recognized && !allowAny) return null;
         for (const required of ["lapis-cv", "careeros-resume"]) {
           if (!classes.includes(required)) classes.push(required);
@@ -1168,6 +1209,7 @@ var require_resolution = __commonJS({
       noteLayout(resume) {
         return layoutFor(resume.classes, {
           ...resume.geometry,
+          sections: resume.sections,
           density: resume.density || (resume.template === "\u7D27\u51D1" ? "compact" : this.state.settings.defaultDensity),
           template: this.themes.templateId(resume.template) ?? this.themes.templateId(this.state.settings.defaultTemplate) ?? BASE_TEMPLATE
         });
@@ -1183,7 +1225,7 @@ var require_resolution = __commonJS({
             template: this.themes.templateId(saved.template) ?? canonical.template
           });
         }
-        const values = resume.geometry || resume.density ? canonical : { ...canonical, ...saved };
+        const values = resume.geometry || resume.density || Object.keys(resume.sections).length ? canonical : { ...canonical, ...saved };
         return layoutFor(resume.classes, {
           ...values,
           density: resume.density || (resume.template === "\u7D27\u51D1" || !resume.template && saved.template === "\u7D27\u51D1" ? "compact" : canonical.density),
@@ -1589,6 +1631,7 @@ var require_layout_panel = __commonJS({
       FIELDS,
       layoutFor,
       dimensions,
+      geometryForSave,
       noteLayoutKey,
       sameLayout
     } = require_geometry();
@@ -1716,7 +1759,7 @@ var require_layout_panel = __commonJS({
         const resume = this.view.selected;
         if (!resume || resume.protected || this.applyingLayout) return false;
         const layout = { ...this.current };
-        const properties = { template: layout.template, density: layout.density, geometry: dimensions(layout) };
+        const properties = { template: layout.template, density: layout.density, geometry: geometryForSave(layout, resume.geometry), sections: layout.sections };
         this.layoutWrite = { file: resume.file, key: noteLayoutKey(properties) };
         this.applyingLayout = true;
         this.updateLayoutActions();
@@ -2031,7 +2074,8 @@ var require_preview_pane = __commonJS({
     var { Component, MarkdownRenderer } = require("obsidian");
     var { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
     var { sourceParts, sourceText } = require_markdown();
-    var { decorateResumeMarkup } = require_rendered_markup();
+    var { splitSectionBody } = require_structure();
+    var { decorateResumeMarkup, locatePreviewBlocks } = require_rendered_markup();
     var { applyTemplate } = require_scoped_css();
     var PreviewPane = class {
       constructor(view) {
@@ -2096,6 +2140,7 @@ var require_preview_pane = __commonJS({
         }
         this.renderedFile = null;
         this.renderedBody = null;
+        this.sourceHeadings = [];
         this.view.editor.clearPreviewSelection();
       }
       async render({ resume, markdown, body, version, sameFile }) {
@@ -2111,12 +2156,17 @@ var require_preview_pane = __commonJS({
           await MarkdownRenderer.render(this.app, sourceParts(body).hasYaml ? `
 ${body}` : body, next, file.path, renderer);
           if (version !== this.renderVersion) return;
+          const bindings = locatePreviewBlocks(next, sourceText(body));
+          const headingByLine = new Map(bindings.filter(({ element }) => element.matches("h2")).map(({ line, element }) => [line, element]));
+          const headings = splitSectionBody(body).sections.map(({ startLine }) => headingByLine.get(startLine));
           decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
           this.stylePreview(next);
           const scrollTop = sameFile ? this.stage.scrollTop : 0;
           this.clearPreview();
           next.removeClass("resume-layout-buffer");
           this.rendered = next;
+          this.sourceHeadings = headings;
+          this.view.editor.previewBlocks = bindings;
           this.renderedFile = file;
           this.renderer = renderer;
           this.view.sourceMarkdown = markdown;
@@ -2826,7 +2876,6 @@ var require_source_editor = __commonJS({
   "src/workbench/source-editor.js"(exports2, module2) {
     var { Notice: Notice2, Scope } = require("obsidian");
     var { editableBody, withEditedBody } = require_markdown();
-    var { locatePreviewBlocks } = require_rendered_markup();
     var { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold } = require_formatting();
     var { copySourceText, runWithNotice } = require_dom();
     var { SourceRecoveryModal } = require_modals();
@@ -3128,11 +3177,10 @@ var require_source_editor = __commonJS({
       followCursor() {
         const edit = this.edit;
         if (!edit || !this.view.preview.rendered || edit.file !== this.view.preview.renderedFile || edit.text !== this.view.preview.renderedBody) return;
-        this.previewBlocks ??= locatePreviewBlocks(this.view.preview.rendered, this.view.preview.renderedBody);
         const field = this.sourceField;
         const head = field.selectionDirection === "backward" ? field.selectionStart : field.selectionEnd;
         const line = edit.text.slice(0, head).split("\n").length - 1;
-        const block = this.previewBlocks.findLast((location) => location.line <= line)?.element;
+        const block = this.previewBlocks?.findLast((location) => location.line <= line)?.element;
         if (block === this.highlightedBlock) return;
         this.highlightedBlock?.classList.remove("resume-layout-current-block");
         this.highlightedBlock = block;
@@ -3147,8 +3195,7 @@ var require_source_editor = __commonJS({
       focusSourceFromPreview(event) {
         const edit = this.edit;
         if (!edit || edit.file !== this.view.preview.renderedFile || edit.text !== this.view.preview.renderedBody || !this.view.preview.rendered?.contains(event.target) || this.sourceField.readOnly) return;
-        this.previewBlocks ??= locatePreviewBlocks(this.view.preview.rendered, this.view.preview.renderedBody);
-        const location = this.previewBlocks.findLast((block) => block.element.contains(event.target));
+        const location = this.previewBlocks?.findLast((block) => block.element.contains(event.target));
         if (!location) return;
         event.preventDefault();
         const lines = edit.text.split("\n");
@@ -3209,6 +3256,7 @@ var require_sections_panel = __commonJS({
   "src/workbench/sections-panel.js"(exports2, module2) {
     var { Notice: Notice2, setIcon } = require("obsidian");
     var { editableBody, sourceParts, splitSectionBody } = require_markdown();
+    var { sectionRuleIssues } = require_structure();
     var { runWithNotice } = require_dom();
     var SectionsPanel = class {
       constructor(view) {
@@ -3225,7 +3273,12 @@ var require_sections_panel = __commonJS({
         const source = this.view.sourceMarkdown;
         const editable = !resume.protected;
         const sections = editable ? splitSectionBody(sourceParts(source).body).sections : this.previewHeadings().map((heading) => ({ title: heading.textContent.replace(/[\uE000-\uF8FF]/gu, "").trim() }));
-        if (editable) this.renderSectionActions(panel, resume, source, sections);
+        if (editable) {
+          this.renderSectionActions(panel, resume, source, sections);
+          const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
+          for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
+          for (const title of issues.missing) panel.createDiv({ cls: "resume-layout-hint", text: this.t("missingSectionRule", { title }) });
+        }
         const list = panel.createDiv({ cls: "resume-layout-section-list" });
         sections.forEach(({ title }, index) => this.renderSection(list, title, index, sections.length, source, editable));
         if (editable && sections.length > 1) this.enableSectionDrag(list, resume.file, source);
@@ -3289,8 +3342,8 @@ var require_sections_panel = __commonJS({
         });
       }
       previewHeadings() {
-        const headings = [...this.view.preview.rendered?.querySelectorAll("h2") ?? []];
-        return this.view.selected?.protected ? headings : headings.filter((heading) => !heading.closest(".internal-embed"));
+        if (this.view.selected?.protected) return [...this.view.preview.rendered?.querySelectorAll("h2") ?? []];
+        return this.view.preview.sourceHeadings ?? [];
       }
       jumpToSection(index) {
         const reducedMotion = this.view.preview.paper.ownerDocument.defaultView.matchMedia("(prefers-reduced-motion: reduce)").matches;

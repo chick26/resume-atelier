@@ -1,5 +1,6 @@
 const { Notice, setIcon } = require("obsidian");
 const { editableBody, sourceParts, splitSectionBody } = require("../resume/markdown");
+const { sectionRuleIssues } = require("../resume/structure");
 const { runWithNotice } = require("./dom");
 
 class SectionsPanel {
@@ -20,7 +21,12 @@ class SectionsPanel {
     const editable = !resume.protected;
     const sections = editable ? splitSectionBody(sourceParts(source).body).sections
       : this.previewHeadings().map(heading => ({ title: heading.textContent.replace(/[\uE000-\uF8FF]/gu, "").trim() }));
-    if (editable) this.renderSectionActions(panel, resume, source, sections);
+    if (editable) {
+      this.renderSectionActions(panel, resume, source, sections);
+      const issues = sectionRuleIssues(sections, this.view.layout.current.sections);
+      for (const title of issues.duplicate) panel.createDiv({ cls: "resume-layout-hint", text: this.t("duplicateSectionRule", { title }) });
+      for (const title of issues.missing) panel.createDiv({ cls: "resume-layout-hint", text: this.t("missingSectionRule", { title }) });
+    }
     const list = panel.createDiv({ cls: "resume-layout-section-list" });
     sections.forEach(({ title }, index) => this.renderSection(list, title, index, sections.length, source, editable));
     if (editable && sections.length > 1) this.enableSectionDrag(list, resume.file, source);
@@ -88,8 +94,8 @@ class SectionsPanel {
   }
 
   previewHeadings() {
-    const headings = [...(this.view.preview.rendered?.querySelectorAll("h2") ?? [])];
-    return this.view.selected?.protected ? headings : headings.filter(heading => !heading.closest(".internal-embed"));
+    if (this.view.selected?.protected) return [...(this.view.preview.rendered?.querySelectorAll("h2") ?? [])];
+    return this.view.preview.sourceHeadings ?? [];
   }
 
   jumpToSection(index) {

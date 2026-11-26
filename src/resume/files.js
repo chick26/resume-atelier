@@ -1,5 +1,5 @@
-const { normalizePath } = require("obsidian");
-const { dimensions, layoutMetadata, noteLayoutKey } = require("../layout/geometry");
+const { normalizePath, stringifyYaml } = require("obsidian");
+const { geometryForSave, layoutMetadata, noteLayoutKey } = require("../layout/geometry");
 const { DRAFT_FOLDER } = require("../settings/store");
 const { sourceText, sourceParts, editableBody, withEditedBody } = require("./markdown");
 
@@ -51,21 +51,15 @@ class ResumeFiles {
     const title = resume.label.replace(/[\\/:*?"<>|]/g, " ").trim().slice(0, 90) || this.t("resume");
     const path = await this.draftPath(resume.file, this.t("draftName", { name: title }));
     const zh = resume.classes.includes("lapis-cv-zh");
-    const meta = [
-      "---",
-      "type: resume-draft",
-      `language: ${zh ? "zh" : "en"}`,
-      `resume_style: ${JSON.stringify(layout.template)}`,
-      `resume_density: ${layout.density}`,
-      "resume_layout:",
-      ...Object.entries(dimensions(layout)).map(([key, value]) => `  ${key}: ${value}`),
-      `draft_source: ${JSON.stringify(`[[${resume.file.path}]]`)}`,
-      "cssclasses: [lapis-cv, careeros-resume" + (zh ? ", lapis-cv-zh]" : "]"),
-      "---",
-      "",
-      "",
-    ].join("\n");
-    return this.app.vault.create(path, meta + body);
+    const properties = {
+      type: "resume-draft", language: zh ? "zh" : "en",
+      resume_style: layout.template, resume_density: layout.density,
+      resume_layout: geometryForSave(layout, resume.geometry),
+      ...(Object.keys(layout.sections).length ? { resume_sections: layout.sections } : {}),
+      draft_source: `[[${resume.file.path}]]`,
+      cssclasses: ["lapis-cv", "careeros-resume", ...(zh ? ["lapis-cv-zh"] : [])],
+    };
+    return this.app.vault.create(path, `---\n${stringifyYaml(properties).trimEnd()}\n---\n${body}`);
   }
 
   async writeNoteLayout(file, expected, layout) {
@@ -75,12 +69,17 @@ class ResumeFiles {
     }
     this.assertEditorInSync(file, await this.app.vault.read(file));
     await this.app.fileManager.processFrontMatter(file, properties => {
+      if (this.catalog.isProtected(this.catalog.resume(file, true, properties))) {
+        throw new Error(this.t("editableLayoutRequired"));
+      }
       if (noteLayoutKey(layoutMetadata(properties)) !== expected) {
         throw new Error(this.t("noteLayoutChanged"));
       }
       properties.resume_style = layout.template;
       properties.resume_density = layout.density;
-      properties.resume_layout = dimensions(layout);
+      properties.resume_layout = geometryForSave(layout, properties.resume_layout);
+      if (Object.keys(layout.sections).length) properties.resume_sections = layout.sections;
+      else delete properties.resume_sections;
     });
     if (this.state.layouts.delete(file.path)) this.state.saveSettings();
     this.onLayoutChange();
