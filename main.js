@@ -38,8 +38,6 @@ var require_localization = __commonJS({
       autoPageTag: ["{page} \xB7 \u9884\u8BA1\u5206\u9875", "{page} \xB7 Auto"],
       discardThemeConfirm: ["\u786E\u8BA4\u653E\u5F03\u6539\u52A8", "Discard changes"],
       keepEditing: ["\u7EE7\u7EED\u7F16\u8F91", "Keep editing"],
-      entryTitleHint: ["\u804C\u4F4D\u3001\u9879\u76EE\u6216\u5B66\u4F4D", "Role, project, or degree"],
-      entrySubtitleHint: ["\u516C\u53F8\u3001\u56E2\u961F\u6216\u9662\u6821", "Company, team, or school"],
       fitSuccess: ["\u5DF2\u6536\u7D27\u81F3 1 \u9875", "Fitted to one page"],
       fitUndone: ["\u5DF2\u8FD8\u539F\u6536\u7D27\u524D\u7684\u7248\u5F0F", "Fit undone"],
       clearRule: ["\u6E05\u9664", "Clear"],
@@ -160,13 +158,6 @@ var require_localization = __commonJS({
       copyMyInput: ["\u590D\u5236\u6211\u7684\u8F93\u5165", "Copy my changes"],
       discardAndReload: ["\u653E\u5F03\u5E76\u52A0\u8F7D\u6700\u65B0", "Discard and load latest"],
       sourceLabel: ["\u7B80\u5386 Markdown \u6B63\u6587", "Resume Markdown"],
-      editEntry: ["\u7F16\u8F91\u6761\u76EE", "Edit entry"],
-      entryTitle: ["\u4E3B\u6807\u9898", "Title"],
-      entrySubtitle: ["\u526F\u6807\u9898\uFF08\u53EF\u9009\uFF09", "Subtitle (optional)"],
-      entryDate: ["\u53F3\u4FA7\u65E5\u671F\u6216\u5907\u6CE8", "Date or note"],
-      entryPreview: ["\u6761\u76EE\u9884\u89C8", "Entry preview"],
-      update: ["\u66F4\u65B0", "Update"],
-      entryMoved: ["\u6B63\u6587\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u6761\u76EE\u4F4D\u7F6E", "The text changed. Choose the entry location again."],
       saved: ["\u5DF2\u4FDD\u5B58", "Saved"],
       sourcePending: ["\u5F85\u4FDD\u5B58", "Unsaved"],
       sourceSaving: ["\u4FDD\u5B58\u4E2D\u2026", "Saving\u2026"],
@@ -557,7 +548,6 @@ var require_store = __commonJS({
 var require_structure = __commonJS({
   "src/resume/structure.js"(exports2, module2) {
     var MARKDOWN_FENCE = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/;
-    var LEGACY_ENTRY = /^ {0,3}<div\b[^>]*\b(?:alt|class)=["']entry-title["'][^>]*>/i;
     function sectionTitle(text) {
       return text.replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
     }
@@ -580,7 +570,7 @@ var require_structure = __commonJS({
           if (heading?.[1] === "##") {
             const title = sectionTitle(heading[2]);
             headings.push({ title, offset, startLine: lineNumber, entries: [] });
-          } else if (headings.length && (heading || LEGACY_ENTRY.test(line))) {
+          } else if (headings.length && heading) {
             headings.at(-1).entries.push(lineNumber);
           }
         }
@@ -1519,7 +1509,6 @@ var require_entry = __commonJS({
 var require_rendered_markup = __commonJS({
   "src/resume/rendered-markup.js"(exports2, module2) {
     var { entryFields } = require_entry();
-    var ENTRY_HEADER_SELECTOR = '.entry-title, [alt="entry-title"]';
     function headingSuffix(parent, separator, expected, className) {
       const doc = parent.ownerDocument;
       for (const node of [...parent.childNodes].reverse()) {
@@ -1543,7 +1532,6 @@ var require_rendered_markup = __commonJS({
       const selector = "h3[data-heading]:not(.resume-entry-heading)";
       const headings = root.matches(selector) ? [root] : root.querySelectorAll(selector);
       for (const heading of headings) {
-        if (heading.closest(ENTRY_HEADER_SELECTOR)) continue;
         const fields = entryFields(heading.dataset.heading);
         if (!fields || !fields.right && !fields.subtitle) continue;
         const date = fields.right && headingSuffix(heading, "|\uFF5C", fields.right, "entry-date");
@@ -1558,7 +1546,7 @@ var require_rendered_markup = __commonJS({
         heading.classList.add("resume-entry-heading");
       }
     }
-    function decorateResumeMarkup(root, chinese) {
+    function decorateResumeMarkup(root) {
       decorateEntryHeadings(root);
       const doc = root.ownerDocument;
       const blocks = [...root.querySelectorAll("h2, blockquote")];
@@ -1592,19 +1580,6 @@ var require_rendered_markup = __commonJS({
           node.replaceWith(fragment);
         }
       }
-      if (!chinese) return;
-      for (const title of root.querySelectorAll(`:is(${ENTRY_HEADER_SELECTOR}) h3`)) {
-        const text = title.textContent.trim();
-        const separator = text.indexOf(" - ");
-        if (title.childElementCount || separator < 1) continue;
-        const divider = doc.createElement("span");
-        divider.className = "entry-sep";
-        divider.textContent = "\xB7";
-        const detail = doc.createElement("span");
-        detail.className = "entry-sub";
-        detail.textContent = text.slice(separator + 3);
-        title.replaceChildren(text.slice(0, separator), " ", divider, " ", detail);
-      }
     }
     function previewMatchText(text) {
       return text.normalize("NFKC").replace(/<[^>]*>|&(?:#x[\da-f]+|#\d+|[a-z]+);/gi, "").replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, link, label) => label ?? link).replace(/!?\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
@@ -1615,11 +1590,11 @@ var require_rendered_markup = __commonJS({
       );
       const locations = [];
       let nextLine = 0;
-      for (const element of root.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,${ENTRY_HEADER_SELECTOR}`)) {
+      for (const element of root.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table")) {
         if (element.closest(".internal-embed")) continue;
-        const group = element.closest(`li,blockquote,pre,table,${ENTRY_HEADER_SELECTOR}`);
+        const group = element.closest("li,blockquote,pre,table");
         if (group && group !== element) continue;
-        const text = element.matches("li") ? Array.from(element.childNodes).filter((node) => !node.matches?.("ul,ol")).map((node) => node.textContent).join(" ") : element.querySelector(":scope > h3")?.textContent ?? element.textContent;
+        const text = element.matches("li") ? Array.from(element.childNodes).filter((node) => !node.matches?.("ul,ol")).map((node) => node.textContent).join(" ") : element.textContent;
         const key = previewMatchText(text);
         if (!key) continue;
         for (let line = nextLine; line < lines.length; line++) {
@@ -1694,8 +1669,7 @@ var require_section_layout = __commonJS({
       return block.matches("div") && block.firstElementChild?.matches("h2[data-heading]") ? block.firstElementChild : null;
     }
     function beginsEntry(block) {
-      const selector = 'h3[data-heading], .entry-title, [alt="entry-title"]';
-      return block.matches(selector) || block.matches("div") && block.firstElementChild?.matches(selector);
+      return block.matches("h3[data-heading]") || block.matches("div") && block.firstElementChild?.matches("h3[data-heading]");
     }
     function container(root, tag, className) {
       const element = root.ownerDocument.createElement(tag);
@@ -1846,10 +1820,10 @@ var require_presentation = __commonJS({
         const file = this.app.vault.getAbstractFileByPath(sourcePath);
         if (root) {
           if (!element.closest(".internal-embed")) this.styleNativePrint(root, file);
-          if (root.dataset.careerosPrint) decorateResumeMarkup(element, root.classList.contains("lapis-cv-zh"));
+          if (root.dataset.careerosPrint) decorateResumeMarkup(element);
         } else {
           const resume = this.catalog.resume(file);
-          if (resume) decorateResumeMarkup(element, resume.classes.includes("lapis-cv-zh"));
+          if (resume) decorateResumeMarkup(element);
         }
       }
       dispose() {
@@ -1962,7 +1936,7 @@ var require_presentation = __commonJS({
         applyMargins(root, layout);
         applyTypography(root, layout);
         applyTemplate(root, this.themes.templates.get(layout.template)?.css);
-        decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+        decorateResumeMarkup(root);
       }
       clearReadingStyle(root, declaredClasses = []) {
         for (const cssClass of this.readingClasses.get(root) ?? []) {
@@ -1991,7 +1965,7 @@ var require_presentation = __commonJS({
         applyMargins(root, layout);
         applyTypography(root, layout);
         applyTemplate(root, this.themes.templates.get(layout.template)?.css);
-        decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+        decorateResumeMarkup(root);
         const content = root.querySelector(":scope > .markdown-preview-sizer") ?? root;
         const blocks = [...content.children].filter((node) => !node.matches("style, .mod-ui, .mod-frontmatter, .mod-header, .mod-footer"));
         new SectionLayout(content, blocks).apply(layout);
@@ -2890,7 +2864,7 @@ ${body}` : body, next, file.path, renderer);
           const headings = sections.map(({ startLine }) => headingByLine.get(startLine));
           const titles = new Map(sections.flatMap(({ title }, index) => headings[index] ? [[headings[index], title]] : []));
           const flow = new SectionLayout(next, [...next.children].filter((node) => !node.matches("style")), titles);
-          decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
+          decorateResumeMarkup(next);
           flow.apply(this.view.layout.current);
           this.stylePreview(next);
           const scrollTop = sameFile ? this.stage.scrollTop : 0;
@@ -3119,7 +3093,6 @@ var require_formatting = __commonJS({
   "src/editor/formatting.js"(exports2, module2) {
     var { MARKDOWN_FENCE } = require_structure();
     var SOURCE_LIST_PREFIX = /^([ \t]*)([-+*]|\d{1,9}[.)])[ \t]+(?:(\[[ xX]\])(?:[ \t]+|$))?/;
-    var LEGACY_ENTRY_BLOCK = /^ {0,3}<div\b[^>\n]*[ \t](?:alt|class)=(["'])entry-title\1[^>\n]*>[ \t]*\n((?:[^\n]*\n)*?)[ \t]*<\/div>[ \t]*$/gm;
     function changeSourceIndent(field, outdent) {
       const { value, selectionStart: start, selectionEnd: end, selectionDirection } = field;
       if (!outdent && start === end) {
@@ -3153,33 +3126,22 @@ var require_formatting = __commonJS({
       const end = newline === -1 ? value.length : newline;
       return { start, end, text: value.slice(start, end) };
     }
-    function inSourceLiteralBlock(value, lineStart, includeComments = false) {
+    function inSourceFence(value, lineStart) {
       let fence = "";
-      let commentEnd = "";
       for (const line of value.slice(0, lineStart).split("\n")) {
         const marker = line.match(MARKDOWN_FENCE);
-        if (fence) {
-          if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
-        } else if (commentEnd) {
-          if (line.includes(commentEnd)) commentEnd = "";
-        } else if (marker) {
-          fence = marker[1];
-        } else if (includeComments) {
-          const comment = line.match(/^\s*(<!--|%%)/);
-          if (comment) {
-            const end = comment[1] === "<!--" ? "-->" : "%%";
-            if (!line.slice(comment[0].length).includes(end)) commentEnd = end;
-          }
-        }
+        if (!marker) continue;
+        if (!fence) fence = marker[1];
+        else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
       }
-      return !!(fence || commentEnd);
+      return !!fence;
     }
     function continueSourceList(field) {
       const { value, selectionStart: cursor, selectionEnd } = field;
       if (cursor !== selectionEnd) return false;
       const line = sourceLineAt(value, cursor);
       const prefix = line.text.match(SOURCE_LIST_PREFIX);
-      if (!prefix || cursor < line.start + prefix[0].length || inSourceLiteralBlock(value, line.start)) return false;
+      if (!prefix || cursor < line.start + prefix[0].length || inSourceFence(value, line.start)) return false;
       if (!line.text.slice(prefix[0].length).trim()) {
         replaceSourceSelection(field, line.start, line.end, "", line.start, line.start);
         return true;
@@ -3215,7 +3177,7 @@ ${indent}${next} ${checklist ? "[ ] " : ""}`;
     }
     function toggleSourceBold(field) {
       const line = sourceLineAt(field.value, field.selectionStart);
-      if (field.readOnly || field.selectionEnd > line.end || MARKDOWN_FENCE.test(line.text) || inSourceLiteralBlock(field.value, line.start) || legacyEntryAt(field)) return false;
+      if (field.readOnly || field.selectionEnd > line.end || MARKDOWN_FENCE.test(line.text) || inSourceFence(field.value, line.start)) return false;
       const bold = sourceBoldSelection(field, line);
       if (!bold) return false;
       const { start, end, content, span } = bold;
@@ -3231,40 +3193,7 @@ ${indent}${next} ${checklist ? "[ ] " : ""}`;
       replaceSourceSelection(field, start, end, `**${content}**`, start + 2, end + 2, selectionDirection);
       return true;
     }
-    function legacyEntryAt(field) {
-      const { value, selectionStart, selectionEnd } = field;
-      for (const match of value.matchAll(LEGACY_ENTRY_BLOCK)) {
-        const start = match.index;
-        const end = start + match[0].length;
-        if (selectionStart < start || selectionEnd > end) continue;
-        if (inSourceLiteralBlock(value, start, true)) return null;
-        const block = match[2].match(/^[ \t]*<h3>([^\n]*?)<\/h3>[ \t]*\n(?:[ \t]*<p>([^<>\n]*)<\/p>[ \t]*\n)?$/);
-        const title = block?.[1].match(/^([^<>]+?)(?:[ \t]*<span class=["']entry-sep["']>([|·])<\/span>[ \t]*<span class=["']entry-sub["']>([^<>]*)<\/span>)?$/);
-        const entry = { start, end, markup: match[0] };
-        if (title) entry.fields = { title: title[1], subtitle: title[3] ?? "", right: block[2] ?? "", separator: title[2] ?? "\xB7" };
-        return entry;
-      }
-      return null;
-    }
-    function updateLegacyEntry(entry, title, subtitle, right) {
-      const escape = (text) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-      const lines = entry.markup.split("\n");
-      if (title !== entry.title || subtitle !== entry.subtitle) {
-        const detail = subtitle ? ` <span class="entry-sep">${entry.separator}</span><span class="entry-sub">${escape(subtitle)}</span>` : "";
-        lines[1] = lines[1].replace(/<h3>.*<\/h3>/, () => "<h3>" + escape(title) + detail + "</h3>");
-      }
-      if (right !== entry.right) {
-        const date = "<p>" + escape(right) + "</p>";
-        if (lines.length === 4) {
-          if (right) lines[2] = lines[2].replace(/<p>.*<\/p>/, () => date);
-          else lines.splice(2, 1);
-        } else if (right) {
-          lines.splice(2, 0, lines[1].match(/^[ \t]*/)[0] + date);
-        }
-      }
-      return lines.join("\n");
-    }
-    module2.exports = { changeSourceIndent, continueSourceList, replaceSourceSelection, toggleSourceBold, legacyEntryAt, updateLegacyEntry };
+    module2.exports = { changeSourceIndent, continueSourceList, replaceSourceSelection, toggleSourceBold };
   }
 });
 
@@ -3378,189 +3307,76 @@ var require_modals = __commonJS({
 // src/workbench/source-toolbar.js
 var require_source_toolbar = __commonJS({
   "src/workbench/source-toolbar.js"(exports2, module2) {
-    var { Notice: Notice2, setIcon } = require("obsidian");
-    var { mountPhotoControls } = require_photo_controls();
+    var { setIcon } = require("obsidian");
     var { headerPhoto } = require_avatar();
-    var { legacyEntryAt, updateLegacyEntry, replaceSourceSelection } = require_formatting();
-    function createSourcePopovers(pane, register) {
-      let opened;
-      const dismiss = (event) => {
-        if (opened && !opened.panel.contains(event.target) && !opened.button.contains(event.target)) close();
-      };
-      const close = () => {
-        if (!opened) return;
-        const { panel, button, doc } = opened;
-        opened = null;
+    var { mountPhotoControls } = require_photo_controls();
+    function mountSourceTools(editor, pane, tools, field) {
+      const { t, view } = editor;
+      const doc = pane.ownerDocument;
+      const photo = tools.createEl("button", { attr: { type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" } });
+      setIcon(photo.createSpan({ attr: { "aria-hidden": "true" } }), "image");
+      photo.createSpan({ text: t("photo") });
+      const panel = pane.createDiv({ cls: "resume-layout-photo-popover", attr: { role: "dialog", "aria-label": t("photo") } });
+      panel.hidden = true;
+      const controls = mountPhotoControls(panel, view);
+      function dismiss(event) {
+        if (!panel.contains(event.target) && !photo.contains(event.target)) close();
+      }
+      function close() {
+        if (panel.hidden) return;
         doc.removeEventListener("pointerdown", dismiss, true);
         doc.removeEventListener("focusin", dismiss, true);
         panel.hidden = true;
-        button.setAttribute("aria-expanded", "false");
-      };
-      const position = () => {
-        if (!opened) return;
-        const { panel, button } = opened;
+        photo.setAttribute("aria-expanded", "false");
+      }
+      function position() {
+        if (panel.hidden) return;
         const bounds = pane.getBoundingClientRect();
-        const anchor = button.getBoundingClientRect();
+        const anchor = photo.getBoundingClientRect();
         const top = anchor.bottom - bounds.top + 5;
         const left = Math.min(anchor.left - bounds.left, pane.clientWidth - panel.offsetWidth - 8);
         panel.style.top = `${top}px`;
         panel.style.left = `${Math.max(8, left)}px`;
         panel.style.maxHeight = `${Math.max(0, pane.clientHeight - top - 8)}px`;
-      };
-      const observer = new pane.ownerDocument.defaultView.ResizeObserver(position);
-      observer.observe(pane);
-      register(() => {
-        observer.disconnect();
-        close();
-      });
-      return {
-        close,
-        show(panel, button) {
-          close();
-          const doc = pane.ownerDocument;
-          opened = { panel, button, doc };
-          panel.hidden = false;
-          button.setAttribute("aria-expanded", "true");
-          doc.addEventListener("pointerdown", dismiss, true);
-          doc.addEventListener("focusin", dismiss, true);
-          position();
-        }
-      };
-    }
-    function mountSourceTools(editor, pane, tools, field) {
-      const { t, view } = editor;
-      const popovers = createSourcePopovers(pane, (cleanup) => view.register(cleanup));
-      const photo = tools.createEl("button", { attr: { type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" } });
-      setIcon(photo.createSpan({ attr: { "aria-hidden": "true" } }), "image");
-      photo.createSpan({ text: t("photo") });
-      photo.addEventListener("click", openPhoto);
-      const entry = tools.createEl("button", {
-        text: t("editEntry"),
-        attr: { type: "button", "aria-expanded": "false", "aria-haspopup": "dialog" }
-      });
-      entry.hidden = true;
-      mountLegacyEntryEditor(pane, entry, field, popovers, editor);
-      const photoPanel = pane.createDiv({ cls: "resume-layout-source-popover resume-layout-photo-popover", attr: { role: "dialog", "aria-label": t("photo") } });
-      photoPanel.hidden = true;
-      const photoControls = mountPhotoControls(photoPanel, view);
+      }
       function openPhoto() {
         if (!editor.edit || field.readOnly || editor.edit.conflicted) return;
-        if (!photoPanel.hidden) {
-          popovers.close();
+        if (!panel.hidden) {
+          close();
           field.focus();
           return;
         }
         if (!headerPhoto(field.value).photo && !(view.preview.renderedBody === field.value && view.preview.sectionLayout?.portrait)) {
-          popovers.close();
           editor.changePhoto(true);
           return;
         }
-        photoControls.update();
-        popovers.show(photoPanel, photo);
-        photoControls.focus();
+        controls.update();
+        panel.hidden = false;
+        photo.setAttribute("aria-expanded", "true");
+        doc.addEventListener("pointerdown", dismiss, true);
+        doc.addEventListener("focusin", dismiss, true);
+        position();
+        controls.focus();
       }
-      photoPanel.addEventListener("keydown", (event) => {
+      function syncAvailability() {
+        photo.disabled = !editor.edit || field.readOnly || !!editor.edit.conflicted;
+        if (photo.disabled) close();
+      }
+      photo.addEventListener("click", openPhoto);
+      panel.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
         event.preventDefault();
         event.stopPropagation();
-        popovers.close();
+        close();
         field.focus({ preventScroll: true });
       });
-      function updateTools() {
-        photo.disabled = !editor.edit || field.readOnly || !!editor.edit.conflicted;
-        entry.hidden = photo.disabled || !legacyEntryAt(field)?.fields;
-      }
-      return { update: updateTools, close: popovers.close, openPhoto, updatePhoto: photoControls.update };
-    }
-    function mountLegacyEntryEditor(pane, button, field, popovers, editor) {
-      const { t, view } = editor;
-      const form = pane.createEl("form", {
-        cls: "resume-layout-source-popover resume-layout-source-entry resume-layout-modal-form",
-        attr: { role: "dialog", "aria-label": t("editEntry") }
-      });
-      form.hidden = true;
-      const fields = form.createDiv({ cls: "resume-layout-source-entry-fields" });
-      const input = (label, name, required = false) => fields.createEl("label", {
-        text: label,
-        cls: `resume-layout-entry-${name}`
-      }).createEl("input", { type: "text", attr: required ? { required: "" } : {} });
-      const title = input(t("entryTitle"), "title", true);
-      const subtitle = input(t("entrySubtitle"), "subtitle");
-      title.placeholder = t("entryTitleHint");
-      subtitle.placeholder = t("entrySubtitleHint");
-      const right = input(t("entryDate"), "date");
-      const preview = form.createDiv({ cls: "resume-layout-entry-preview", attr: { "aria-label": t("entryPreview") } });
-      const previewHeading = preview.createDiv({ cls: "resume-layout-entry-preview-heading" });
-      const previewTitle = previewHeading.createEl("strong");
-      const previewSubtitle = previewHeading.createSpan({ cls: "resume-layout-entry-preview-subtitle" });
-      const previewRight = preview.createSpan({ cls: "resume-layout-entry-preview-date" });
-      const actions = form.createDiv({ cls: "resume-layout-source-entry-actions" });
-      const cancel = actions.createEl("button", { text: t("cancel"), attr: { type: "button" } });
-      const submit = actions.createEl("button", { cls: "mod-cta", text: t("update"), attr: { type: "submit" } });
-      let target;
-      const close = () => {
-        popovers.close();
-        field.focus({ preventScroll: true });
-      };
-      const updatePreview = () => {
-        const detail = subtitle.value.trim();
-        previewTitle.setText(title.value.trim());
-        previewSubtitle.setText(detail ? `${target?.separator ?? "\xB7"} ${detail}` : "");
-        previewRight.setText(right.value.trim());
-        submit.disabled = !title.value.trim();
-      };
-      button.addEventListener("click", () => {
-        if (!form.hidden) return close();
-        const range = legacyEntryAt(field);
-        if (!editor.edit || field.readOnly || editor.edit.conflicted || !range?.fields) return;
-        const decoder = field.ownerDocument.createElement("textarea");
-        const decode = (text) => {
-          decoder.innerHTML = text;
-          return decoder.value.trim();
-        };
-        target = {
-          ...range,
-          edit: editor.edit,
-          snapshot: field.value,
-          separator: range.fields.separator,
-          title: decode(range.fields.title),
-          subtitle: decode(range.fields.subtitle),
-          right: decode(range.fields.right)
-        };
-        title.value = target.title;
-        subtitle.value = target.subtitle;
-        right.value = target.right;
-        right.placeholder = view.selected?.classes.includes("lapis-cv-zh") ? "2023.06 \u2013 \u81F3\u4ECA" : "Jun 2023 \u2013 Present";
-        updatePreview();
-        popovers.show(form, button);
-        const next = title.value ? right : title;
-        next.focus({ preventScroll: true });
-        next.select();
-      });
-      form.addEventListener("input", updatePreview);
-      cancel.addEventListener("click", close);
-      form.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape" || event.isComposing) return;
-        event.preventDefault();
-        event.stopPropagation();
+      const observer = new doc.defaultView.ResizeObserver(position);
+      observer.observe(pane);
+      view.register(() => {
+        observer.disconnect();
         close();
       });
-      form.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const name = title.value.trim();
-        if (form.hidden || !target || !name || field.readOnly) return;
-        if (target.edit !== editor.edit || target.snapshot !== field.value) {
-          close();
-          new Notice2(t("entryMoved"));
-          return;
-        }
-        const block = updateLegacyEntry(target, name, subtitle.value.trim(), right.value.trim());
-        close();
-        if (block === target.markup) return;
-        const cursor = target.start + block.length;
-        replaceSourceSelection(field, target.start, target.end, block, cursor, cursor);
-        editor.toolbar.update();
-      });
+      return { syncAvailability, close, openPhoto, updatePhoto: controls.update };
     }
     module2.exports = { mountSourceTools };
   }
@@ -3621,20 +3437,14 @@ var require_source_editor = __commonJS({
           }
           this.toolbar.close();
           this.editedSourceChanged();
-          this.toolbar.update();
         });
         for (const event of ["select", "selectionchange", "pointerup", "keyup", "focus"]) {
-          field.addEventListener(event, () => {
-            this.toolbar.update();
-            this.queueCursorFollow();
-          });
+          field.addEventListener(event, () => this.queueCursorFollow());
         }
         const scope = new Scope(this.app.scope);
         scope.register(["Mod"], "B", (event) => {
           if (event.isComposing || field.ownerDocument.activeElement !== field) return;
-          if (!toggleSourceBold(field)) return;
-          this.toolbar.update();
-          return false;
+          if (toggleSourceBold(field)) return false;
         });
         for (const [modifiers, command] of [[["Mod"], "undo"], [["Mod", "Shift"], "redo"]]) {
           scope.register(modifiers, "Z", (event) => {
@@ -3654,13 +3464,11 @@ var require_source_editor = __commonJS({
             event.preventDefault();
             event.stopPropagation();
             changeSourceIndent(field, event.shiftKey);
-            this.toolbar.update();
             return;
           }
           if (!field.readOnly && event.key === "Enter" && plain && !event.shiftKey && continueSourceList(field)) {
             event.preventDefault();
             event.stopPropagation();
-            this.toolbar.update();
             return;
           }
           if (event.key === "Escape") {
@@ -3708,7 +3516,6 @@ var require_source_editor = __commonJS({
             this.sourceField.focus();
             const offset = Math.max(0, text.search(/\S/));
             this.sourceField.setSelectionRange(offset, offset);
-            this.toolbar.update();
             void this.view.show(file);
           });
         } finally {
@@ -3754,7 +3561,7 @@ var require_source_editor = __commonJS({
       }
       syncSourceControls() {
         const editing = !!this.edit;
-        if (!editing) this.toolbar.close();
+        this.toolbar.syncAvailability();
         this.sourcePane.hidden = !editing;
         this.view.body.toggleClass("is-source-editing", editing);
         this.view.editButton.setText(editing ? this.t("doneEditing") : this.view.selected?.protected ? this.t("copyAndEdit") : this.t("editSource"));
@@ -3775,7 +3582,7 @@ var require_source_editor = __commonJS({
       }
       markSourceConflict(edit) {
         edit.conflicted = true;
-        this.toolbar.update();
+        this.toolbar.syncAvailability();
         this.sourceField.ownerDocument.defaultView.clearTimeout(edit.saveTimer);
         this.setSourceStatus("sourceConflict", "conflict");
       }
@@ -3786,7 +3593,7 @@ var require_source_editor = __commonJS({
         const field = this.sourceField;
         edit.resolving = true;
         field.readOnly = true;
-        this.toolbar.update();
+        this.toolbar.syncAvailability();
         for (const button of this.sourceConflict.querySelectorAll("button")) button.disabled = true;
         try {
           if (saveCopy) {
@@ -3813,7 +3620,7 @@ var require_source_editor = __commonJS({
         } finally {
           edit.resolving = false;
           field.readOnly = false;
-          this.toolbar.update();
+          this.toolbar.syncAvailability();
           for (const button of this.sourceConflict.querySelectorAll("button")) button.disabled = false;
         }
       }
@@ -3855,7 +3662,6 @@ var require_source_editor = __commonJS({
         field.value = text;
         field.setSelectionRange(selectionStart, selectionEnd);
         field.scrollTop = scrollTop;
-        this.toolbar.update();
       }
       async saveSource() {
         const edit = this.edit;
@@ -3975,7 +3781,6 @@ var require_source_editor = __commonJS({
         const field = this.sourceField;
         field.focus({ preventScroll: true });
         field.setSelectionRange(start, start + lines[line].length);
-        this.toolbar.update();
         this.scrollSourceTo(start);
         this.highlightedBlock?.classList.remove("resume-layout-current-block");
         this.highlightedBlock = this.previewBlocks?.find((block) => block.line === location.line)?.element;

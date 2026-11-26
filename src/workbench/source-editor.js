@@ -53,21 +53,15 @@ class SourceEditor {
       }
       this.toolbar.close();
       this.editedSourceChanged();
-      this.toolbar.update();
     });
     for (const event of ["select", "selectionchange", "pointerup", "keyup", "focus"]) {
-      field.addEventListener(event, () => {
-        this.toolbar.update();
-        this.queueCursorFollow();
-      });
+      field.addEventListener(event, () => this.queueCursorFollow());
     }
     // Handle the editor shortcut before Obsidian's window-level Markdown keymap.
     const scope = new Scope(this.app.scope);
     scope.register(["Mod"], "B", event => {
       if (event.isComposing || field.ownerDocument.activeElement !== field) return;
-      if (!toggleSourceBold(field)) return;
-      this.toolbar.update();
-      return false;
+      if (toggleSourceBold(field)) return false;
     });
     for (const [modifiers, command] of [[["Mod"], "undo"], [["Mod", "Shift"], "redo"]]) {
       scope.register(modifiers, "Z", event => {
@@ -87,13 +81,11 @@ class SourceEditor {
         event.preventDefault();
         event.stopPropagation();
         changeSourceIndent(field, event.shiftKey);
-        this.toolbar.update();
         return;
       }
       if (!field.readOnly && event.key === "Enter" && plain && !event.shiftKey && continueSourceList(field)) {
         event.preventDefault();
         event.stopPropagation();
-        this.toolbar.update();
         return;
       }
       if (event.key === "Escape") {
@@ -143,7 +135,6 @@ class SourceEditor {
         this.sourceField.focus();
         const offset = Math.max(0, text.search(/\S/));
         this.sourceField.setSelectionRange(offset, offset);
-        this.toolbar.update();
         void this.view.show(file);
       });
     } finally {
@@ -191,7 +182,7 @@ class SourceEditor {
 
   syncSourceControls() {
     const editing = !!this.edit;
-    if (!editing) this.toolbar.close();
+    this.toolbar.syncAvailability();
     this.sourcePane.hidden = !editing;
     this.view.body.toggleClass("is-source-editing", editing);
     this.view.editButton.setText(editing ? this.t("doneEditing") : this.view.selected?.protected ? this.t("copyAndEdit") : this.t("editSource"));
@@ -214,7 +205,7 @@ class SourceEditor {
 
   markSourceConflict(edit) {
     edit.conflicted = true;
-    this.toolbar.update();
+    this.toolbar.syncAvailability();
     this.sourceField.ownerDocument.defaultView.clearTimeout(edit.saveTimer);
     this.setSourceStatus("sourceConflict", "conflict");
   }
@@ -226,7 +217,7 @@ class SourceEditor {
     const field = this.sourceField;
     edit.resolving = true;
     field.readOnly = true;
-    this.toolbar.update();
+    this.toolbar.syncAvailability();
     for (const button of this.sourceConflict.querySelectorAll("button")) button.disabled = true;
     try {
       if (saveCopy) {
@@ -253,7 +244,7 @@ class SourceEditor {
     } finally {
       edit.resolving = false;
       field.readOnly = false;
-      this.toolbar.update();
+      this.toolbar.syncAvailability();
       for (const button of this.sourceConflict.querySelectorAll("button")) button.disabled = false;
     }
   }
@@ -295,7 +286,6 @@ class SourceEditor {
     field.value = text;
     field.setSelectionRange(selectionStart, selectionEnd);
     field.scrollTop = scrollTop;
-    this.toolbar.update();
   }
 
   async saveSource() {
@@ -423,7 +413,6 @@ class SourceEditor {
     const field = this.sourceField;
     field.focus({ preventScroll: true });
     field.setSelectionRange(start, start + lines[line].length);
-    this.toolbar.update();
     this.scrollSourceTo(start);
     this.highlightedBlock?.classList.remove("resume-layout-current-block");
     this.highlightedBlock = this.previewBlocks?.find(block => block.line === location.line)?.element;

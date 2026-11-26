@@ -171,64 +171,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) {
-  display: flex;
-  justify-content: flex-start;
-  align-items: baseline;
-  gap: 0.7em;
-  margin-top: var(--resume-entry-gap);
-  margin-bottom: 0.45mm;
-}
-
-/* Tighter top spacing right after section divider */
-.lapis-cv:where(.resume-layout-styled) h2 + :is(.entry-title, div[alt="entry-title"]),
-.lapis-cv:where(.resume-layout-styled) .el-h2 + .el-div :is(.entry-title, div[alt="entry-title"]) {
-  margin-top: 0.45mm;
-}
-
-/* Compact spacing between consecutive single-line entries (e.g. Education) */
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) + :is(.entry-title, div[alt="entry-title"]),
-.lapis-cv:where(.resume-layout-styled) .el-div:has([alt="entry-title"]) + .el-div:has([alt="entry-title"]) :is(.entry-title, div[alt="entry-title"]) {
-  margin-top: 0.7mm;
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 {
-  flex: 0 1 auto;
-  min-width: 0;
-  margin: 0;
-  color: var(--text-strong);
-  font-size: var(--h3-size);
-  font-weight: 700;
-  line-height: 1.28;
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 .entry-sep {
-  font-weight: 400;
-  font-style: normal;
-  color: var(--text-faint);
-  margin: 0 1.25mm;
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 .entry-sub {
-  font-weight: 400;
-  font-style: italic;
-  font-size: 8.8pt;
-  color: var(--text-muted);
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) p {
-  flex-shrink: 0;
-  margin: 0;
-  margin-inline-start: var(--resume-date-offset, 0);
-  font-family: var(--text-font) !important;
-  font-size: 8.45pt;
-  font-weight: 400;
-  line-height: 1.28;
-  color: var(--text-muted);
-  white-space: nowrap;
-  font-variant-numeric: lining-nums tabular-nums;
-}
-
 /* Lists — clean single indent, subtle lapis bullet markers */
 .lapis-cv:where(.resume-layout-styled) ul {
   list-style-type: "\2022";
@@ -283,12 +225,4 @@
 .lapis-cv:where(.resume-layout-styled) .el-h2 + .el-ul ul,
 .lapis-cv:where(.resume-layout-styled) h2 + ul {
   margin-top: 0.55mm !important;
-}
-
-/* Project / entry intro summary paragraph directly below entry-title */
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) + p,
-.lapis-cv:where(.resume-layout-styled) .el-div:has([alt="entry-title"]) + .el-p > p {
-  margin-top: 0.35mm;
-  margin-bottom: 0.55mm;
-  color: var(--text-muted);
 }

@@ -1,5 +1,4 @@
 const { entryFields } = require("./entry");
-const ENTRY_HEADER_SELECTOR = '.entry-title, [alt="entry-title"]';
 
 function headingSuffix(parent, separator, expected, className) {
   const doc = parent.ownerDocument;
@@ -25,7 +24,6 @@ function decorateEntryHeadings(root) {
   const selector = "h3[data-heading]:not(.resume-entry-heading)";
   const headings = root.matches(selector) ? [root] : root.querySelectorAll(selector);
   for (const heading of headings) {
-    if (heading.closest(ENTRY_HEADER_SELECTOR)) continue;
     const fields = entryFields(heading.dataset.heading);
     if (!fields || (!fields.right && !fields.subtitle)) continue;
     const date = fields.right && headingSuffix(heading, "|｜", fields.right, "entry-date");
@@ -41,7 +39,7 @@ function decorateEntryHeadings(root) {
   }
 }
 
-function decorateResumeMarkup(root, chinese) {
+function decorateResumeMarkup(root) {
   decorateEntryHeadings(root);
   const doc = root.ownerDocument;
   const blocks = [...root.querySelectorAll("h2, blockquote")];
@@ -75,21 +73,7 @@ function decorateResumeMarkup(root, chinese) {
       node.replaceWith(fragment);
     }
   }
-  if (!chinese) return;
-  for (const title of root.querySelectorAll(`:is(${ENTRY_HEADER_SELECTOR}) h3`)) {
-    const text = title.textContent.trim();
-    const separator = text.indexOf(" - ");
-    if (title.childElementCount || separator < 1) continue;
-    const divider = doc.createElement("span");
-    divider.className = "entry-sep";
-    divider.textContent = "·";
-    const detail = doc.createElement("span");
-    detail.className = "entry-sub";
-    detail.textContent = text.slice(separator + 3);
-    title.replaceChildren(text.slice(0, separator), " ", divider, " ", detail);
-  }
 }
-
 
 function previewMatchText(text) {
   return text.normalize("NFKC")
@@ -100,7 +84,6 @@ function previewMatchText(text) {
     .toLowerCase();
 }
 
-
 function locatePreviewBlocks(root, body) {
   const lines = body.split("\n").map(line =>
     previewMatchText(line.replace(/^\s*(?:>\s*)*(?:[-+*]\s+|\d+[.)]\s+)?/, "")),
@@ -109,13 +92,13 @@ function locatePreviewBlocks(root, body) {
   let nextLine = 0;
   // The standalone renderer does not expose section positions. Match visible
   // block text in source order so repeated headings and bullets stay distinct.
-  for (const element of root.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,${ENTRY_HEADER_SELECTOR}`)) {
+  for (const element of root.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table")) {
     if (element.closest(".internal-embed")) continue;
-    const group = element.closest(`li,blockquote,pre,table,${ENTRY_HEADER_SELECTOR}`);
+    const group = element.closest("li,blockquote,pre,table");
     if (group && group !== element) continue;
     const text = element.matches("li")
       ? Array.from(element.childNodes).filter(node => !node.matches?.("ul,ol")).map(node => node.textContent).join(" ")
-      : element.querySelector(':scope > h3')?.textContent ?? element.textContent;
+      : element.textContent;
     const key = previewMatchText(text);
     if (!key) continue;
     for (let line = nextLine; line < lines.length; line++) {
@@ -129,7 +112,6 @@ function locatePreviewBlocks(root, body) {
   }
   return locations;
 }
-
 
 function previewSourceLine({ line, element }, body, event) {
   if (!element.matches("p,li,blockquote")) return line;

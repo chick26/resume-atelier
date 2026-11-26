@@ -39,19 +39,9 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   letter-spacing: 0.01em;
 }
 
-.lapis-cv:where(.resume-layout-styled).lapis-cv-zh blockquote p,
-.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) p {
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh blockquote p {
   text-align: left;
   letter-spacing: 0;
-}
-
-/* Upright secondary subtitle for Chinese (never faux-oblique CJK glyphs) */
-.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) h3 .entry-sub {
-  font-family: var(--text-font) !important;
-  font-style: normal;
-  font-weight: 400;
-  font-size: 8.65pt;
-  color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -142,14 +132,14 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   border-radius: 50%;
   background: var(--color-accent);
 }
-.lapis-cv.resume-layout-styled .resume-timeline .resume-entry :is(h3.resume-entry-heading, .entry-title, div[alt="entry-title"]) {
+.lapis-cv.resume-layout-styled .resume-timeline .resume-entry h3.resume-entry-heading {
   display: grid;
   grid-template-columns: var(--timeline-date-width, 24mm) minmax(0, 1fr);
   gap: 5mm;
   align-items: baseline;
 }
-.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-main,h3) { grid-area: 1 / 2; }
-.lapis-cv.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-date,p) {
+.resume-layout-styled .resume-timeline .resume-entry-heading > .entry-main { grid-area: 1 / 2; }
+.lapis-cv.resume-layout-styled .resume-timeline .resume-entry-heading > .entry-date {
   grid-area: 1 / 1;
   margin-inline-start: 0;
   text-align: start;
@@ -157,7 +147,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
 }
 .resume-layout-styled .resume-timeline .resume-entry-body,
 .resume-layout-styled .resume-timeline .resume-entry > h3:not(.resume-entry-heading),
-.resume-layout-styled .resume-timeline .resume-entry > div:not(.entry-title,[alt="entry-title"]) > h3[data-heading]:not(.resume-entry-heading) {
+.resume-layout-styled .resume-timeline .resume-entry > div > h3[data-heading]:not(.resume-entry-heading) {
   padding-inline-start: var(--timeline-indent);
 }
 .lapis-cv.resume-layout-styled ul.resume-section-tags {

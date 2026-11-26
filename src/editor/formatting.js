@@ -1,7 +1,6 @@
 const { MARKDOWN_FENCE } = require("../resume/structure");
 
 const SOURCE_LIST_PREFIX = /^([ \t]*)([-+*]|\d{1,9}[.)])[ \t]+(?:(\[[ xX]\])(?:[ \t]+|$))?/;
-const LEGACY_ENTRY_BLOCK = /^ {0,3}<div\b[^>\n]*[ \t](?:alt|class)=(["'])entry-title\1[^>\n]*>[ \t]*\n((?:[^\n]*\n)*?)[ \t]*<\/div>[ \t]*$/gm;
 
 function changeSourceIndent(field, outdent) {
   const { value, selectionStart: start, selectionEnd: end, selectionDirection } = field;
@@ -42,26 +41,15 @@ function sourceLineAt(value, offset) {
   return { start, end, text: value.slice(start, end) };
 }
 
-function inSourceLiteralBlock(value, lineStart, includeComments = false) {
+function inSourceFence(value, lineStart) {
   let fence = "";
-  let commentEnd = "";
   for (const line of value.slice(0, lineStart).split("\n")) {
     const marker = line.match(MARKDOWN_FENCE);
-    if (fence) {
-      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
-    } else if (commentEnd) {
-      if (line.includes(commentEnd)) commentEnd = "";
-    } else if (marker) {
-      fence = marker[1];
-    } else if (includeComments) {
-      const comment = line.match(/^\s*(<!--|%%)/);
-      if (comment) {
-        const end = comment[1] === "<!--" ? "-->" : "%%";
-        if (!line.slice(comment[0].length).includes(end)) commentEnd = end;
-      }
-    }
+    if (!marker) continue;
+    if (!fence) fence = marker[1];
+    else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
   }
-  return !!(fence || commentEnd);
+  return !!fence;
 }
 
 function continueSourceList(field) {
@@ -69,7 +57,7 @@ function continueSourceList(field) {
   if (cursor !== selectionEnd) return false;
   const line = sourceLineAt(value, cursor);
   const prefix = line.text.match(SOURCE_LIST_PREFIX);
-  if (!prefix || cursor < line.start + prefix[0].length || inSourceLiteralBlock(value, line.start)) return false;
+  if (!prefix || cursor < line.start + prefix[0].length || inSourceFence(value, line.start)) return false;
   if (!line.text.slice(prefix[0].length).trim()) {
     replaceSourceSelection(field, line.start, line.end, "", line.start, line.start);
     return true;
@@ -107,7 +95,7 @@ function sourceBoldSelection(field, line) {
 function toggleSourceBold(field) {
   const line = sourceLineAt(field.value, field.selectionStart);
   if (field.readOnly || field.selectionEnd > line.end || MARKDOWN_FENCE.test(line.text)
-    || inSourceLiteralBlock(field.value, line.start) || legacyEntryAt(field)) return false;
+    || inSourceFence(field.value, line.start)) return false;
   const bold = sourceBoldSelection(field, line);
   if (!bold) return false;
   const { start, end, content, span } = bold;
@@ -124,42 +112,4 @@ function toggleSourceBold(field) {
   return true;
 }
 
-function legacyEntryAt(field) {
-  const { value, selectionStart, selectionEnd } = field;
-  for (const match of value.matchAll(LEGACY_ENTRY_BLOCK)) {
-    const start = match.index;
-    const end = start + match[0].length;
-    if (selectionStart < start || selectionEnd > end) continue;
-    if (inSourceLiteralBlock(value, start, true)) return null;
-    const block = match[2].match(/^[ \t]*<h3>([^\n]*?)<\/h3>[ \t]*\n(?:[ \t]*<p>([^<>\n]*)<\/p>[ \t]*\n)?$/);
-    const title = block?.[1].match(/^([^<>]+?)(?:[ \t]*<span class=["']entry-sep["']>([|·])<\/span>[ \t]*<span class=["']entry-sub["']>([^<>]*)<\/span>)?$/);
-    const entry = { start, end, markup: match[0] };
-    // Rich HTML remains editable in source. A form can safely edit these plain fields.
-    if (title) entry.fields = { title: title[1], subtitle: title[3] ?? "", right: block[2] ?? "", separator: title[2] ?? "·" };
-    return entry;
-  }
-  return null;
-}
-
-function updateLegacyEntry(entry, title, subtitle, right) {
-  const escape = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-  // The recognized block has a wrapper, one heading and an optional date paragraph.
-  const lines = entry.markup.split("\n");
-  if (title !== entry.title || subtitle !== entry.subtitle) {
-    const detail = subtitle
-      ? ` <span class="entry-sep">${entry.separator}</span><span class="entry-sub">${escape(subtitle)}</span>` : "";
-    lines[1] = lines[1].replace(/<h3>.*<\/h3>/, () => "<h3>" + escape(title) + detail + "</h3>");
-  }
-  if (right !== entry.right) {
-    const date = "<p>" + escape(right) + "</p>";
-    if (lines.length === 4) {
-      if (right) lines[2] = lines[2].replace(/<p>.*<\/p>/, () => date);
-      else lines.splice(2, 1);
-    } else if (right) {
-      lines.splice(2, 0, lines[1].match(/^[ \t]*/)[0] + date);
-    }
-  }
-  return lines.join("\n");
-}
-
-module.exports = { changeSourceIndent, continueSourceList, replaceSourceSelection, toggleSourceBold, legacyEntryAt, updateLegacyEntry };
+module.exports = { changeSourceIndent, continueSourceList, replaceSourceSelection, toggleSourceBold };

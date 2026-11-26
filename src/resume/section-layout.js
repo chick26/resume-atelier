@@ -38,8 +38,7 @@ function blockHeading(block) {
 }
 
 function beginsEntry(block) {
-  const selector = 'h3[data-heading], .entry-title, [alt="entry-title"]';
-  return block.matches(selector) || (block.matches("div") && block.firstElementChild?.matches(selector));
+  return block.matches("h3[data-heading]") || (block.matches("div") && block.firstElementChild?.matches("h3[data-heading]"));
 }
 
 function container(root, tag, className) {

@@ -117,7 +117,7 @@ class PreviewPane {
       const headings = sections.map(({ startLine }) => headingByLine.get(startLine));
       const titles = new Map(sections.flatMap(({ title }, index) => headings[index] ? [[headings[index], title]] : []));
       const flow = new SectionLayout(next, [...next.children].filter(node => !node.matches("style")), titles);
-      decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
+      decorateResumeMarkup(next);
       flow.apply(this.view.layout.current);
       this.stylePreview(next);
 

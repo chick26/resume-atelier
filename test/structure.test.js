@@ -10,15 +10,15 @@ test("page warnings distinguish single, explicit, automatic and mixed boundaries
 const { splitSectionBody, sectionRuleIssues } = require("../src/resume/structure");
 const { changeSectionRule, ruleFor } = require("../src/resume/section-layout");
 
-test("section and entry line ranges include their details and ignore fenced, quoted and commented headings", () => {
+test("section and entry ranges follow Markdown headings and skip raw HTML, fences, quotes and comments", () => {
   const body = ["# Name", "> ## Contact", "## Work", "### First | Now", "- details", "",
-    "<div alt=\"entry-title\">", "    <h3>Previous</h3>", "</div>", "Second paragraph",
+    "<div alt=\"entry-title\">", "    <h3>Previous</h3>", "</div>", "### Second | Then",
     "```md", "## Fenced", "```", "<!--", "## Commented", "-->", "## Skills", "- details", "## Skills"].join("\r\n");
   const { intro, sections } = splitSectionBody(body);
   assert.equal(intro + sections.map(section => section.markdown).join(""), body);
   assert.deepEqual(sections.map(({ title, startLine, endLine }) => [title, startLine, endLine]),
     [["Work", 2, 16], ["Skills", 16, 18], ["Skills", 18, 19]]);
-  assert.deepEqual(sections[0].entries, [{ startLine: 3, endLine: 6 }, { startLine: 6, endLine: 16 }]);
+  assert.deepEqual(sections[0].entries, [{ startLine: 3, endLine: 9 }, { startLine: 9, endLine: 16 }]);
   assert.deepEqual(sectionRuleIssues(sections, { Skills: { hidden: true }, Honors: {} }),
     { duplicate: ["Skills"], missing: ["Honors"] });
 });

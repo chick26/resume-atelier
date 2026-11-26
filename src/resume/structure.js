@@ -1,5 +1,4 @@
 const MARKDOWN_FENCE = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/;
-const LEGACY_ENTRY = /^ {0,3}<div\b[^>]*\b(?:alt|class)=["']entry-title["'][^>]*>/i;
 
 function sectionTitle(text) {
   return text.replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
@@ -25,7 +24,7 @@ function splitSectionBody(body) {
       if (heading?.[1] === "##") {
         const title = sectionTitle(heading[2]);
         headings.push({ title, offset, startLine: lineNumber, entries: [] });
-      } else if (headings.length && (heading || LEGACY_ENTRY.test(line))) {
+      } else if (headings.length && heading) {
         headings.at(-1).entries.push(lineNumber);
       }
     }

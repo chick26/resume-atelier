@@ -238,10 +238,11 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
 .careeros-resume-layout .resume-layout-source-status.is-pending { color: var(--studio-accent); }
 .careeros-resume-layout .resume-layout-source-status.has-error { color: var(--studio-warning); }
 
-.careeros-resume-layout .resume-layout-source-popover {
+.careeros-resume-layout .resume-layout-photo-popover {
   position: absolute;
   z-index: 12;
   box-sizing: border-box;
+  width: min(270px, calc(100% - 16px));
   margin: 0;
   padding: 12px;
   overflow: auto;
@@ -252,56 +253,6 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
   font-size: 12px;
 }
 
-.careeros-resume-layout .resume-layout-source-entry {
-  width: min(560px, calc(100% - 16px));
-  container: resume-entry / inline-size;
-}
-
-.careeros-resume-layout .resume-layout-source-entry-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr));
-  grid-template-areas: "title subtitle date";
-  gap: 8px 10px;
-  color: var(--studio-muted);
-}
-
-.careeros-resume-layout .resume-layout-entry-title { grid-area: title; }
-.careeros-resume-layout .resume-layout-entry-subtitle { grid-area: subtitle; }
-.careeros-resume-layout .resume-layout-entry-date { grid-area: date; }
-
-@container resume-entry (max-width: 424px) {
-  .careeros-resume-layout .resume-layout-source-entry-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: "title date" "subtitle subtitle";
-  }
-}
-
-.careeros-resume-layout .resume-layout-source-entry input {
-  width: 100%;
-  min-width: 0;
-}
-
-.careeros-resume-layout .resume-layout-entry-preview {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  min-height: 31px;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--studio-border);
-}
-
-.careeros-resume-layout .resume-layout-entry-preview-heading { min-width: 0; }
-.careeros-resume-layout .resume-layout-entry-preview :is(.resume-layout-entry-preview-heading, .resume-layout-entry-preview-date) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.careeros-resume-layout .resume-layout-entry-preview-subtitle { margin-inline-start: 6px; color: var(--studio-muted); }
-.careeros-resume-layout .resume-layout-entry-preview-date { flex: 0 1 auto; max-width: 48%; color: var(--studio-muted); text-align: end; font-variant-numeric: tabular-nums; }
-.careeros-resume-layout .resume-layout-source-entry-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
 .careeros-resume-layout .resume-layout-source-conflict {
   display: flex;
   flex-wrap: wrap;
@@ -341,12 +292,6 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
 
 .careeros-resume-layout .resume-layout-source textarea::selection {
   background: color-mix(in srgb, var(--studio-accent) 35%, transparent);
-}
-
-.careeros-resume-layout .resume-layout-photo-popover {
-  width: min(270px, calc(100% - 16px));
-  padding: 12px;
-  overflow-y: auto;
 }
 
 .careeros-resume-layout .resume-layout-stage {
@@ -505,7 +450,7 @@ body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
   visibility: hidden;
   pointer-events: none;
 }
-.resume-layout-pagination-probe :is(h1,h2,h3,h4,h5,h6,.entry-title,div[alt="entry-title"]) { break-after: avoid-column; }
+.resume-layout-pagination-probe :is(h1,h2,h3,h4,h5,h6) { break-after: avoid-column; }
 .resume-layout-pagination-probe li { break-inside: avoid-column; }
 .resume-layout-pagination-probe .resume-layout-media-box { display: inline-block; }
 .resume-layout-pagination-probe .resume-layout-styled hr { break-after: column; margin: 0; visibility: hidden; }
@@ -1141,64 +1086,6 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   font-variant-numeric: tabular-nums;
 }
 
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) {
-  display: flex;
-  justify-content: flex-start;
-  align-items: baseline;
-  gap: 0.7em;
-  margin-top: var(--resume-entry-gap);
-  margin-bottom: 0.45mm;
-}
-
-/* Tighter top spacing right after section divider */
-.lapis-cv:where(.resume-layout-styled) h2 + :is(.entry-title, div[alt="entry-title"]),
-.lapis-cv:where(.resume-layout-styled) .el-h2 + .el-div :is(.entry-title, div[alt="entry-title"]) {
-  margin-top: 0.45mm;
-}
-
-/* Compact spacing between consecutive single-line entries (e.g. Education) */
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) + :is(.entry-title, div[alt="entry-title"]),
-.lapis-cv:where(.resume-layout-styled) .el-div:has([alt="entry-title"]) + .el-div:has([alt="entry-title"]) :is(.entry-title, div[alt="entry-title"]) {
-  margin-top: 0.7mm;
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 {
-  flex: 0 1 auto;
-  min-width: 0;
-  margin: 0;
-  color: var(--text-strong);
-  font-size: var(--h3-size);
-  font-weight: 700;
-  line-height: 1.28;
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 .entry-sep {
-  font-weight: 400;
-  font-style: normal;
-  color: var(--text-faint);
-  margin: 0 1.25mm;
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 .entry-sub {
-  font-weight: 400;
-  font-style: italic;
-  font-size: 8.8pt;
-  color: var(--text-muted);
-}
-
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) p {
-  flex-shrink: 0;
-  margin: 0;
-  margin-inline-start: var(--resume-date-offset, 0);
-  font-family: var(--text-font) !important;
-  font-size: 8.45pt;
-  font-weight: 400;
-  line-height: 1.28;
-  color: var(--text-muted);
-  white-space: nowrap;
-  font-variant-numeric: lining-nums tabular-nums;
-}
-
 /* Lists — clean single indent, subtle lapis bullet markers */
 .lapis-cv:where(.resume-layout-styled) ul {
   list-style-type: "\2022";
@@ -1255,14 +1142,6 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   margin-top: 0.55mm !important;
 }
 
-/* Project / entry intro summary paragraph directly below entry-title */
-.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) + p,
-.lapis-cv:where(.resume-layout-styled) .el-div:has([alt="entry-title"]) + .el-p > p {
-  margin-top: 0.35mm;
-  margin-bottom: 0.55mm;
-  color: var(--text-muted);
-}
-
 /* ==========================================================================
  * Chinese Resume Variant (`cssclasses: [lapis-cv, careeros-resume, lapis-cv-zh]`)
  * Uses serif headings and a matched Latin/CJK sans-serif body.
@@ -1304,19 +1183,9 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   letter-spacing: 0.01em;
 }
 
-.lapis-cv:where(.resume-layout-styled).lapis-cv-zh blockquote p,
-.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) p {
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh blockquote p {
   text-align: left;
   letter-spacing: 0;
-}
-
-/* Upright secondary subtitle for Chinese (never faux-oblique CJK glyphs) */
-.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) h3 .entry-sub {
-  font-family: var(--text-font) !important;
-  font-style: normal;
-  font-weight: 400;
-  font-size: 8.65pt;
-  color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -1407,14 +1276,14 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   border-radius: 50%;
   background: var(--color-accent);
 }
-.lapis-cv.resume-layout-styled .resume-timeline .resume-entry :is(h3.resume-entry-heading, .entry-title, div[alt="entry-title"]) {
+.lapis-cv.resume-layout-styled .resume-timeline .resume-entry h3.resume-entry-heading {
   display: grid;
   grid-template-columns: var(--timeline-date-width, 24mm) minmax(0, 1fr);
   gap: 5mm;
   align-items: baseline;
 }
-.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-main,h3) { grid-area: 1 / 2; }
-.lapis-cv.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-date,p) {
+.resume-layout-styled .resume-timeline .resume-entry-heading > .entry-main { grid-area: 1 / 2; }
+.lapis-cv.resume-layout-styled .resume-timeline .resume-entry-heading > .entry-date {
   grid-area: 1 / 1;
   margin-inline-start: 0;
   text-align: start;
@@ -1422,7 +1291,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
 }
 .resume-layout-styled .resume-timeline .resume-entry-body,
 .resume-layout-styled .resume-timeline .resume-entry > h3:not(.resume-entry-heading),
-.resume-layout-styled .resume-timeline .resume-entry > div:not(.entry-title,[alt="entry-title"]) > h3[data-heading]:not(.resume-entry-heading) {
+.resume-layout-styled .resume-timeline .resume-entry > div > h3[data-heading]:not(.resume-entry-heading) {
   padding-inline-start: var(--timeline-indent);
 }
 .lapis-cv.resume-layout-styled ul.resume-section-tags {
@@ -1588,7 +1457,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
     box-shadow: none !important;
   }
 
-  .lapis-cv:where(.resume-layout-styled) :is(h1, h2, h3, h4, h5, h6, .entry-title, div[alt="entry-title"]) {
+  .lapis-cv:where(.resume-layout-styled) :is(h1, h2, h3, h4, h5, h6) {
     break-after: avoid-page;
     page-break-after: avoid;
   }

@@ -21,10 +21,10 @@ class ResumePresentation {
     const file = this.app.vault.getAbstractFileByPath(sourcePath);
     if (root) {
       if (!element.closest(".internal-embed")) this.styleNativePrint(root, file);
-      if (root.dataset.careerosPrint) decorateResumeMarkup(element, root.classList.contains("lapis-cv-zh"));
+      if (root.dataset.careerosPrint) decorateResumeMarkup(element);
     } else {
       const resume = this.catalog.resume(file);
-      if (resume) decorateResumeMarkup(element, resume.classes.includes("lapis-cv-zh"));
+      if (resume) decorateResumeMarkup(element);
     }
   }
 
@@ -138,7 +138,7 @@ class ResumePresentation {
     applyMargins(root, layout);
     applyTypography(root, layout);
     applyTemplate(root, this.themes.templates.get(layout.template)?.css);
-    decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+    decorateResumeMarkup(root);
   }
 
   clearReadingStyle(root, declaredClasses = []) {
@@ -171,7 +171,7 @@ class ResumePresentation {
     applyMargins(root, layout);
     applyTypography(root, layout);
     applyTemplate(root, this.themes.templates.get(layout.template)?.css);
-    decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+    decorateResumeMarkup(root);
     const content = root.querySelector(":scope > .markdown-preview-sizer") ?? root;
     const blocks = [...content.children].filter(node => !node.matches("style, .mod-ui, .mod-frontmatter, .mod-header, .mod-footer"));
     new SectionLayout(content, blocks).apply(layout);

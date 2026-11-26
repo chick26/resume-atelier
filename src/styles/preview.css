@@ -154,7 +154,7 @@
   visibility: hidden;
   pointer-events: none;
 }
-.resume-layout-pagination-probe :is(h1,h2,h3,h4,h5,h6,.entry-title,div[alt="entry-title"]) { break-after: avoid-column; }
+.resume-layout-pagination-probe :is(h1,h2,h3,h4,h5,h6) { break-after: avoid-column; }
 .resume-layout-pagination-probe li { break-inside: avoid-column; }
 .resume-layout-pagination-probe .resume-layout-media-box { display: inline-block; }
 .resume-layout-pagination-probe .resume-layout-styled hr { break-after: column; margin: 0; visibility: hidden; }
