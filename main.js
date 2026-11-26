@@ -1,0 +1,3543 @@
+const {
+  Component,
+  FileView,
+  FuzzySuggestModal,
+  MarkdownRenderer,
+  MarkdownView,
+  Modal,
+  Notice,
+  Plugin,
+  PluginSettingTab,
+  Scope,
+  Setting,
+  getFrontMatterInfo,
+  getLanguage,
+  normalizePath,
+  setIcon,
+} = require("obsidian");
+
+const VIEW_TYPE = "careeros-resume-layout";
+const A4_WIDTH = 210;
+const A4_HEIGHT = 297;
+const PX_PER_MM = 96 / 25.4;
+const BASE_TEMPLATE = "LapisCV";
+const DRAFT_FOLDER = "resumes/drafts";
+const DEFAULT_SETTINGS = {
+  defaultTemplate: BASE_TEMPLATE,
+  defaultDensity: "standard",
+  autoSaveLayout: true,
+  draftLocationMode: "alongside",
+  draftFolder: DRAFT_FOLDER,
+  protectedFolders: [],
+};
+const THEME_LABELS = { [BASE_TEMPLATE]: "经典衬线", "黑白 ATS": "黑白简约（ATS 友好）" };
+const BUILT_IN_THEME_MESSAGES = {
+  [BASE_TEMPLATE]: "themeClassic",
+  "简洁蓝": "themeBlue",
+  "现代无衬线": "themeSans",
+  "黑白 ATS": "themeAts",
+};
+const PROTECTED_APPLICATION_STATES = new Set(["ready", "applied", "interviewing", "offer", "rejected", "withdrawn", "closed"]);
+const TEMPLATE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,47}$/u;
+const MARKDOWN_FENCE = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/;
+const SOURCE_LIST_PREFIX = /^([ \t]*)([-+*]|\d{1,9}[.)])[ \t]+(?:(\[[ xX]\])(?:[ \t]+|$))?/;
+const SOURCE_HEADING_PREFIX = /^ {0,3}(#{1,6})(?:[ \t]+|$)/;
+const SOURCE_ENTRY_BLOCK = /^ {0,3}<div (alt|class)="entry-title">[ \t]*\n((?:[^\n]*\n)*?)[ \t]*<\/div>[ \t]*$/gm;
+const SOURCE_ENTRY_SEPARATOR = "·";
+const ENTRY_HEADER_SELECTOR = '.entry-title, [alt="entry-title"]';
+// Each entry holds Simplified Chinese and English. Layout metadata uses stable IDs.
+const MESSAGES = {
+  pluginName: ["简历工坊", "Resume Atelier"],
+  openCommand: ["打开工作台", "Open workbench"],
+  layoutThisResume: ["排版这份简历", "Lay out this resume"],
+  layoutLinkedResume: ["排版关联简历", "Lay out linked resume"],
+  previewAsResume: ["以简历样式预览", "Preview as a resume"],
+  workbench: ["排版工作台", "Resume workbench"],
+  workbenchHelp: ["在分屏 A4 纸面中排版简历、调整栏目顺序或导出 PDF。", "Preview your A4 resume, reorder sections, or export a PDF."],
+  openWorkbench: ["打开工作台", "Open workbench"],
+  layoutDefaults: ["默认版式", "Layout defaults"],
+  defaultTheme: ["默认视觉主题", "Default theme"],
+  defaultThemeHelp: ["用于新建草稿和尚未保存版式的笔记；已有版式属性的简历保持自身设置。", "Used for new drafts and notes without saved layout settings."],
+  defaultDensity: ["默认排版密度", "Default spacing"],
+  defaultDensityHelp: ["控制章节间距与默认行高。单页信息较多时建议选择「紧凑」。", "Sets section spacing and line height. Choose Compact to fit more on one page."],
+  themes: ["主题管理", "Themes"],
+  customThemes: ["自定义主题", "Custom themes"],
+  newTheme: ["新建主题", "New theme"],
+  copyTheme: ["复制主题", "Copy theme"],
+  editTheme: ["编辑主题", "Edit theme"],
+  importCss: ["导入 CSS", "Import CSS"],
+  exportCss: ["导出 CSS", "Export CSS"],
+  themeDeleted: ["已删除「{name}」", "Deleted “{name}”"],
+  undoDelete: ["撤销删除", "Undo deletion"],
+  copiesAndProtection: ["副本与保护", "Copies and protection"],
+  copyLocation: ["编辑副本保存位置", "Location for editable copies"],
+  copyLocationHelp: ["对只读简历点击「创建副本并编辑」时，新草稿的存放位置。", "Where drafts created with Copy and edit are saved."],
+  sameFolder: ["与原文件同目录", "Same folder as original"],
+  customFolder: ["指定目录", "Choose a folder"],
+  draftFolderPath: ["草稿目录路径", "Draft folder path"],
+  vaultFolderRequired: ["请输入库内的目录路径。", "Enter a path inside the vault."],
+  autoSaveLayout: ["自动保存可编辑简历的版式改动", "Auto-save resume layouts"],
+  autoSaveLayoutHelp: ["开启后，主题、密度与边距调整自动写回笔记属性并支持撤销；普通非简历笔记仍仅作预览。", "Saves theme, spacing, and margins to editable resume properties and supports undo. Other notes open in preview."],
+  advanced: ["高级选项", "Advanced"],
+  extraProtectedFolders: ["额外只读保护目录", "Additional read-only folders"],
+  extraProtectedFoldersHelp: ["每行一个目录。位于这些目录内的简历将以只读试排打开。", "Enter one folder per line. Resumes in these folders open in read-only preview."],
+  themeClassic: ["经典衬线", "Classic Serif"],
+  themeClassicCredit: ["经典衬线（基于 LapisCV）", "Classic Serif (LapisCV)"],
+  themeBlue: ["简洁蓝", "Minimal Blue"],
+  themeSans: ["现代无衬线", "Modern Sans"],
+  themeAts: ["黑白简约（ATS 友好）", "Monochrome (ATS-friendly)"],
+  copyAndCustomize: ["复制并自定义", "Copy and customize"],
+  themeUseOne: ["{count} 份简历使用中", "Used by {count} resume"],
+  themeUseMany: ["{count} 份简历使用中", "Used by {count} resumes"],
+  themeUnused: ["当前未使用", "Unused"],
+  previewAndEdit: ["预览编辑", "Preview and edit"],
+  delete: ["删除", "Delete"],
+  deleteInUseHint: ["切换引用此主题的简历后再删除", "Switch the theme on the resumes using it before deleting"],
+  deleteUnusedHint: ["删除未使用的主题", "Delete this unused theme"],
+  deleteThemeQuestion: ["删除「{name}」？", "Delete “{name}”?"],
+  cancel: ["取消", "Cancel"],
+  confirmDelete: ["确认删除", "Confirm deletion"],
+  themeOperationFailed: ["未能完成主题操作", "Could not complete the theme action"],
+  chooseCssFile: ["请选择包含样式规则的 CSS 文件。", "Choose a CSS file containing style rules."],
+  themeImported: ["主题已导入", "Theme imported"],
+  clearDeletedThemeCache: ["清理已删除主题缓存", "Clear deleted theme files"],
+  fileCountOne: ["{count} 个文件", "{count} file"],
+  fileCountMany: ["{count} 个文件", "{count} files"],
+  clear: ["清理", "Clear"],
+  confirmClear: ["确认清理", "Confirm cleanup"],
+  openOriginalNote: ["打开原笔记", "Open original note"],
+  previewZoom: ["预览缩放", "Preview zoom"],
+  fitPageZoom: ["适应整页", "Fit page"],
+  fitWidthZoom: ["适应宽度", "Fit width"],
+  actualZoom: ["100%", "100%"],
+  fitOnePage: ["收紧至一页", "Fit to one page"],
+  undoFit: ["撤销收紧", "Undo fit"],
+  editSource: ["编辑正文", "Edit text"],
+  editSourceHelp: ["在工作台并排编辑 Markdown 源码", "Edit Markdown beside the preview"],
+  doneEditing: ["完成编辑", "Done editing"],
+  doneEditingHelp: ["保存并返回排版", "Save and return to layout"],
+  copyAndEdit: ["创建副本并编辑", "Copy and edit"],
+  hidePanel: ["收起排版面板", "Hide layout panel"],
+  showPanel: ["展开排版面板", "Show layout panel"],
+  exportPdf: ["导出 PDF", "Export PDF"],
+  previewLabel: ["A4 简历预览", "A4 resume preview"],
+  contentStale: ["对应职位描述或经历已更新，建议先核对内容", "The job description or work history has changed. Review your resume."],
+  firstPageBreak: ["第 1 页分页线", "Page 1 break"],
+  layoutTab: ["版式", "Layout"],
+  sections: ["栏目", "Sections"],
+  fineTune: ["精细微调", "Fine-tune"],
+  margins: ["页边距", "Margins"],
+  linkVertical: ["上下联动", "Link top & bottom"],
+  linkHorizontal: ["左右联动", "Link left & right"],
+  typography: ["正文", "Body text"],
+  showMarginGuides: ["显示边距参考线", "Show margin guides"],
+  resetFineTuning: ["重置微调", "Reset adjustments"],
+  undoReset: ["撤销重置", "Undo reset"],
+  applyLayout: ["将版式写入此笔记", "Apply layout to this note"],
+  saveLayout: ["保存版式到笔记", "Save layout to note"],
+  undo: ["撤销", "Undo"],
+  undoLayout: ["撤销版式改动", "Undo layout change"],
+  cannotOpenResume: ["无法打开这份简历，请重新选择。", "Could not open this resume. Choose another note."],
+  emptyWorkbench: ["从一份简历开始排版。", "Choose a resume to start."],
+  createExample: ["新建示例简历", "Create sample resume"],
+  chooseExisting: ["选择已有笔记", "Choose an existing note"],
+  cannotCreateSample: ["无法新建示例简历，请检查当前库是否可写。", "Could not create a sample resume. Check that this vault is writable."],
+  noMarkdownNotes: ["这个库里还没有 Markdown 笔记", "This vault has no Markdown notes yet"],
+  selectResume: ["选择简历", "Choose a resume"],
+  selectResumeOrNote: ["选择简历或笔记", "Choose a resume or note"],
+  changeResume: ["更换简历 · {name}", "Change resume · {name}"],
+  searchNotes: ["搜索简历或其他 Markdown 笔记", "Search resumes or Markdown notes"],
+  noMatchingNotes: ["没有找到匹配的笔记", "No matching notes"],
+  sourceNote: ["正文来源 · {path}", "Source note · {path}"],
+  formatSource: ["正文格式", "Text formatting"],
+  retry: ["重试", "Retry"],
+  retrySave: ["重试保存", "Retry saving"],
+  saveCopy: ["另存为副本", "Save a copy"],
+  copyMyInput: ["复制我的输入", "Copy my changes"],
+  discardAndReload: ["放弃并加载最新", "Discard and load latest"],
+  sourceLabel: ["简历 Markdown 正文", "Resume Markdown"],
+  bold: ["加粗", "Bold"],
+  unbold: ["取消加粗", "Remove bold"],
+  boldShortcut: ["{action}（⌘B / Ctrl+B）", "{action} (⌘B / Ctrl+B)"],
+  list: ["列表", "List"],
+  removeList: ["取消列表", "Remove list"],
+  makeBulletList: ["切换为无序列表", "Make bulleted list"],
+  section: ["栏目", "Section"],
+  removeSectionFormat: ["取消栏目格式", "Remove section heading"],
+  makeSection: ["设为栏目", "Make section heading"],
+  editorShortcuts: ["编辑快捷键", "Editor shortcuts"],
+  continueList: ["续写列表", "Continue list"],
+  indent: ["缩进", "Indent"],
+  clickPreview: ["点击纸面", "Click preview"],
+  jumpToSource: ["定位源码", "Jump to source"],
+  entry: ["经历条目", "Entry"],
+  editEntry: ["编辑条目", "Edit entry"],
+  editEntryHelp: ["修改当前经历条目", "Edit the current entry"],
+  addDateHelp: ["为当前小标题补日期", "Add a date to this heading"],
+  insertEntry: ["插入经历条目", "Insert an entry"],
+  entryTitle: ["主标题", "Title"],
+  entrySubtitle: ["副标题（可选）", "Subtitle (optional)"],
+  entryDate: ["右侧日期或备注", "Date or note"],
+  entryPreview: ["条目预览", "Entry preview"],
+  insert: ["插入", "Insert"],
+  update: ["更新", "Update"],
+  entryMoved: ["正文已变化，请重新选择条目位置", "The text changed. Choose the entry location again."],
+  saved: ["已保存", "Saved"],
+  sourcePending: ["待保存", "Unsaved"],
+  sourceSaving: ["保存中…", "Saving…"],
+  sourceSaveFailed: ["保存失败", "Save failed"],
+  sourceSaveConflict: ["保存冲突", "Save conflict"],
+  sourceConflict: ["正文已在外部更新，你的输入已保留", "The note changed outside the editor. Your edits are still here."],
+  copySaved: ["已另存为副本", "Copy saved"],
+  sourceLoaded: ["已加载最新正文", "Latest text loaded"],
+  sourceConflictFailed: ["无法处理冲突，输入仍保留在编辑区。", "Could not resolve the conflict. Your edits are still in the editor."],
+  backupName: ["{name} 编辑备份", "{name} edit backup"],
+  backupSaved: ["编辑内容已保存到 {path}", "Edits saved to {path}"],
+  copySuccess: ["已复制到剪贴板", "Copied to clipboard"],
+  copyShortcutHint: ["请使用复制快捷键复制选中的内容", "Use your copy shortcut to copy the selection"],
+  recoveryTitle: ["未能保存正文改动", "Could not save edits"],
+  recoveryHelp: ["原文件与备份均未能写入，请先复制以下内容避免丢失。", "Saving to the original note and to a backup both failed. Copy your edits to keep them."],
+  unsavedText: ["未保存的正文", "Unsaved text"],
+  copyClipboard: ["复制到剪贴板", "Copy to clipboard"],
+  retryBackup: ["重试备份", "Retry backup"],
+  discardAndClose: ["放弃并关闭", "Discard and close"],
+  backupFailed: ["备份仍未能写入，请先复制正文。", "Backup failed again. Copy your edits to keep them."],
+  theme: ["视觉主题", "Theme"],
+  manageSettings: ["管理主题与默认设置", "Manage themes and defaults"],
+  density: ["排版密度", "Spacing"],
+  comfortable: ["舒适", "Relaxed"],
+  standard: ["标准", "Standard"],
+  compact: ["紧凑", "Compact"],
+  missingTheme: ["找不到「{name}」，已使用默认主题。", "Theme “{name}” is missing. Using the default theme."],
+  backToLayout: ["← 返回排版", "← Back to layout"],
+  themeName: ["主题名称", "Theme name"],
+  themeCopyName: ["{name} 副本", "{name} copy"],
+  themeScopeHelp: ["用 :scope 设置纸面颜色和字体。", "Use :scope to set page colors and fonts."],
+  cssReference: ["常用 CSS 变量速查", "Common CSS variables"],
+  copySnippet: ["复制片段", "Copy snippet"],
+  saveTheme: ["保存主题", "Save theme"],
+  themeSaved: ["主题已保存", "Theme saved"],
+  layoutSaved: ["版式已保存到笔记", "Layout saved to note"],
+  layoutSaveFailed: ["版式未能写入笔记", "Could not save layout to the note"],
+  createSectionsHelp: ["新增栏目，或用 Markdown 二级标题组织正文。", "Add a section or organize the text with Markdown level-two headings."],
+  emptySections: ["这份简历没有栏目。", "This resume has no sections."],
+  cancelNewSection: ["取消新增", "Cancel"],
+  newSection: ["新增栏目", "New section"],
+  undoLast: ["撤销上一步", "Undo last action"],
+  sectionChangeUndone: ["已撤销栏目操作", "Section change undone"],
+  sectionName: ["栏目名称", "Section name"],
+  addSection: ["添加栏目", "Add section"],
+  untitledSection: ["未命名栏目", "Untitled section"],
+  findSectionOnPage: ["在预览中定位「{title}」", "Find “{title}” in preview"],
+  moveSectionUp: ["上移{title}", "Move “{title}” up"],
+  moveSectionDown: ["下移{title}", "Move “{title}” down"],
+  sectionNameRequired: ["请填写一行栏目名称。", "Enter a section name on one line."],
+  sectionNameDuplicate: ["已经有同名栏目。", "A section with this name already exists."],
+  sectionAdded: ["已新增栏目", "Section added"],
+  sectionsChanged: ["栏目已变化，请重新操作。", "The sections changed. Try again."],
+  sectionsReordered: ["已调整栏目顺序", "Sections reordered"],
+  noteChanged: ["当前笔记已变化，请重新操作。", "The note changed. Try again."],
+  marginLinkUndone: ["已取消联动并还原", "Margins unlinked and restored"],
+  top: ["上", "Top"],
+  bottom: ["下", "Bottom"],
+  left: ["左", "Left"],
+  right: ["右", "Right"],
+  fontSize: ["字号", "Font size"],
+  lineHeight: ["行距", "Line height"],
+  marginLabel: ["{side}页边距", "{side} margin"],
+  dragMargin: ["拖动{side}页边距", "Drag to adjust the {side} margin"],
+  typographyLabel: ["正文{field}", "Body text · {field}"],
+  masterBadge: ["只读母版", "Read-only master"],
+  masterHelp: ["保留母版原件。需要修改时可创建编辑副本。", "Create an editable copy to preserve the original resume."],
+  frozenBadge: ["已冻结", "Frozen"],
+  frozenHelp: ["这份简历已关联到已核对或已投递的申请。可从副本开始编辑。", "This resume belongs to a reviewed or submitted application. Create a copy to edit."],
+  protectedBadge: ["只读资料", "Read-only note"],
+  protectedHelp: ["当前笔记受保护。可试排或创建编辑副本。", "This note is protected. Preview the layout or create an editable copy."],
+  previewBadge: ["普通笔记试排", "Note preview"],
+  previewHelp: ["版式仅供预览。选择写入版式后才会添加属性。", "Preview layout changes. Apply the layout to add properties to this note."],
+  previewUnavailable: ["预览暂未更新", "Preview unavailable"],
+  loading: ["载入中…", "Loading…"],
+  localPreviewHelp: ["当前为本机试排。创建编辑副本可沿用版式。", "This layout is local to this vault. Create an editable copy to keep it with a note."],
+  layoutSaving: ["正在保存版式…", "Saving layout…"],
+  previewOnly: ["当前为试排预览，未修改原笔记", "Layout preview"],
+  layoutUnsaved: ["版式尚未保存", "Layout unsaved"],
+  finishThemeBeforeExport: ["保存或取消主题编辑后即可导出", "Save or cancel theme edits to export"],
+  layoutRestored: ["已还原之前的排版", "Previous layout restored"],
+  layoutDefaultsRestored: ["已恢复默认排版", "Default layout restored"],
+  minimumPages: ["至少 {pages} 页", "At least {pages} pages"],
+  overflowPages: ["超 {excess} mm · {pages} 页", "+{excess} mm · {pages} pages"],
+  onePage: ["1 页 · {usage}%", "1 page · {usage}%"],
+  pageBreaks: ["含分页符 · {label}", "Manual page breaks · {label}"],
+  overflowPagesDetail: ["约 {pages} 页 · 第 {pages} 页占 {usage}%（超出 {excess} mm）", "About {pages} pages · page {pages} is {usage}% full ({excess} mm over one page)"],
+  onePageDetail: ["单页 · 已用 {usage}% · 余 {remaining} mm", "One page · {usage}% used · {remaining} mm left"],
+  fitCannotReach: ["内容超出单页可读范围（仍超出约 {excess} mm），建议精简正文或采用两页排版。", "About {excess} mm still overflows. Shorten the text or use two pages to keep it readable."],
+  nativeExportFailed: ["无法打开 Obsidian 原生 PDF 导出", "Could not open Obsidian’s PDF export"],
+  nativeExportUnavailable: ["当前版本无法从排版工作台打开原生 PDF 导出。可在原笔记中使用「导出为 PDF」。", "This Obsidian version cannot open PDF export from the workbench. Use Export to PDF in the original note."],
+  zhMaster: ["中文母版", "Chinese master resume"],
+  enMaster: ["英文母版", "English master resume"],
+  zhTailored: ["中文定制 · {title}", "Tailored Chinese resume · {title}"],
+  enTailored: ["英文定制 · {title}", "Tailored English resume · {title}"],
+  themesLoadFailed: ["部分主题未能读取", "Some themes could not be loaded"],
+  invalidThemeName: ["请输入可用的主题名称，可使用汉字、字母、数字、空格、短横线和下划线。", "Enter a theme name using letters, numbers, spaces, hyphens, or underscores."],
+  invalidThemeCss: ["没有可应用的 CSS 规则。请检查选择器和大括号。", "No usable CSS rules found. Check the selectors and braces."],
+  duplicateTheme: ["已有同名主题。", "A theme with this name already exists."],
+  themeEditStale: ["主题已变化，请重新打开后编辑。", "The theme changed. Reopen it to edit."],
+  themeProtected: ["已有保留版本使用此主题，可以复制后编辑 CSS。", "A protected resume uses this theme. Copy the theme to edit its CSS."],
+  customThemeRequired: ["请选择一个自定义主题。", "Choose a custom theme."],
+  themeStillInUse: ["仍有笔记在使用此主题，切换后可以删除。", "Switch the theme on the notes using it before deleting."],
+  themeDeleteStale: ["主题已变化，请重新加载后再操作。", "The theme changed. Reload it and try again."],
+  noThemeToRestore: ["没有可恢复的主题。", "There is no theme to restore."],
+  sampleResume: ["示例简历", "Sample Resume"],
+  missingMasterSource: ["找不到母版引用的正文。", "Could not find the source note linked to the master resume."],
+  resume: ["简历", "Resume"],
+  draftName: ["{name} 草稿", "{name} draft"],
+  editableLayoutRequired: ["请在可编辑笔记中保存版式。", "Open an editable note to save the layout."],
+  noteLayoutChanged: ["笔记版式已变化，请按最新属性重新调整。", "The note’s layout changed. Adjust the layout using the latest properties."],
+  editableResumeRequired: ["请在可编辑的简历笔记中修改正文。", "Open an editable resume to change its text."],
+  fileUpdated: ["文件已更新，请按刷新后的预览重新操作。", "The note was updated. Try again from the refreshed preview."],
+  yamlRequired: ["请在原笔记的属性中添加 YAML。", "Add YAML properties in the original note."],
+  sourceBusy: ["正文正在更新，等预览同步后再试。", "Wait for the preview to catch up with the text, then try again."],
+  noteNotFound: ["找不到这份 Markdown 笔记", "Could not find this Markdown note"],
+  themeNeedsNote: ["打开一份 Markdown 笔记即可实时预览主题。", "Open a Markdown note to preview the theme live."],
+  settingsSaveFailed: ["未能保存简历工坊的设置，当前预览仍可用。", "Could not save Resume Atelier settings. The preview is still available."],
+  originalNoteMissing: ["找不到原笔记。", "Could not find the original note."],
+  exportNoteMissing: ["找不到要导出的简历文件。", "Could not find the resume to export."],
+  exportNoteOpenFailed: ["无法打开要导出的原笔记。", "Could not open the original note for export."],
+};
+
+function obsidianLanguage() {
+  const language = typeof getLanguage === "function" ? getLanguage() : globalThis.navigator?.language;
+  return /^zh(?:[-_]|$)/i.test(language || "") ? "zh" : "en";
+}
+
+function createTranslator(language) {
+  const index = language === "zh" ? 0 : 1;
+  return (key, values) => {
+    const text = MESSAGES[key][index];
+    return values ? text.replace(/\{(\w+)\}/g, (placeholder, name) => values[name] ?? placeholder) : text;
+  };
+}
+
+const BUILT_IN_TEMPLATE_CSS = {
+  [BASE_TEMPLATE]: "",
+  "简洁蓝": `:scope {
+  --color-accent: #254f78;
+  --h2-color: var(--color-accent);
+  --border-color: #a8bed2;
+}
+
+h1 {
+  letter-spacing: 0.015em;
+}
+
+h2 {
+  letter-spacing: 0.055em;
+  border-bottom-width: 1pt;
+}
+`,
+  "现代无衬线": `:scope {
+  --title-font: var(--resume-sans-font);
+  --text-font: var(--resume-sans-font);
+  --color-accent: #245269;
+  --border-color: #afc5ce;
+}
+
+h1,
+h2 {
+  letter-spacing: 0.025em;
+}
+`,
+  "黑白 ATS": `:scope {
+  --title-font: var(--resume-sans-font);
+  --text-font: var(--resume-sans-font);
+  --color-accent: #202020;
+  --text-strong: #161616;
+  --text-normal: #202020;
+  --text-muted: #3d3d3d;
+  --border-color: #8a8a8a;
+}
+
+.resume-layout-icon,
+.icon,
+span[alt="icon"] {
+  display: none !important;
+}
+`,
+};
+const BUILT_IN_TEMPLATES = Object.keys(BUILT_IN_TEMPLATE_CSS);
+const DENSITIES = {
+  comfortable: { lineHeight: { en: 1.48, zh: 1.6 } },
+  standard: { lineHeight: { en: 1.37, zh: 1.48 } },
+  compact: { lineHeight: { en: 1.29, zh: 1.38 } },
+};
+const ZOOM_OPTIONS = { page: "fitPageZoom", width: "fitWidthZoom", actual: "actualZoom" };
+const MARGIN_PAIRS = { top: "bottom", bottom: "top", left: "right", right: "left" };
+let scopeId = 0;
+const MARGINS = [
+  { key: "top", min: 5, max: 30, step: 0.5, unit: "mm" },
+  { key: "bottom", min: 5, max: 30, step: 0.5, unit: "mm" },
+  { key: "left", min: 5, max: 30, step: 0.5, unit: "mm" },
+  { key: "right", min: 5, max: 30, step: 0.5, unit: "mm" },
+];
+const TYPOGRAPHY = [
+  { key: "fontSize", min: 8, max: 12, step: 0.05, unit: "pt" },
+  { key: "lineHeight", min: 1.15, max: 1.8, step: 0.01, unit: "" },
+];
+const FIELDS = [...MARGINS, ...TYPOGRAPHY];
+
+function layoutFor(classes, saved) {
+  const language = classes.includes("lapis-cv-zh") ? "zh" : "en";
+  const density = Object.hasOwn(DENSITIES, saved?.density) ? saved.density : "standard";
+  const defaults = {
+    top: 10,
+    bottom: 10,
+    left: 13.5,
+    right: 13.5,
+    fontSize: language === "zh" ? 8.85 : 9.05,
+    lineHeight: DENSITIES[density].lineHeight[language],
+    density,
+    template: saved?.template ?? BASE_TEMPLATE,
+  };
+
+  for (const { key, min, max } of FIELDS) {
+    if (Number.isFinite(saved?.[key])) {
+      defaults[key] = Math.min(max, Math.max(min, saved[key]));
+    }
+  }
+  return defaults;
+}
+
+function dimensions(layout) {
+  return Object.fromEntries(FIELDS.map(({ key }) => [key, layout[key]]));
+}
+
+function layoutMetadata(frontmatter) {
+  const template = typeof frontmatter.resume_style === "string" ? frontmatter.resume_style.trim() : "";
+  const density = Object.hasOwn(DENSITIES, frontmatter.resume_density) ? frontmatter.resume_density : "";
+  const value = frontmatter.resume_layout;
+  const geometry = value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  const stored = !!template && !!density && FIELDS.every(({ key }) => Number.isFinite(geometry?.[key]));
+  return { template, density, geometry, stored };
+}
+
+function noteLayoutKey({ template, density, geometry }) {
+  return JSON.stringify([template, density, ...FIELDS.map(({ key }) => geometry?.[key] ?? null)]);
+}
+
+function sameLayout(left, right) {
+  return left?.template === right?.template && left?.density === right?.density
+    && FIELDS.every(({ key }) => left?.[key] === right?.[key]);
+}
+
+function applyTypography(element, layout) {
+  element.style.setProperty("--text-size", `${layout.fontSize}pt`);
+  element.style.setProperty("--line-height", String(layout.lineHeight));
+  element.dataset.resumeDensity = layout.density;
+}
+
+function applyMargins(element, layout) {
+  for (const { key } of MARGINS) element.style.setProperty(`--resume-margin-${key}`, `${layout[key]}mm`);
+}
+
+function scopeSelectors(selectorText, scope) {
+  const selectors = [];
+  let quote = "";
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < selectorText.length; index++) {
+    const character = selectorText[index];
+    if (character === "\\") {
+      index++;
+    } else if (quote) {
+      if (character === quote) quote = "";
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === "(" || character === "[") {
+      depth++;
+    } else if (character === ")" || character === "]") {
+      depth--;
+    } else if (character === "," && depth === 0) {
+      selectors.push(selectorText.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  selectors.push(selectorText.slice(start).trim());
+  return selectors.flatMap(selector => {
+    if (!/^:scope(?![\w-])/.test(selector)) return [`${scope} ${selector}`];
+    const anchored = selector.replace(/^:scope/, scope);
+    const child = selector.match(/^:scope((?:[.#][\p{L}\p{N}_-]+)*)\s*>\s*(.+)$/u);
+    if (!child) return [anchored];
+    const [, modifier, target] = child;
+    const host = scope + modifier;
+    // Reading and print views wrap each rendered Markdown block.
+    return [
+      anchored,
+      `${host} > :where([class^="el-"]) > ${target}`,
+      `${host} > :where(.markdown-preview-sizer) > ${target}`,
+      `${host} > :where(.markdown-preview-sizer) > :where([class^="el-"]) > ${target}`,
+    ];
+  }).join(", ");
+}
+
+function scopedCss(text, scope, doc) {
+  const Sheet = doc.defaultView?.CSSStyleSheet ?? CSSStyleSheet;
+  const sheet = new Sheet();
+  sheet.replaceSync(text);
+  const render = rules => Array.from(rules, rule => {
+    if (rule.type === 1) {
+      return `${scopeSelectors(rule.selectorText, scope)} { ${rule.style.cssText} }`;
+    }
+    if (rule.type === 4 || rule.type === 12) {
+      const header = rule.type === 4 ? "@media" : "@supports";
+      return `${header} ${rule.conditionText} { ${render(rule.cssRules)} }`;
+    }
+    return "";
+  }).join("\n");
+  return render(sheet.cssRules).trim();
+}
+
+function applyTemplate(root, css) {
+  let style = root.querySelector(":scope > style[data-careeros-template]");
+  if (!css) {
+    if (style) {
+      root.classList.remove(style.dataset.careerosTemplate);
+      style.remove();
+    }
+    return;
+  }
+  if (style?.careerosCss === css) return;
+  if (!style) {
+    const scope = `careeros-template-${++scopeId}`;
+    root.classList.add(scope);
+    style = root.ownerDocument.createElement("style");
+    style.dataset.careerosTemplate = scope;
+    root.append(style);
+  }
+  const scope = `.lapis-cv.careeros-resume.resume-layout-styled.${style.dataset.careerosTemplate}`;
+  style.textContent = scopedCss(css, scope, root.ownerDocument);
+  style.careerosCss = css;
+}
+
+function decorateResumeMarkup(root, chinese) {
+  const doc = root.ownerDocument;
+  const blocks = [...root.querySelectorAll("h2, blockquote")];
+  if (root.matches("h2, blockquote")) blocks.unshift(root);
+  for (const block of blocks) {
+    const walker = doc.createTreeWalker(block, 4);
+    const icons = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (/[\uE000-\uF8FF]/u.test(node.data) && !node.parentElement.closest(".resume-layout-icon")) icons.push(node);
+    }
+    for (const node of icons) {
+      const parent = node.parentElement;
+      if (parent.tagName === "SPAN" && /^[\s\uE000-\uF8FF]+$/u.test(parent.textContent)) {
+        parent.classList.add("resume-layout-icon");
+        parent.setAttribute("aria-hidden", "true");
+        continue;
+      }
+      const fragment = doc.createDocumentFragment();
+      for (const part of node.data.split(/([\uE000-\uF8FF]+)/u)) {
+        if (!part) continue;
+        if (/^[\uE000-\uF8FF]+$/u.test(part)) {
+          const icon = doc.createElement("span");
+          icon.className = "resume-layout-icon";
+          icon.setAttribute("aria-hidden", "true");
+          icon.textContent = part;
+          fragment.append(icon);
+        } else {
+          fragment.append(part);
+        }
+      }
+      node.replaceWith(fragment);
+    }
+  }
+  if (!chinese) return;
+  for (const title of root.querySelectorAll(`:is(${ENTRY_HEADER_SELECTOR}) h3`)) {
+    const text = title.textContent.trim();
+    const separator = text.indexOf(" - ");
+    if (title.childElementCount || separator < 1) continue;
+    const divider = doc.createElement("span");
+    divider.className = "entry-sep";
+    divider.textContent = "·";
+    const detail = doc.createElement("span");
+    detail.className = "entry-sub";
+    detail.textContent = text.slice(separator + 3);
+    title.replaceChildren(text.slice(0, separator), " ", divider, " ", detail);
+  }
+}
+
+function splitSectionBody(body) {
+  const headings = [];
+  let fence = "";
+  let inComment = false;
+  let offset = 0;
+  for (const line of body.match(/[^\n]*\n|[^\n]+$/g) ?? []) {
+    const marker = line.match(MARKDOWN_FENCE);
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
+    } else if (inComment || /^\s*<!--/.test(line)) {
+      inComment = !line.includes("-->");
+    } else if (marker) {
+      fence = marker[1];
+    } else {
+      const heading = line.match(/^ {0,3}##[ \t]+(.+?)[ \t]*(?:\r?\n)?$/);
+      if (heading) {
+        const title = heading[1].replace(/[ \t]+#+$/, "").replace(/<[^>]+>|&#(?:x[\da-f]+|\d+);/gi, "").trim();
+        headings.push({ offset, title });
+      }
+    }
+    offset += line.length;
+  }
+  return {
+    intro: body.slice(0, headings[0]?.offset ?? body.length),
+    sections: headings.map((heading, index) => ({
+      title: heading.title,
+      markdown: body.slice(heading.offset, headings[index + 1]?.offset ?? body.length),
+    })),
+  };
+}
+
+function previewMatchText(text) {
+  return text.normalize("NFKC")
+    .replace(/<[^>]*>|&(?:#x[\da-f]+|#\d+|[a-z]+);/gi, "")
+    .replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, link, label) => label ?? link)
+    .replace(/!?\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[^\p{L}\p{N}]/gu, "")
+    .toLowerCase();
+}
+
+function sourceText(markdown) {
+  return markdown.replace(/\r\n?/g, "\n");
+}
+
+function sourceParts(markdown) {
+  const bom = Number(markdown.charCodeAt(0) === 0xfeff);
+  const info = getFrontMatterInfo(markdown.slice(bom).replace(/\r(?!\n)/g, "\n"));
+  const start = bom + info.contentStart;
+  return { prefix: markdown.slice(0, start), body: markdown.slice(start), hasYaml: info.exists };
+}
+
+function editableBody(markdown) {
+  return sourceText(sourceParts(markdown).body);
+}
+
+function withEditedBody(markdown, text) {
+  const { prefix, hasYaml } = sourceParts(markdown);
+  const newline = markdown.match(/\r\n|\r|\n/)?.[0] ?? "\n";
+  const separator = hasYaml && text && !/[\r\n]$/.test(prefix) ? newline : "";
+  return prefix + separator + text.replace(/\n/g, newline);
+}
+
+function guessChinese(text) {
+  let characters = 0;
+  let han = 0;
+  for (const character of text) {
+    if (/\s/u.test(character)) continue;
+    characters++;
+    if (/\p{Script=Han}/u.test(character)) han++;
+    if (characters === 500) break;
+  }
+  return characters > 0 && han / characters >= 0.2;
+}
+
+function vaultFolder(value, t) {
+  const trimmed = value.trim().replace(/^[/\\]+|[/\\]+$/g, "");
+  if (!trimmed) return "";
+  if (trimmed.split(/[/\\]/).includes("..")) throw new Error(t("vaultFolderRequired"));
+  return normalizePath(trimmed);
+}
+
+function changeSourceIndent(field, outdent) {
+  const { value, selectionStart: start, selectionEnd: end, selectionDirection } = field;
+  if (!outdent && start === end) {
+    replaceSourceSelection(field, start, end, "  ", start + 2, start + 2, selectionDirection);
+    return;
+  }
+
+  const firstLine = start === 0 ? 0 : value.lastIndexOf("\n", start - 1) + 1;
+  const lastSelected = end > start && value[end - 1] === "\n" ? end - 1 : end;
+  const newline = value.indexOf("\n", lastSelected);
+  const lastLine = newline === -1 ? value.length : newline;
+  const lines = value.slice(firstLine, lastLine).split("\n");
+  const changed = lines.map(line => outdent ? line.replace(/^(?:\t| {1,2})/, "") : `  ${line}`);
+  const replacement = changed.join("\n");
+  if (replacement === value.slice(firstLine, lastLine)) return;
+
+  const firstDelta = changed[0].length - lines[0].length;
+  const newStart = Math.max(firstLine, start + firstDelta);
+  const newEnd = Math.max(newStart, end + replacement.length - (lastLine - firstLine));
+  replaceSourceSelection(field, firstLine, lastLine, replacement, newStart, newEnd, selectionDirection);
+}
+
+function replaceSourceSelection(field, start, end, text, selectionStart, selectionEnd, direction) {
+  field.setSelectionRange(start, end);
+  // Chromium's editing command puts the replacement on the textarea's undo stack.
+  if (!field.ownerDocument.execCommand(text ? "insertText" : "delete", false, text)) {
+    field.setRangeText(text, start, end, "end");
+    field.dispatchEvent(new field.ownerDocument.defaultView.Event("input", { bubbles: true }));
+  }
+  field.setSelectionRange(selectionStart, selectionEnd, direction);
+}
+
+function sourceLineAt(value, offset) {
+  const start = offset === 0 ? 0 : value.lastIndexOf("\n", offset - 1) + 1;
+  const newline = value.indexOf("\n", offset);
+  const end = newline === -1 ? value.length : newline;
+  return { start, end, text: value.slice(start, end) };
+}
+
+function inSourceFence(value, lineStart) {
+  let fence = "";
+  for (const line of value.slice(0, lineStart).split("\n")) {
+    const marker = line.match(MARKDOWN_FENCE);
+    if (!marker) continue;
+    if (!fence) fence = marker[1];
+    else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = "";
+  }
+  return !!fence;
+}
+
+function continueSourceList(field) {
+  const { value, selectionStart: cursor, selectionEnd } = field;
+  if (cursor !== selectionEnd) return false;
+  const line = sourceLineAt(value, cursor);
+  const prefix = line.text.match(SOURCE_LIST_PREFIX);
+  if (!prefix || cursor < line.start + prefix[0].length || inSourceFence(value, line.start)) return false;
+  if (!line.text.slice(prefix[0].length).trim()) {
+    replaceSourceSelection(field, line.start, line.end, "", line.start, line.start);
+    return true;
+  }
+  const [, indent, marker, checklist] = prefix;
+  const next = marker.length === 1 ? marker : `${Math.min(999999999, Number(marker.slice(0, -1)) + 1)}${marker.at(-1)}`;
+  const insertion = `\n${indent}${next} ${checklist ? "[ ] " : ""}`;
+  replaceSourceSelection(field, cursor, cursor, insertion, cursor + insertion.length, cursor + insertion.length);
+  return true;
+}
+
+function sourceBoldSelection(field, line) {
+  const { value, selectionStart, selectionEnd } = field;
+  const selected = value.slice(selectionStart, selectionEnd);
+  const content = selected.trim();
+  const start = content ? selectionStart + selected.indexOf(content) : selectionEnd;
+  const end = start + content.length;
+  const spans = /(`+)(?!`)[^\n]*?\1(?!`)|(?<![\\*])(\*{2,3})(?!\*)(\S(?:.*?\S)?)(?<![\\*])\2(?!\*)/g;
+  for (const match of line.text.matchAll(spans)) {
+    const from = line.start + match.index;
+    const to = from + match[0].length;
+    if (start < from || end > to) continue;
+    if (!match[2]) return null;
+    const width = match[2].length;
+    if (start !== end || (from + width <= start && start <= to - width)) {
+      return { start, end, content, span: { from, to, width } };
+    }
+  }
+  if (start === end && value.slice(start - 2, start + 2) === "****") {
+    return { start, end, content, span: { from: start - 2, to: start + 2, width: 2 } };
+  }
+  return { start, end, content };
+}
+
+function toggleSourceBold(field, { bold }) {
+  const { start, end, content, span } = bold;
+  const { value, selectionDirection } = field;
+  if (span) {
+    const { from, to, width } = span;
+    const text = value.slice(from + width, to - width);
+    const emphasis = width === 3 ? "*" : "";
+    const move = offset => from + emphasis.length + Math.min(text.length, Math.max(0, offset - from - width));
+    replaceSourceSelection(field, from, to, emphasis + text + emphasis, move(start), move(end), selectionDirection);
+    return;
+  }
+  replaceSourceSelection(field, start, end, `**${content}**`, start + 2, end + 2, selectionDirection);
+}
+
+function replaceSourceLinePrefix(field, line, previous, prefix) {
+  const { selectionStart: start, selectionEnd: end, selectionDirection } = field;
+  const contentStart = line.start + previous.length;
+  const offset = line.start + prefix.length;
+  replaceSourceSelection(field, line.start, contentStart, prefix,
+    offset + Math.max(0, start - contentStart), offset + Math.max(0, end - contentStart), selectionDirection);
+}
+
+function toggleSourceList(field, { line, list, heading }) {
+  const indent = line.text.match(/^[ \t]*/)[0];
+  replaceSourceLinePrefix(field, line, list?.[0] ?? heading?.[0] ?? indent, list ? indent : `${indent}- `);
+}
+
+function toggleSourceHeading(field, { line, list, heading }) {
+  replaceSourceLinePrefix(field, line, heading?.[0] ?? list?.[0] ?? "", heading?.[1] === "##" ? "" : "## ");
+}
+
+function sourceEntryAt(value, selectionStart, selectionEnd) {
+  for (const match of value.matchAll(SOURCE_ENTRY_BLOCK)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (selectionStart < start || selectionEnd > end) continue;
+    const block = match[2].match(/^[ \t]*<h3>([^\n]*?)<\/h3>[ \t]*\n(?:[ \t]*<p>([^<>\n]*)<\/p>[ \t]*\n)?$/);
+    const title = block?.[1].match(/^([^<>]+?)(?:[ \t]*<span class="entry-sep">([|·])<\/span>[ \t]*<span class="entry-sub">([^<>]*)<\/span>)?$/);
+    const entry = { start, end, attribute: match[1] };
+    // Custom entry markup remains editable as source without risking a lossy conversion.
+    if (title) entry.fields = { title: title[1], subtitle: title[3] ?? "", right: block[2] ?? "", separator: title[2] };
+    return entry;
+  }
+  return null;
+}
+
+function sourceEditorContext(field) {
+  const { value, selectionStart, selectionEnd } = field;
+  const line = sourceLineAt(value, selectionStart);
+  const fenced = MARKDOWN_FENCE.test(line.text) || inSourceFence(value, line.start);
+  const entry = fenced ? null : sourceEntryAt(value, selectionStart, selectionEnd);
+  const singleLine = selectionEnd <= line.end;
+  const canFormat = !field.readOnly && !fenced && !entry && singleLine;
+  const heading = canFormat ? line.text.match(SOURCE_HEADING_PREFIX) : null;
+  const subtitleLine = heading?.[1] === "###" ? line.text.slice(heading[0].length).replace(/[ \t]+#+[ \t]*$/, "").trim() : "";
+  const subheading = /[*_`[\]<>]/.test(subtitleLine) ? "" : subtitleLine;
+  return {
+    line, entry, subheading, canFormat,
+    canUseEntry: !field.readOnly && !fenced && (entry ? !!entry.fields : singleLine),
+    list: canFormat ? line.text.match(SOURCE_LIST_PREFIX) : null,
+    heading, bold: canFormat ? sourceBoldSelection(field, line) : null,
+  };
+}
+
+function sourceEntryTarget(field, context) {
+  const { value, selectionStart, selectionEnd, ownerDocument } = field;
+  const { line, entry, subheading, canUseEntry } = context;
+  if (!canUseEntry) return null;
+  if (entry) {
+    const decoder = ownerDocument.createElement("textarea");
+    const readText = text => {
+      decoder.innerHTML = text;
+      return decoder.value.trim();
+    };
+    const { title, subtitle, right, separator } = entry.fields;
+    return {
+      start: entry.start, end: entry.end, updating: true, attribute: entry.attribute, separator,
+      title: readText(title), subtitle: readText(subtitle), right: readText(right),
+    };
+  }
+
+  if (selectionEnd <= line.end) {
+    const selected = value.slice(selectionStart, selectionEnd).trim();
+    const title = subheading || (selected === line.text.trim() && !/^[#>*+\-]/.test(selected) ? selected : "");
+    if (title && !/[*_`[\]<>]/.test(title)) return { start: line.start, end: line.end, title };
+  }
+  const lastLine = sourceLineAt(value, selectionEnd);
+  if (!lastLine.text.trim()) return { start: lastLine.start, end: lastLine.end };
+  const boundary = value.slice(lastLine.end).search(/\n[ \t]*\n/);
+  const position = boundary === -1 ? value.length : lastLine.end + boundary;
+  return { start: position, end: position };
+}
+
+function sourceEntryMarkup(title, subtitle, right, attribute = "alt", separator = SOURCE_ENTRY_SEPARATOR) {
+  const escape = text => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const detail = subtitle ? ` <span class="entry-sep">${separator}</span><span class="entry-sub">${escape(subtitle)}</span>` : "";
+  const date = right ? `\n    <p>${escape(right)}</p>` : "";
+  return `<div ${attribute}="entry-title">\n    <h3>${escape(title)}${detail}</h3>${date}\n</div>`;
+}
+
+async function copySourceText(field, t, text = field.value) {
+  try {
+    await field.ownerDocument.defaultView.navigator.clipboard.writeText(text);
+    new Notice(t("copySuccess"));
+  } catch {
+    field.focus();
+    field.select();
+    new Notice(t("copyShortcutHint"));
+  }
+}
+
+function locatePreviewBlocks(root, body) {
+  const lines = body.split("\n").map(line =>
+    previewMatchText(line.replace(/^\s*(?:>\s*)*(?:[-+*]\s+|\d+[.)]\s+)?/, "")),
+  );
+  const locations = [];
+  let nextLine = 0;
+  // The standalone renderer does not expose section positions. Match visible
+  // block text in source order so repeated headings and bullets stay distinct.
+  for (const element of root.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,${ENTRY_HEADER_SELECTOR}`)) {
+    if (element.closest(".internal-embed")) continue;
+    const group = element.closest(`li,blockquote,pre,table,${ENTRY_HEADER_SELECTOR}`);
+    if (group && group !== element) continue;
+    const text = element.matches("li")
+      ? Array.from(element.childNodes).filter(node => !node.matches?.("ul,ol")).map(node => node.textContent).join(" ")
+      : element.querySelector(':scope > h3')?.textContent ?? element.textContent;
+    const key = previewMatchText(text);
+    if (!key) continue;
+    for (let line = nextLine; line < lines.length; line++) {
+      const value = lines[line];
+      const prefixMatch = Math.min(value.length, key.length) >= 4 && (key.startsWith(value) || value.startsWith(key));
+      if (value !== key && !prefixMatch) continue;
+      locations.push({ line, element });
+      nextLine = line + 1;
+      break;
+    }
+  }
+  return locations;
+}
+
+class SourceRecoveryModal extends Modal {
+  constructor(view, edit) {
+    super(view.app);
+    this.view = view;
+    this.t = view.plugin.t;
+    this.edit = edit;
+  }
+
+  onOpen() {
+    this.setTitle(this.t("recoveryTitle"));
+    this.modalEl.addClass("resume-layout-recovery");
+    this.contentEl.createEl("p", { text: this.t("recoveryHelp") });
+    const input = this.contentEl.createEl("textarea", { attr: { readonly: true, "aria-label": this.t("unsavedText") } });
+    input.value = this.edit.text;
+    const feedback = this.contentEl.createDiv({ cls: "resume-layout-modal-hint", attr: { role: "status" } });
+    const actions = this.contentEl.createDiv({ cls: "modal-button-container" });
+    const copy = actions.createEl("button", { text: this.t("copyClipboard"), cls: "mod-cta" });
+    copy.addEventListener("click", () => void copySourceText(input, this.t));
+    const retry = actions.createEl("button", { text: this.t("retryBackup") });
+    const discard = actions.createEl("button", { text: this.t("discardAndClose"), cls: "mod-warning" });
+    discard.addEventListener("click", () => this.finish());
+    retry.addEventListener("click", async () => {
+      retry.disabled = discard.disabled = true;
+      try {
+        await this.view.backupSourceEdit(this.edit);
+        this.finish();
+      } catch (error) {
+        console.error("CareerOS resume editor recovery failed", error);
+        feedback.setText(this.t("backupFailed"));
+        retry.disabled = discard.disabled = false;
+      }
+    });
+    copy.focus();
+  }
+
+  close() {
+    // A tab can close while this dialog holds its only surviving edit buffer.
+    if (this.resolved) super.close();
+  }
+
+  finish() {
+    this.resolved = true;
+    this.view.releaseSourceEdit(this.edit);
+    this.close();
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+}
+
+class ResumePicker extends FuzzySuggestModal {
+  constructor(view, resumes) {
+    super(view.app);
+    this.view = view;
+    this.t = view.plugin.t;
+    this.defaultResumes = resumes;
+    this.items = resumes;
+    this.setPlaceholder(this.t("searchNotes"));
+    this.emptyStateText = this.t("noMatchingNotes");
+  }
+
+  getItems() {
+    return this.items;
+  }
+
+  getSuggestions(query) {
+    const useAllNotes = !!query.trim() || !this.defaultResumes.length;
+    this.items = useAllNotes ? (this.allNotes ??= this.view.plugin.resumes(true)) : this.defaultResumes;
+    this.emptyStateText = this.items.length ? this.t("noMatchingNotes") : this.t("noMarkdownNotes");
+    return super.getSuggestions(query);
+  }
+
+  getItemText({ label, company, file, source }) {
+    return [label, company, file.path, source?.path].filter(Boolean).join(" ");
+  }
+
+  renderSuggestion({ item }, element) {
+    const label = item.company ? `${item.label} · ${item.company}` : item.label;
+    element.createDiv({ cls: "suggestion-title", text: label });
+    element.createDiv({ cls: "suggestion-note", text: item.file.path });
+    if (item.source) element.createDiv({ cls: "suggestion-note", text: this.t("sourceNote", { path: item.source.path }) });
+  }
+
+  onChooseItem({ file }) {
+    void this.view.bindFile(file);
+  }
+}
+
+class ResumeLayoutSettingTab extends PluginSettingTab {
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+    this.t = plugin.t;
+  }
+
+  display() {
+    const el = this.containerEl;
+    const plugin = this.plugin;
+    const settings = plugin.settings;
+    el.empty();
+    el.addClass("resume-layout-settings");
+    new Setting(el).setName(this.t("workbench")).setDesc(this.t("workbenchHelp"))
+      .addButton(button => button.setButtonText(this.t("openWorkbench")).setCta().onClick(() => {
+        this.app.setting.close();
+        void plugin.open();
+      }));
+    new Setting(el).setName(this.t("layoutDefaults")).setHeading();
+    new Setting(el).setName(this.t("defaultTheme")).setDesc(this.t("defaultThemeHelp"))
+      .addDropdown(dropdown => {
+        for (const theme of plugin.templates.values()) dropdown.addOption(theme.id, plugin.themeName(theme));
+        dropdown.setValue(plugin.templateId(settings.defaultTemplate) ?? BASE_TEMPLATE)
+          .onChange(value => plugin.updateSetting("defaultTemplate", value));
+      });
+    new Setting(el).setName(this.t("defaultDensity")).setDesc(this.t("defaultDensityHelp"))
+      .addDropdown(dropdown => {
+        for (const value of ["standard", "comfortable", "compact"]) dropdown.addOption(value, this.t(value));
+        dropdown.setValue(settings.defaultDensity).onChange(value => plugin.updateSetting("defaultDensity", value));
+      });
+
+    new Setting(el).setName(this.t("themes")).setHeading();
+    new Setting(el).setName(this.t("customThemes"))
+      .addButton(button => button.setButtonText(this.t("newTheme")).onClick(() => void plugin.openTheme("new")))
+      .addButton(button => button.setButtonText(this.t("importCss")).onClick(() => this.importTheme()));
+    if (plugin.deletedTemplate) {
+      new Setting(el).setName(this.t("themeDeleted", { name: plugin.deletedTemplate.theme.label }))
+        .addButton(button => button.setButtonText(this.t("undoDelete")).onClick(() => this.run(() => plugin.restoreTemplate())));
+    }
+    for (const theme of plugin.templates.values()) this.addThemeRow(el, theme);
+
+    new Setting(el).setName(this.t("copiesAndProtection")).setHeading();
+    new Setting(el).setName(this.t("copyLocation")).setDesc(this.t("copyLocationHelp"))
+      .addDropdown(dropdown => dropdown.addOption("alongside", this.t("sameFolder")).addOption("folder", this.t("customFolder"))
+        .setValue(settings.draftLocationMode).onChange(async value => {
+          await plugin.updateSetting("draftLocationMode", value);
+          this.display();
+        }));
+    if (settings.draftLocationMode === "folder") {
+      const row = new Setting(el).setName(this.t("draftFolderPath"));
+      row.addText(text => text.setValue(settings.draftFolder).onChange(value => {
+        try {
+          const folder = vaultFolder(value, this.t);
+          row.setDesc("");
+          void plugin.updateSetting("draftFolder", folder);
+        } catch (error) {
+          row.setDesc(error.message);
+        }
+      }));
+    }
+    new Setting(el).setName(this.t("autoSaveLayout"))
+      .setDesc(this.t("autoSaveLayoutHelp"))
+      .addToggle(toggle => toggle.setValue(settings.autoSaveLayout).onChange(value => plugin.updateSetting("autoSaveLayout", value)));
+
+    const advanced = el.createEl("details");
+    advanced.createEl("summary", { text: this.t("advanced") });
+    const row = new Setting(advanced).setName(this.t("extraProtectedFolders"));
+    const description = this.t("extraProtectedFoldersHelp");
+    row.setDesc(description).addTextArea(text => text.setValue(settings.protectedFolders.join("\n")).onChange(value => {
+      try {
+        const folders = [...new Set(value.split("\n").map(folder => vaultFolder(folder, this.t)).filter(Boolean))];
+        row.setDesc(description);
+        void plugin.updateSetting("protectedFolders", folders);
+      } catch (error) {
+        row.setDesc(error.message);
+      }
+    }));
+    void this.showDeletedCache(advanced);
+  }
+
+  addThemeRow(parent, theme) {
+    const plugin = this.plugin;
+    const label = theme.id === BASE_TEMPLATE ? this.t("themeClassicCredit") : plugin.themeName(theme);
+    const row = new Setting(parent).setName(label);
+    if (theme.builtIn) {
+      row.addButton(button => button.setButtonText(this.t("copyAndCustomize")).onClick(() => void plugin.openTheme("copy", theme.id)));
+      return;
+    }
+    const references = plugin.templateUsers(theme.id).length;
+    row.setDesc(references ? this.t(references === 1 ? "themeUseOne" : "themeUseMany", { count: references }) : this.t("themeUnused"))
+      .addButton(button => button.setButtonText(this.t("previewAndEdit")).onClick(() => void plugin.openTheme("edit", theme.id)))
+      .addButton(button => button.setButtonText(this.t("exportCss")).onClick(() => this.exportTheme(theme)))
+      .addButton(button => button.setButtonText(this.t("delete")).setDisabled(!!references)
+        .setTooltip(references ? this.t("deleteInUseHint") : this.t("deleteUnusedHint"))
+        .onClick(() => {
+          row.controlEl.empty();
+          row.setDesc(this.t("deleteThemeQuestion", { name: theme.label }))
+            .addButton(cancel => cancel.setButtonText(this.t("cancel")).onClick(() => this.display()))
+            .addButton(confirm => confirm.setButtonText(this.t("confirmDelete")).setWarning()
+              .onClick(() => this.run(() => plugin.deleteTemplate(theme.id))));
+        }));
+  }
+
+  async run(action) {
+    try {
+      await action();
+      this.display();
+    } catch (error) {
+      new Notice(error.message || this.t("themeOperationFailed"));
+    }
+  }
+
+  importTheme() {
+    const input = this.containerEl.createEl("input", { type: "file", attr: { accept: ".css,text/css", hidden: true } });
+    input.addEventListener("change", () => {
+      const file = input.files[0];
+      input.remove();
+      if (!file) return;
+      void this.run(async () => {
+        const css = await file.text();
+        if (!/\.css$/i.test(file.name) || !css.trim()) throw new Error(this.t("chooseCssFile"));
+        await this.plugin.saveTemplate(file.name.replace(/\.css$/i, ""), css);
+        new Notice(this.t("themeImported"));
+      });
+    }, { once: true });
+    input.addEventListener("cancel", () => input.remove(), { once: true });
+    input.click();
+  }
+
+  exportTheme(theme) {
+    const win = this.containerEl.ownerDocument.defaultView;
+    const url = win.URL.createObjectURL(new win.Blob([theme.css], { type: "text/css" }));
+    const link = this.containerEl.createEl("a", { attr: { href: url, download: `${theme.label}.css`, hidden: true } });
+    link.click();
+    link.remove();
+    win.setTimeout(() => win.URL.revokeObjectURL(url), 1000);
+  }
+
+  async showDeletedCache(advanced) {
+    try {
+      const files = await this.plugin.deletedThemeFiles();
+      if (!files.length || !advanced.isConnected) return;
+      const row = new Setting(advanced).setName(this.t("clearDeletedThemeCache"))
+        .setDesc(this.t(files.length === 1 ? "fileCountOne" : "fileCountMany", { count: files.length }));
+      let confirmed = false;
+      row.addButton(button => button.setButtonText(this.t("clear")).setWarning().onClick(() => {
+        if (!confirmed) {
+          confirmed = true;
+          button.setButtonText(this.t("confirmClear"));
+          return;
+        }
+        button.setDisabled(true);
+        return this.run(async () => {
+          const adapter = this.app.vault.adapter;
+          for (const path of files) {
+            if (await adapter.exists(path)) await adapter.remove(path);
+            if (this.plugin.deletedTemplate?.deletedPath === path) this.plugin.deletedTemplate = null;
+          }
+        });
+      }));
+    } catch (error) {
+      console.error("Could not read deleted resume themes", error);
+    }
+  }
+}
+
+class ResumeLayoutView extends FileView {
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.allowNoFile = true;
+    this.plugin = plugin;
+    this.t = plugin.t;
+    this.controls = new Map();
+    this.selected = null;
+    this.rendered = null;
+    this.renderer = null;
+    this.draftLayouts = new WeakMap();
+    this.layoutUndo = new WeakMap();
+    this.fitUndo = new WeakMap();
+    this.resetUndo = new WeakMap();
+    this.contentUndo = new WeakMap();
+    this.panelMode = "layout";
+  }
+
+  getViewType() {
+    return VIEW_TYPE;
+  }
+
+  getDisplayText() {
+    return this.t("pluginName");
+  }
+
+  getIcon() {
+    return "file-text";
+  }
+
+  async onOpen() {
+    const view = this.contentEl;
+    view.empty();
+    view.addClass("careeros-resume-layout");
+
+    const header = view.createDiv({ cls: "resume-layout-header" });
+    const identity = header.createDiv({ cls: "resume-layout-identity" });
+    this.pickButton = identity.createEl("button", { cls: "resume-layout-picker" });
+    const caption = this.pickButton.createSpan({ cls: "resume-layout-identity-text" });
+    this.fileTitle = caption.createSpan({ cls: "resume-layout-title" });
+    this.filePath = caption.createSpan({ cls: "resume-layout-path" });
+    setIcon(this.pickButton.createSpan({ cls: "resume-layout-picker-icon" }), "chevrons-up-down");
+    this.pickButton.addEventListener("click", () => this.openPicker());
+    this.openButton = this.iconButton(identity, "arrow-up-right", this.t("openOriginalNote"), () => void this.openNote());
+
+    const center = this.headerCenter = header.createDiv({ cls: "resume-layout-header-center" });
+    this.zoomSelect = center.createEl("select", { cls: "dropdown resume-layout-zoom", attr: { "aria-label": this.t("previewZoom") } });
+    for (const [value, label] of Object.entries(ZOOM_OPTIONS)) {
+      this.zoomSelect.createEl("option", { value, text: this.t(label) });
+    }
+    const zoom = this.app.loadLocalStorage("careeros-resume-zoom");
+    this.zoomSelect.value = Object.hasOwn(ZOOM_OPTIONS, zoom) ? zoom : "page";
+    this.zoomSelect.addEventListener("change", () => {
+      this.app.saveLocalStorage("careeros-resume-zoom", this.zoomSelect.value);
+      this.measure();
+    });
+    const status = this.pageStatus = center.createDiv({ cls: "resume-layout-page-status" });
+    this.measurement = status.createSpan({ attr: { role: "status", "aria-live": "polite" } });
+    this.fill = status.createSpan({ cls: "resume-layout-page-progress", attr: { "aria-hidden": "true" } });
+    this.fitButton = center.createEl("button", { text: this.t("fitOnePage"), cls: "resume-layout-fit-button" });
+    this.fitButton.hidden = true;
+    this.fitButton.addEventListener("click", () => this.fitToPage());
+
+    const actions = header.createDiv({ cls: "resume-layout-actions" });
+    this.editButton = actions.createEl("button", {
+      text: this.t("editSource"),
+      cls: "resume-layout-edit-button",
+      attr: { title: this.t("editSourceHelp") },
+    });
+    this.editButton.addEventListener("click", () => void this.openEditor());
+    this.inspectorButton = this.iconButton(actions, "panel-right", this.t("hidePanel"), () => this.toggleInspector());
+    this.exportButton = actions.createEl("button", { text: this.t("exportPdf"), cls: "mod-cta" });
+    this.exportButton.addEventListener("click", () => void this.exportPdf());
+
+    const body = this.body = view.createDiv({ cls: "resume-layout-body" });
+    this.stage = body.createDiv({ cls: "resume-layout-stage", attr: { "aria-label": this.t("previewLabel") } });
+    this.stage.addEventListener("click", event => this.focusSourceFromPreview(event));
+    this.staleBanner = this.stage.createDiv({ cls: "resume-layout-stale", text: this.t("contentStale") });
+    this.staleBanner.hidden = true;
+    this.createEmptyState();
+    this.paper = this.stage.createDiv({ cls: "resume-layout-paper" });
+    this.guide = this.paper.createDiv({ cls: "resume-layout-guide", attr: { "aria-hidden": "true" } });
+    for (const corner of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
+      this.guide.createSpan({ cls: `resume-layout-crop is-${corner}` });
+    }
+    this.marginHandles = new Map();
+    for (const margin of MARGINS) this.addMarginHandle(margin);
+    this.cutoff = this.paper.createDiv({ cls: "resume-layout-cutoff", attr: { "aria-hidden": "true" } });
+    this.cutoff.createSpan({ text: this.t("firstPageBreak") });
+    this.cutoff.hidden = true;
+
+    const inspector = this.inspector = body.createDiv({ cls: "resume-layout-inspector" });
+    this.createSourcePane(body);
+    const tabs = this.tabs = inspector.createDiv({ cls: "resume-layout-panels" });
+    this.layoutTab = tabs.createEl("button", { text: this.t("layoutTab") });
+    this.layoutTab.addEventListener("click", () => this.setPanel("layout"));
+    this.contentTab = tabs.createEl("button", { text: this.t("sections") });
+    this.contentTab.addEventListener("click", () => this.setPanel("content"));
+    const layout = this.layoutPanel = inspector.createDiv();
+    this.contentPanel = inspector.createDiv({ cls: "resume-layout-content" });
+    this.cssPanel = inspector.createDiv({ cls: "resume-layout-css-panel" });
+    this.setPanel(this.panelMode);
+
+    this.addTemplateControls(layout);
+    const fineTune = layout.createEl("details", { cls: "resume-layout-fine-tune" });
+    fineTune.createEl("summary", { text: this.t("fineTune") });
+    const marginHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
+    marginHeading.createEl("h3", { text: this.t("margins") });
+    const locks = fineTune.createDiv({ cls: "resume-layout-locks" });
+    this.lockButtons = new Map();
+    for (const [side, label] of [["top", this.t("linkVertical")], ["left", this.t("linkHorizontal")]]) {
+      const lock = locks.createEl("button", { text: label });
+      lock.addEventListener("click", () => this.toggleMarginLock(side));
+      this.lockButtons.set(side, lock);
+    }
+    const margins = fineTune.createDiv({ cls: "resume-layout-fields" });
+    for (const field of MARGINS) this.addControl(margins, field);
+
+    const typeHeading = fineTune.createDiv({ cls: "resume-layout-section-heading" });
+    typeHeading.createEl("h3", { text: this.t("typography") });
+    const typography = fineTune.createDiv({ cls: "resume-layout-fields" });
+    for (const field of TYPOGRAPHY) this.addControl(typography, field);
+
+    const guide = fineTune.createEl("label", { cls: "resume-layout-toggle" });
+    const guideToggle = guide.createEl("input", { type: "checkbox" });
+    guideToggle.checked = true;
+    guideToggle.addEventListener("change", () => this.guide.toggleClass("is-guides-muted", !guideToggle.checked));
+    guide.createSpan({ text: this.t("showMarginGuides") });
+    this.resetButton = fineTune.createEl("button", { cls: "resume-layout-reset", text: this.t("resetFineTuning") });
+    this.resetButton.addEventListener("click", () => this.resetLayout());
+    this.layoutActions = layout.createDiv({ cls: "resume-layout-save" });
+    this.applyTemplateButton = this.layoutActions.createEl("button", { text: this.t("applyLayout") });
+    this.applyTemplateButton.addEventListener("click", () => void this.saveNoteLayout());
+    this.layoutHint = this.layoutActions.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
+    this.undoLayoutButton = this.layoutActions.createEl("button", { text: this.t("undo"), attr: { "aria-label": this.t("undoLayout") } });
+    this.undoLayoutButton.addEventListener("click", () => this.undoLayoutChange());
+
+    this.observer = new this.stage.ownerDocument.defaultView.ResizeObserver(() => this.measure());
+    this.observer.observe(this.stage);
+    this.registerEvent(this.app.metadataCache.on("changed", (file, contents) => {
+      const bound = this.file;
+      if (!bound) return;
+      const application = this.app.metadataCache.getFileCache(file)?.frontmatter?.type === "application";
+      if (file !== bound && !application && !this.app.metadataCache.resolvedLinks[bound.path]?.[file.path]) return;
+      if (this.sourceEdit?.file === bound && file === bound && typeof contents === "string") {
+        this.refreshEditedSource(contents);
+      }
+      void this.show(bound);
+    }));
+    await this.show(this.file);
+  }
+
+  async onClose() {
+    await this.waitForLayoutSave();
+    await this.endSourceEdit(true);
+    if (this.cursorFrame !== undefined) this.stage.ownerDocument.defaultView.cancelAnimationFrame(this.cursorFrame);
+    this.renderVersion = (this.renderVersion ?? 0) + 1;
+    this.observer?.disconnect();
+    this.clearPreview();
+    await super.onClose();
+  }
+
+  async setState(state, result) {
+    // Restore workspaces saved before the layout tab stored an Obsidian file.
+    const file = state.file ?? this.plugin.lastPath ?? "";
+    await super.setState({ ...state, file }, result);
+  }
+
+  async onLoadFile(file) {
+    await this.show(file);
+  }
+
+  async onUnloadFile() {
+    await this.waitForLayoutSave();
+    if (await this.endSourceEdit(true)) await this.show(null);
+  }
+
+  async onRename(file, oldPath) {
+    await super.onRename(file, oldPath);
+    if (this.file && (file === this.file || this.file.path.startsWith(`${file.path}/`))) {
+      this.updateFileTitle();
+    }
+  }
+
+  async bindFile(file) {
+    if (this.file === file) {
+      await this.show(file);
+    } else {
+      if (!await this.endSourceEdit()) return;
+      await this.waitForLayoutSave();
+      await this.leaf.setViewState({ type: VIEW_TYPE, active: true, state: { file: file.path } });
+    }
+  }
+
+  async openNote() {
+    if (!this.selected) return;
+    try {
+      await this.plugin.revealNote(this.selected.file, true);
+    } catch (error) {
+      new Notice(this.t("cannotOpenResume"));
+      console.error("CareerOS resume note failed to open", error);
+    }
+  }
+
+  iconButton(parent, icon, label, callback) {
+    const button = parent.createEl("button", { cls: "resume-layout-icon-button", attr: { "aria-label": label, title: label } });
+    setIcon(button, icon);
+    button.addEventListener("click", callback);
+    return button;
+  }
+
+  openPicker() {
+    new ResumePicker(this, this.plugin.resumes()).open();
+  }
+
+  createEmptyState() {
+    const empty = this.emptyState = this.stage.createDiv({ cls: "resume-layout-empty" });
+    empty.hidden = true;
+    const content = empty.createDiv({ cls: "resume-layout-empty-content" });
+    content.createEl("p", { text: this.t("emptyWorkbench") });
+    const actions = content.createDiv({ cls: "resume-layout-empty-actions" });
+    const example = actions.createEl("button", { text: this.t("createExample"), cls: "mod-cta" });
+    this.emptyPickerButton = actions.createEl("button", { text: this.t("chooseExisting") });
+    this.emptyPickerButton.addEventListener("click", () => this.openPicker());
+    example.addEventListener("click", async () => {
+      example.disabled = true;
+      try {
+        const file = await this.plugin.createExampleResume();
+        if (this.leaf.view === this && !this.file) await this.bindFile(file);
+      } catch (error) {
+        console.error("CareerOS example resume creation failed", error);
+        new Notice(this.t("cannotCreateSample"));
+      } finally {
+        example.disabled = false;
+      }
+    });
+    const refresh = file => {
+      if (file.extension === "md" && !empty.hidden) this.updateEmptyChoices();
+    };
+    for (const event of ["create", "delete"]) this.registerEvent(this.app.vault.on(event, refresh));
+  }
+
+  updateEmptyChoices() {
+    const hasNotes = this.app.vault.getMarkdownFiles().length > 0;
+    this.emptyPickerButton.disabled = !hasNotes;
+    this.emptyPickerButton.title = hasNotes ? "" : this.t("noMarkdownNotes");
+  }
+
+  createSourcePane(parent) {
+    const pane = this.sourcePane = parent.createDiv({ cls: "resume-layout-source" });
+    pane.hidden = true;
+    const header = pane.createDiv({ cls: "resume-layout-source-header" });
+    const tools = header.createDiv({ cls: "resume-layout-source-tools", attr: { role: "group", "aria-label": this.t("formatSource") } });
+    const info = header.createDiv({ cls: "resume-layout-source-info" });
+    this.sourceStatus = info.createSpan({ cls: "resume-layout-source-status", attr: { role: "status" } });
+    this.retrySourceSave = info.createEl("button", { text: this.t("retry"), attr: { "aria-label": this.t("retrySave") } });
+    this.retrySourceSave.hidden = true;
+    this.retrySourceSave.addEventListener("click", () => void this.saveSource());
+    this.sourceConflict = pane.createDiv({ cls: "resume-layout-source-conflict" });
+    this.sourceConflict.hidden = true;
+    this.sourceConflictMessage = this.sourceConflict.createDiv({ cls: "resume-layout-source-conflict-message" });
+    const saveCopy = this.sourceConflict.createEl("button", { text: this.t("saveCopy"), cls: "mod-cta" });
+    saveCopy.addEventListener("click", () => void this.resolveSourceConflict(true));
+    const copy = this.sourceConflict.createEl("button", { text: this.t("copyMyInput") });
+    copy.addEventListener("click", () => void copySourceText(this.sourceField, this.t));
+    const loadLatest = this.sourceConflict.createEl("button", { text: this.t("discardAndReload"), cls: "mod-warning" });
+    loadLatest.addEventListener("click", () => void this.resolveSourceConflict(false));
+    const field = this.sourceField = pane.createEl("textarea", {
+      attr: { "aria-label": this.t("sourceLabel"), spellcheck: "false", autocapitalize: "off", autocomplete: "off" },
+    });
+    this.createSourceTools(pane, tools, info, field);
+    field.addEventListener("input", () => {
+      this.closeSourcePopover();
+      this.editedSourceChanged();
+      this.updateSourceTools();
+    });
+    for (const event of ["select", "selectionchange", "pointerup", "keyup", "focus"]) {
+      field.addEventListener(event, () => {
+        this.updateSourceTools();
+        this.queueCursorFollow();
+      });
+    }
+    // Handle the editor shortcut before Obsidian's window-level Markdown keymap.
+    const scope = new Scope(this.app.scope);
+    scope.register(["Mod"], "B", event => {
+      if (event.isComposing || field.ownerDocument.activeElement !== field) return;
+      const context = sourceEditorContext(field);
+      if (!context.bold) return;
+      toggleSourceBold(field, context);
+      this.updateSourceTools();
+      return false;
+    });
+    const popScope = () => this.app.keymap.popScope(scope);
+    field.addEventListener("focus", () => this.app.keymap.pushScope(scope));
+    field.addEventListener("blur", popScope);
+    this.register(popScope);
+    field.addEventListener("keydown", event => {
+      if (event.isComposing) return;
+      const plain = !event.metaKey && !event.ctrlKey && !event.altKey;
+      if (!field.readOnly && event.key === "Tab" && plain) {
+        event.preventDefault();
+        event.stopPropagation();
+        changeSourceIndent(field, event.shiftKey);
+        this.updateSourceTools();
+        return;
+      }
+      if (!field.readOnly && event.key === "Enter" && plain && !event.shiftKey && continueSourceList(field)) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.updateSourceTools();
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeSourcePopover();
+        field.blur();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        event.stopPropagation();
+        void this.saveSource();
+      }
+    });
+  }
+
+  createSourcePopovers(pane) {
+    let opened;
+    const dismiss = event => {
+      if (opened && !opened.panel.contains(event.target) && !opened.button.contains(event.target)) close();
+    };
+    const close = this.closeSourcePopover = () => {
+      if (!opened) return;
+      const { panel, button, doc } = opened;
+      opened = null;
+      doc.removeEventListener("pointerdown", dismiss, true);
+      doc.removeEventListener("focusin", dismiss, true);
+      panel.hidden = true;
+      button.setAttribute("aria-expanded", "false");
+    };
+    const position = () => {
+      if (!opened) return;
+      const { panel, button } = opened;
+      const bounds = pane.getBoundingClientRect();
+      const anchor = button.getBoundingClientRect();
+      const top = anchor.bottom - bounds.top + 5;
+      const left = Math.min(anchor.left - bounds.left, pane.clientWidth - panel.offsetWidth - 8);
+      panel.style.top = `${top}px`;
+      panel.style.left = `${Math.max(8, left)}px`;
+      panel.style.maxHeight = `${Math.max(0, pane.clientHeight - top - 8)}px`;
+    };
+    const observer = new pane.ownerDocument.defaultView.ResizeObserver(position);
+    observer.observe(pane);
+    this.register(() => { observer.disconnect(); close(); });
+    return {
+      close,
+      show(panel, button) {
+        close();
+        const doc = pane.ownerDocument;
+        opened = { panel, button, doc };
+        panel.hidden = false;
+        button.setAttribute("aria-expanded", "true");
+        doc.addEventListener("pointerdown", dismiss, true);
+        doc.addEventListener("focusin", dismiss, true);
+        position();
+      },
+    };
+  }
+
+  createSourceTools(pane, tools, info, field) {
+    const popovers = this.createSourcePopovers(pane);
+    const group = () => tools.createDiv({ cls: "resume-layout-source-group" });
+    const addFormat = (parent, symbol, label, run, withText = false) => {
+      const button = parent.createEl("button", {
+        type: "button", cls: "resume-layout-source-format",
+        attr: { "aria-label": label, "aria-pressed": "false" },
+      });
+      setIcon(button.createSpan({ attr: { "aria-hidden": "true" } }), symbol);
+      if (withText) button.createSpan({ cls: "resume-layout-source-caption", text: label });
+      button.addEventListener("click", () => {
+        const context = sourceEditorContext(field);
+        if (button.disabled || !context.canFormat || (run === toggleSourceBold && !context.bold)) return;
+        popovers.close();
+        field.focus({ preventScroll: true });
+        run(field, context);
+        this.updateSourceTools();
+      });
+      return button;
+    };
+    const text = group();
+    const bold = addFormat(text, "bold", this.t("bold"), toggleSourceBold);
+    bold.setAttribute("aria-keyshortcuts", "Meta+B Control+B");
+    const list = addFormat(text, "list", this.t("list"), toggleSourceList);
+    const heading = addFormat(group(), "heading-2", this.t("section"), toggleSourceHeading, true);
+    const entry = group().createEl("button", {
+      type: "button", cls: "resume-layout-source-entry-button", attr: { "aria-expanded": "false", "aria-haspopup": "dialog" },
+    });
+    const entryIcon = entry.createSpan({ cls: "resume-layout-source-entry-icon", attr: { "aria-hidden": "true" } });
+    const entryLabel = entry.createSpan();
+    setIcon(entry.createSpan({ cls: "resume-layout-source-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
+    this.createSourceEntryPopover(pane, entry, field, popovers);
+
+    const help = this.iconButton(info, "circle-help", this.t("editorShortcuts"), () => {
+      if (!helpPanel.hidden) return popovers.close();
+      popovers.show(helpPanel, help);
+      helpPanel.focus({ preventScroll: true });
+    });
+    help.addClass("resume-layout-source-help");
+    help.setAttribute("aria-expanded", "false");
+    help.setAttribute("aria-haspopup", "dialog");
+    const helpPanel = pane.createDiv({
+      cls: "resume-layout-source-popover resume-layout-source-help-panel", attr: { role: "dialog", "aria-label": this.t("editorShortcuts"), tabindex: "-1" },
+    });
+    helpPanel.hidden = true;
+    const shortcuts = helpPanel.createEl("dl");
+    for (const [key, action] of [
+      ["⌘B / Ctrl+B", "bold"], ["Enter", "continueList"], ["Tab", "indent"], [this.t("clickPreview"), "jumpToSource"],
+    ]) {
+      shortcuts.createEl("dt").createEl("kbd", { text: key });
+      shortcuts.createEl("dd", { text: this.t(action) });
+    }
+    helpPanel.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      popovers.close();
+      help.focus({ preventScroll: true });
+    });
+
+    const update = (button, active, title, disabled) => {
+      button.disabled = disabled;
+      button.setAttribute("aria-pressed", String(active));
+      button.title = title;
+    };
+    this.updateSourceTools = () => {
+      if (!this.sourceEdit) return;
+      const context = sourceEditorContext(field);
+      const isBold = !!context.bold?.span;
+      const isList = !!context.list;
+      const isHeading = context.heading?.[1] === "##";
+      update(bold, isBold, this.t("boldShortcut", { action: this.t(isBold ? "unbold" : "bold") }), !context.bold);
+      update(list, isList, isList ? this.t("removeList") : this.t("makeBulletList"), !context.canFormat);
+      update(heading, isHeading, isHeading ? this.t("removeSectionFormat") : this.t("makeSection"), !context.canFormat);
+      const editing = !!context.entry?.fields;
+      const label = editing ? this.t("editEntry") : this.t("entry");
+      if (entryLabel.textContent !== label) {
+        entryLabel.setText(label);
+        setIcon(entryIcon, editing ? "pencil" : "calendar-range");
+      }
+      entry.disabled = !context.canUseEntry;
+      entry.toggleClass("is-current-entry", editing);
+      entry.title = editing ? this.t("editEntryHelp") : context.subheading ? this.t("addDateHelp") : this.t("insertEntry");
+    };
+  }
+
+  createSourceEntryPopover(pane, button, field, popovers) {
+    const form = pane.createEl("form", {
+      cls: "resume-layout-source-popover resume-layout-source-entry resume-layout-modal-form",
+      attr: { role: "dialog", "aria-label": this.t("entry") },
+    });
+    form.hidden = true;
+    const fields = form.createDiv({ cls: "resume-layout-source-entry-fields" });
+    const input = (label, name, required = false) => fields.createEl("label", {
+      text: label, cls: `resume-layout-entry-${name}`,
+    }).createEl("input", { type: "text", attr: required ? { required: "" } : {} });
+    const title = input(this.t("entryTitle"), "title", true);
+    const subtitle = input(this.t("entrySubtitle"), "subtitle");
+    const right = input(this.t("entryDate"), "date");
+    const preview = form.createDiv({ cls: "resume-layout-entry-preview", attr: { "aria-label": this.t("entryPreview") } });
+    const previewHeading = preview.createDiv({ cls: "resume-layout-entry-preview-heading" });
+    const previewTitle = previewHeading.createEl("strong");
+    const previewSubtitle = previewHeading.createSpan({ cls: "resume-layout-entry-preview-subtitle" });
+    const previewRight = preview.createSpan({ cls: "resume-layout-entry-preview-date" });
+    const actions = form.createDiv({ cls: "resume-layout-source-entry-actions" });
+    const cancel = actions.createEl("button", { text: this.t("cancel"), attr: { type: "button" } });
+    const submit = actions.createEl("button", { cls: "mod-cta", text: this.t("insert"), attr: { type: "submit" } });
+    let target;
+    const close = () => {
+      popovers.close();
+      field.focus({ preventScroll: true });
+    };
+    const updatePreview = () => {
+      const detail = subtitle.value.trim();
+      previewTitle.setText(title.value.trim());
+      previewSubtitle.setText(detail ? `${target?.separator ?? SOURCE_ENTRY_SEPARATOR} ${detail}` : "");
+      previewRight.setText(right.value.trim());
+      submit.disabled = !title.value.trim();
+    };
+    button.addEventListener("click", () => {
+      if (!form.hidden) return close();
+      const range = sourceEntryTarget(field, sourceEditorContext(field));
+      if (!range) return;
+      target = { ...range, snapshot: field.value };
+      title.value = range.title ?? "";
+      subtitle.value = range.subtitle ?? "";
+      right.value = range.right ?? "";
+      right.placeholder = this.selected?.classes.includes("lapis-cv-zh") ? "2023.06 – 至今" : "Jun 2023 – Present";
+      submit.setText(range.updating ? this.t("update") : this.t("insert"));
+      updatePreview();
+      popovers.show(form, button);
+      const next = title.value ? right : title;
+      next.focus({ preventScroll: true });
+      next.select();
+    });
+    form.addEventListener("input", updatePreview);
+    cancel.addEventListener("click", close);
+    form.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    });
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      const name = title.value.trim();
+      if (form.hidden || !target || !name || field.readOnly) return;
+      const { start, end, updating, attribute, separator, snapshot } = target;
+      if (snapshot !== field.value) {
+        close();
+        new Notice(this.t("entryMoved"));
+        return;
+      }
+      const detail = subtitle.value.trim();
+      const date = right.value.trim();
+      close();
+      if (updating && name === target.title && detail === target.subtitle && date === target.right) return;
+      const block = sourceEntryMarkup(name, detail, date, attribute, separator);
+      const before = snapshot.slice(0, start);
+      const after = snapshot.slice(end);
+      const leading = updating || !before || /\n[ \t]*\n$/.test(before) ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+      const trailing = updating || /^\n[ \t]*\n/.test(after) ? "" : after.startsWith("\n") ? "\n" : "\n\n";
+      const cursor = start + leading.length + block.length + (updating ? 0 : 1);
+      replaceSourceSelection(field, start, end, leading + block + trailing, cursor, cursor);
+      this.updateSourceTools();
+    });
+  }
+
+  async openEditor() {
+    const resume = this.selected;
+    if (!resume || this.editButton.disabled) return;
+    this.editButton.disabled = true;
+    try {
+      await this.runContent(async () => {
+        if (this.sourceEdit) {
+          if (await this.endSourceEdit()) await this.show(this.file);
+          return;
+        }
+        const file = resume.protected ? await this.plugin.copyForEditing(resume, { ...this.layout }) : resume.file;
+        if (this.selected?.file !== resume.file) return;
+        if (resume.protected) await this.bindFile(file);
+        if (this.file !== file) return;
+
+        const saved = await this.app.vault.read(file);
+        if (this.file !== file) return;
+        const text = editableBody(saved);
+        this.sourceEdit = { file, saved, text };
+        this.sourceField.value = text;
+        this.setSourceStatus("saved");
+        this.syncSourceControls();
+        this.sourceField.focus();
+        const offset = Math.max(0, text.search(/\S/));
+        this.sourceField.setSelectionRange(offset, offset);
+        this.updateSourceTools();
+        void this.show(file);
+      });
+    } finally {
+      this.editButton.disabled = false;
+    }
+  }
+
+  syncSourceControls() {
+    const editing = !!this.sourceEdit;
+    if (!editing) this.closeSourcePopover();
+    this.sourcePane.hidden = !editing;
+    this.body.toggleClass("is-source-editing", editing);
+    this.editButton.setText(editing ? this.t("doneEditing") : this.selected?.protected ? this.t("copyAndEdit") : this.t("editSource"));
+    this.editButton.title = editing ? this.t("doneEditingHelp") : this.t("editSourceHelp");
+    this.inspectorButton.hidden = editing || !this.selected;
+    this.toggleInspector(!!this.inspectorCollapsed);
+  }
+
+  setSourceStatus(status, state = "", detail) {
+    const label = this.t(state === "conflict" ? "sourceSaveConflict" : status);
+    const message = detail || (state === "conflict" ? this.t(status) : label);
+    this.sourceStatus.setText(label);
+    this.sourceStatus.title = message;
+    this.sourceStatus.toggleClass("has-error", !!state);
+    this.sourceStatus.toggleClass("is-pending", status === "sourcePending" || status === "sourceSaving");
+    this.retrySourceSave.hidden = state !== "retry";
+    this.sourceConflict.hidden = state !== "conflict";
+    this.sourceConflictMessage.setText(state === "conflict" ? message : "");
+  }
+
+  markSourceConflict(edit) {
+    edit.conflicted = true;
+    this.sourceField.ownerDocument.defaultView.clearTimeout(edit.saveTimer);
+    this.setSourceStatus("sourceConflict", "conflict");
+  }
+
+  async resolveSourceConflict(saveCopy) {
+    const edit = this.sourceEdit;
+    const resume = this.selected;
+    if (!edit?.conflicted || edit.resolving || resume?.file !== edit.file) return;
+    const field = this.sourceField;
+    edit.resolving = true;
+    field.readOnly = true;
+    this.updateSourceTools();
+    for (const button of this.sourceConflict.querySelectorAll("button")) button.disabled = true;
+    try {
+      if (saveCopy) {
+        const file = await this.plugin.copyForEditing(resume, { ...this.layout }, edit.text);
+        if (this.sourceEdit !== edit) return;
+        this.releaseSourceEdit(edit);
+        await this.bindFile(file);
+        await this.openEditor();
+        new Notice(this.t("copySaved"));
+      } else {
+        const latest = await this.app.vault.read(edit.file);
+        if (this.sourceEdit !== edit) return;
+        edit.saved = latest;
+        edit.text = editableBody(latest);
+        edit.conflicted = false;
+        field.value = edit.text;
+        this.setSourceStatus("sourceLoaded");
+        field.focus();
+        await this.show(edit.file);
+      }
+    } catch (error) {
+      new Notice(error.message || this.t("sourceConflictFailed"));
+      console.error("CareerOS source conflict resolution failed", error);
+    } finally {
+      edit.resolving = false;
+      field.readOnly = false;
+      this.updateSourceTools();
+      for (const button of this.sourceConflict.querySelectorAll("button")) button.disabled = false;
+    }
+  }
+
+  editedSourceChanged() {
+    const edit = this.sourceEdit;
+    if (!edit) return;
+    edit.text = this.sourceField.value;
+    const win = this.sourceField.ownerDocument.defaultView;
+    win.clearTimeout(edit.previewTimer);
+    win.clearTimeout(edit.saveTimer);
+    edit.previewTimer = win.setTimeout(() => {
+      if (this.sourceEdit === edit) void this.show(edit.file);
+    }, 160);
+    if (!edit.conflicted) {
+      this.setSourceStatus(edit.text === editableBody(edit.saved) ? "saved" : "sourcePending");
+      edit.saveTimer = win.setTimeout(() => { void this.saveSource(); }, 500);
+    }
+    this.queueCursorFollow();
+  }
+
+  refreshEditedSource(contents) {
+    const edit = this.sourceEdit;
+    if (!edit || edit.saving || edit.conflicted || contents === edit.saved) return;
+    const text = editableBody(contents);
+    const before = editableBody(edit.saved);
+    const dirty = edit.text !== before;
+    if (dirty && text !== before && text !== edit.text) {
+      this.markSourceConflict(edit);
+      return;
+    }
+    edit.saved = contents;
+    if (dirty && text !== edit.text) return;
+    this.setSourceStatus("saved");
+    if (text === edit.text) return;
+    edit.text = text;
+    const field = this.sourceField;
+    const { selectionStart, selectionEnd, scrollTop } = field;
+    field.value = text;
+    field.setSelectionRange(selectionStart, selectionEnd);
+    field.scrollTop = scrollTop;
+    this.updateSourceTools();
+  }
+
+  async saveSource() {
+    const edit = this.sourceEdit;
+    if (!edit) return true;
+    this.sourceField.ownerDocument.defaultView.clearTimeout(edit.saveTimer);
+    if (edit.conflicted || edit.recovery) return false;
+    if (edit.saving) return edit.saving;
+    if (edit.text === editableBody(edit.saved)) return true;
+    this.setSourceStatus("sourceSaving");
+    edit.saving = (async () => {
+      try {
+        while (edit.text !== editableBody(edit.saved)) {
+          edit.saved = await this.plugin.writeSourceBody(edit.file, editableBody(edit.saved), edit.text);
+        }
+        this.setSourceStatus("saved");
+        return true;
+      } catch (error) {
+        if (error.code === "CONFLICT") this.markSourceConflict(edit);
+        else this.setSourceStatus("sourceSaveFailed", "retry", error.message);
+        return false;
+      } finally {
+        edit.saving = null;
+      }
+    })();
+    return edit.saving;
+  }
+
+  async endSourceEdit(recover = false) {
+    const edit = this.sourceEdit;
+    if (!edit) return true;
+    if (!await this.saveSource()) {
+      if (!recover || edit.recovery) return false;
+      try {
+        await this.backupSourceEdit(edit);
+      } catch (error) {
+        console.error("CareerOS resume editor recovery failed", error);
+        if (!edit.recovery) {
+          edit.recovery = new SourceRecoveryModal(this, edit);
+          edit.recovery.open();
+        }
+        return false;
+      }
+    }
+    this.releaseSourceEdit(edit);
+    return true;
+  }
+
+  async backupSourceEdit(edit) {
+    if (edit.backup) return edit.backup;
+    edit.backup = (async () => {
+      const path = await this.plugin.draftPath(edit.file, this.t("backupName", { name: edit.file.basename }));
+      await this.app.vault.create(path, withEditedBody(edit.saved, edit.text));
+      new Notice(this.t("backupSaved", { path }));
+    })();
+    try {
+      await edit.backup;
+    } finally {
+      edit.backup = null;
+    }
+  }
+
+  releaseSourceEdit(edit) {
+    if (this.sourceEdit !== edit) return;
+    const win = this.sourceField.ownerDocument.defaultView;
+    win.clearTimeout(edit.previewTimer);
+    win.clearTimeout(edit.saveTimer);
+    this.sourceEdit = null;
+    this.highlightedBlock?.classList.remove("resume-layout-current-block");
+    this.highlightedBlock = null;
+    this.syncSourceControls();
+  }
+
+  queueCursorFollow() {
+    const field = this.sourceField;
+    if (!this.sourceEdit || this.cursorFrame !== undefined || field.ownerDocument.activeElement !== field) return;
+    this.cursorFrame = field.ownerDocument.defaultView.requestAnimationFrame(() => {
+      this.cursorFrame = undefined;
+      if (field.ownerDocument.activeElement === field) this.followCursor();
+    });
+  }
+
+  followCursor() {
+    const edit = this.sourceEdit;
+    if (!edit || !this.rendered || edit.file !== this.renderedFile || edit.text !== this.previewBody) return;
+    this.previewBlocks ??= locatePreviewBlocks(this.rendered, this.previewBody);
+    const field = this.sourceField;
+    const head = field.selectionDirection === "backward" ? field.selectionStart : field.selectionEnd;
+    const line = edit.text.slice(0, head).split("\n").length - 1;
+    const block = this.previewBlocks.findLast(location => location.line <= line)?.element;
+    if (block === this.highlightedBlock) return;
+    this.highlightedBlock?.classList.remove("resume-layout-current-block");
+    this.highlightedBlock = block;
+    if (!block) return;
+    block.classList.add("resume-layout-current-block");
+    const position = block.getBoundingClientRect();
+    const viewport = this.stage.getBoundingClientRect();
+    if (position.top < viewport.top + 24 || position.bottom > viewport.bottom - 24) {
+      this.stage.scrollTop += position.top - viewport.top - this.stage.clientHeight / 3;
+    }
+  }
+
+  focusSourceFromPreview(event) {
+    const edit = this.sourceEdit;
+    if (!edit || edit.file !== this.renderedFile || edit.text !== this.previewBody
+      || !this.rendered?.contains(event.target) || this.sourceField.readOnly) return;
+    this.previewBlocks ??= locatePreviewBlocks(this.rendered, this.previewBody);
+    const location = this.previewBlocks.findLast(block => block.element.contains(event.target));
+    if (!location) return;
+    event.preventDefault();
+    const lines = edit.text.split("\n");
+    const start = lines.slice(0, location.line).reduce((length, line) => length + line.length + 1, 0);
+    const field = this.sourceField;
+    field.focus({ preventScroll: true });
+    field.setSelectionRange(start, start + lines[location.line].length);
+    this.updateSourceTools();
+    this.scrollSourceTo(start);
+    this.highlightedBlock?.classList.remove("resume-layout-current-block");
+    this.highlightedBlock = location.element;
+    this.highlightedBlock.classList.add("resume-layout-current-block");
+  }
+
+  scrollSourceTo(offset) {
+    const field = this.sourceField;
+    const doc = field.ownerDocument;
+    const style = doc.defaultView.getComputedStyle(field);
+    const measure = doc.createElement("div");
+    Object.assign(measure.style, {
+      position: "fixed", left: "-10000px", top: "0", visibility: "hidden",
+      boxSizing: "border-box", width: `${field.clientWidth}px`, padding: style.padding,
+      font: style.font, lineHeight: style.lineHeight, letterSpacing: style.letterSpacing,
+      whiteSpace: "pre-wrap", overflowWrap: "break-word", tabSize: style.tabSize,
+    });
+    measure.textContent = field.value.slice(0, offset);
+    const marker = doc.createElement("span");
+    marker.textContent = "\u200b";
+    measure.append(marker);
+    doc.body.append(measure);
+    field.scrollTop = Math.max(0, marker.offsetTop - field.clientHeight / 3);
+    measure.remove();
+  }
+
+  toggleInspector(collapsed = !this.inspectorCollapsed) {
+    this.inspectorCollapsed = collapsed;
+    this.inspector.hidden = collapsed || !this.selected || !!this.sourceEdit;
+    const label = collapsed ? this.t("showPanel") : this.t("hidePanel");
+    this.inspectorButton.setAttribute("aria-label", label);
+    this.inspectorButton.setAttribute("aria-expanded", String(!collapsed));
+    this.inspectorButton.title = label;
+    setIcon(this.inspectorButton, collapsed ? "panel-right-open" : "panel-right-close");
+  }
+
+  setPanel(mode) {
+    this.panelMode = mode;
+    const content = mode === "content";
+    const css = mode === "css";
+    this.tabs.hidden = css;
+    this.layoutTab.setAttribute("aria-pressed", String(!content));
+    this.contentTab.setAttribute("aria-pressed", String(content));
+    this.layoutPanel.hidden = content || css;
+    this.contentPanel.hidden = !content;
+    this.cssPanel.hidden = !css;
+    this.updateExportButton();
+    if (content) this.renderContent();
+  }
+
+  addTemplateControls(panel) {
+    const controls = panel.createDiv({ cls: "resume-layout-template-controls" });
+    const themeRow = controls.createDiv({ cls: "resume-layout-theme-row" });
+    const theme = themeRow.createEl("label", { text: this.t("theme") });
+    this.templateSelect = theme.createEl("select", { cls: "dropdown" });
+    this.iconButton(themeRow, "settings", this.t("manageSettings"), () => this.plugin.showSettings());
+    this.templateSelect.addEventListener("change", () => {
+      this.layout.template = this.templateSelect.value;
+      this.commit();
+    });
+    controls.createSpan({ text: this.t("density") });
+    const density = controls.createDiv({ cls: "resume-layout-density", attr: { role: "group", "aria-label": this.t("density") } });
+    this.densityButtons = new Map();
+    for (const value of Object.keys(DENSITIES)) {
+      const button = density.createEl("button", { text: this.t(value) });
+      button.addEventListener("click", () => this.setDensity(value));
+      this.densityButtons.set(value, button);
+    }
+    this.templateHint = controls.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
+  }
+
+  setDensity(value) {
+    if (!this.selected || this.layout.density === value) return;
+    const { classes, file } = this.selected;
+    if (this.layout.lineHeight === layoutFor(classes, { density: this.layout.density }).lineHeight) {
+      this.layout.lineHeight = layoutFor(classes, { density: value }).lineHeight;
+    }
+    this.layout.density = value;
+    this.resetUndo.delete(file);
+    this.commit();
+  }
+
+  updateTemplateControls() {
+    if (!this.selected) return;
+    this.templateSelect.replaceChildren();
+    for (const theme of this.plugin.templates.values()) {
+      this.templateSelect.createEl("option", { value: theme.id, text: this.plugin.themeName(theme) });
+    }
+    this.templateSelect.value = this.layout.template;
+    const declared = this.selected.template;
+    this.templateHint.setText(declared && !this.plugin.templateId(declared) && declared !== "紧凑"
+      ? this.t("missingTheme", { name: declared }) : "");
+    this.update();
+  }
+
+  editTemplate(mode, id = this.layout.template) {
+    const theme = this.plugin.templates.get(id);
+    if (mode === "edit" && (!theme || theme.builtIn)) return;
+    this.cssEdit = {
+      original: mode === "edit" ? theme : null,
+      text: (mode !== "new" && theme?.css) || ":scope { --color-accent: #254f78; }",
+    };
+    const panel = this.cssPanel;
+    panel.empty();
+    const back = panel.createEl("button", { text: this.t("backToLayout") });
+    panel.createEl("h3", { text: { new: this.t("newTheme"), copy: this.t("copyTheme"), edit: this.t("editTheme") }[mode] });
+    const form = panel.createEl("form", { cls: "resume-layout-modal-form" });
+    const name = form.createEl("label", { text: this.t("themeName") });
+    const copyBase = mode === "copy"
+      ? this.plugin.themeName(theme).replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 43).trimEnd() : "";
+    const input = name.createEl("input", {
+      type: "text",
+      value: mode === "edit" ? theme.label : mode === "copy" ? this.t("themeCopyName", { name: copyBase }) : "",
+      attr: { maxlength: "48", required: true },
+    });
+    const cssLabel = form.createEl("label", { text: "CSS" });
+    const editor = cssLabel.createEl("textarea", { cls: "resume-layout-css-editor", attr: { rows: "12", spellcheck: "false" } });
+    editor.value = this.cssEdit.text;
+    editor.addEventListener("input", () => {
+      this.cssEdit.text = editor.value;
+      this.update();
+    });
+    form.createDiv({ cls: "resume-layout-hint", text: this.t("themeScopeHelp") });
+    const examples = form.createEl("details", { cls: "resume-layout-css-examples" });
+    examples.createEl("summary", { text: this.t("cssReference") });
+    const snippets = [
+      ":scope { --color-accent: #254f78; --border-color: #a8bed2; }",
+      ':scope { --title-font: Georgia, serif; --text-font: Arial, sans-serif; }',
+      ".resume-layout-icon { display: none !important; }",
+    ];
+    for (const snippet of snippets) {
+      examples.createEl("pre", { text: snippet });
+      examples.createEl("button", { text: this.t("copySnippet"), type: "button" })
+        .addEventListener("click", () => void copySourceText(editor, this.t, snippet));
+    }
+    const feedback = form.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
+    const actions = form.createDiv({ cls: "resume-layout-template-actions" });
+    const cancel = actions.createEl("button", { type: "button", text: this.t("cancel") });
+    const save = actions.createEl("button", { type: "submit", text: this.t("saveTheme"), cls: "mod-cta" });
+    const close = () => {
+      this.cssEdit = null;
+      this.setPanel("layout");
+      panel.empty();
+      this.updateTemplateControls();
+      this.templateSelect.focus();
+    };
+    back.addEventListener("click", close);
+    cancel.addEventListener("click", close);
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (save.disabled) return;
+      save.disabled = cancel.disabled = back.disabled = true;
+      feedback.setText("");
+      try {
+        const file = this.selected?.file;
+        const templateId = await this.plugin.saveTemplate(input.value.trim(), editor.value, this.cssEdit.original);
+        close();
+        if (mode !== "edit" && file && this.selected?.file === file) {
+          this.layout.template = templateId;
+          this.commit();
+        }
+        new Notice(this.t("themeSaved"));
+      } catch (error) {
+        feedback.setText(error.message);
+        save.disabled = cancel.disabled = back.disabled = false;
+      }
+    });
+    this.setPanel("css");
+    this.update();
+    (mode === "edit" ? editor : input).focus();
+  }
+
+  async saveNoteLayout(showNotice = true) {
+    const resume = this.selected;
+    if (!resume || resume.protected || this.applyingLayout) return false;
+    const layout = { ...this.layout };
+    const properties = { template: layout.template, density: layout.density, geometry: dimensions(layout) };
+    this.layoutWrite = { file: resume.file, key: noteLayoutKey(properties) };
+    this.applyingLayout = true;
+    this.updateLayoutActions();
+    try {
+      await this.plugin.writeNoteLayout(resume.file, noteLayoutKey(resume), layout);
+      if (this.selected?.file === resume.file) {
+        this.selected = { ...this.selected, ...properties, stored: true, recognized: true };
+        this.savedLayout = layout;
+        this.layoutFeedback = this.t("saved");
+        this.rememberDraft();
+        this.updateLayoutActions();
+      }
+      if (showNotice) new Notice(this.t("layoutSaved"));
+      return true;
+    } catch (error) {
+      this.layoutFeedback = error.message || this.t("layoutSaveFailed");
+      if (showNotice) new Notice(this.layoutFeedback);
+      return false;
+    } finally {
+      this.layoutWrite = null;
+      this.applyingLayout = false;
+      this.updateLayoutActions();
+    }
+  }
+
+  renderContent() {
+    const panel = this.contentPanel;
+    if (!panel || this.panelMode !== "content") return;
+    panel.empty();
+    const resume = this.selected;
+    if (!resume || this.sourceMarkdown === null || this.sourceMarkdown === undefined) return;
+
+    const source = this.sourceMarkdown;
+    const editable = !resume.protected;
+    const sections = editable ? splitSectionBody(sourceParts(source).body).sections
+      : this.previewHeadings().map(heading => ({ title: heading.textContent.replace(/[\uE000-\uF8FF]/gu, "").trim() }));
+    if (editable) this.renderSectionActions(panel, resume, source, sections);
+    const list = panel.createDiv({ cls: "resume-layout-section-list" });
+    sections.forEach(({ title }, index) => this.renderSection(list, title, index, sections.length, source, editable));
+    if (editable && sections.length > 1) this.enableSectionDrag(list, resume.file, source);
+    if (!sections.length) panel.createDiv({ cls: "resume-layout-modal-hint", text: editable
+      ? this.t("createSectionsHelp") : this.t("emptySections") });
+  }
+
+  renderSectionActions(panel, resume, source, sections) {
+    const actions = panel.createDiv({ cls: "resume-layout-content-actions" });
+    const draft = this.sectionDraft?.file === resume.file ? this.sectionDraft : null;
+    const add = actions.createEl("button", { text: draft ? this.t("cancelNewSection") : this.t("newSection"), cls: draft ? "" : "mod-cta" });
+    add.setAttribute("aria-expanded", String(!!draft));
+    add.addEventListener("click", () => {
+      this.sectionDraft = draft ? null : { file: resume.file, title: "" };
+      this.renderContent();
+      if (!draft) this.contentPanel.querySelector("input")?.focus();
+    });
+    const history = this.contentUndo.get(resume.file);
+    const prior = history?.at(-1);
+    if (prior?.after === editableBody(source)) {
+      actions.createEl("button", { text: this.t("undoLast") }).addEventListener("click", () => {
+        void this.runContent(async () => {
+          await this.plugin.writeSourceBody(resume.file, prior.after, prior.before);
+          history.pop();
+          if (this.selected?.file === resume.file) await this.show(resume.file);
+          new Notice(this.t("sectionChangeUndone"));
+        });
+      });
+    }
+    if (!draft) return;
+
+    const form = panel.createEl("form", { cls: "resume-layout-modal-form" });
+    const label = form.createEl("label", { text: this.t("sectionName") });
+    const name = label.createEl("input", { type: "text", value: draft.title, attr: { required: true } });
+    name.addEventListener("input", () => { draft.title = name.value; });
+    const suggestions = resume.classes.includes("lapis-cv-zh")
+      ? ["个人简介", "核心技能", "工作经历", "项目经历", "教育背景", "专业证书"]
+      : ["Profile", "Skills", "Work Experience", "Projects", "Education", "Certifications"];
+    const chosen = new Set(sections.map(section => section.title.toLowerCase()));
+    const pills = form.createDiv({ cls: "resume-layout-section-suggestions" });
+    const feedback = form.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
+    const submit = async title => {
+      if (draft.submitting) return;
+      draft.submitting = true;
+      this.sectionDraft = null;
+      try {
+        await this.addSection(title, source);
+        this.jumpToSection(sections.length);
+      } catch (error) {
+        this.sectionDraft = draft;
+        feedback.setText(error.message);
+      } finally {
+        draft.submitting = false;
+      }
+    };
+    for (const title of suggestions) {
+      if (chosen.has(title.toLowerCase())) continue;
+      pills.createEl("button", { text: title, type: "button" }).addEventListener("click", () => void submit(title));
+    }
+    form.createEl("button", { text: this.t("addSection"), type: "submit" });
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      void submit(name.value.trim());
+    });
+  }
+
+  previewHeadings() {
+    const headings = [...(this.rendered?.querySelectorAll("h2") ?? [])];
+    return this.selected?.protected ? headings : headings.filter(heading => !heading.closest(".internal-embed"));
+  }
+
+  jumpToSection(index) {
+    const reducedMotion = this.paper.ownerDocument.defaultView.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.previewHeadings()[index]?.scrollIntoView({ block: "center", behavior: reducedMotion ? "instant" : "smooth" });
+  }
+
+  renderSection(container, title, index, count, source, editable) {
+    title ||= this.t("untitledSection");
+    const row = container.createDiv({ cls: "resume-layout-section-row" });
+    if (editable && count > 1) {
+      row.classList.add("is-sortable");
+      const grip = row.createSpan({ cls: "resume-layout-section-grip", attr: { "aria-hidden": "true" } });
+      setIcon(grip, "grip-vertical");
+    }
+    const jump = row.createEl("button", {
+      text: title, cls: "resume-layout-section-label",
+      attr: { title: this.t("findSectionOnPage", { title }) },
+    });
+    jump.addEventListener("click", () => this.jumpToSection(index));
+    if (!editable) return;
+    for (const [delta, message, icon] of [[-1, "moveSectionUp", "arrow-up"], [1, "moveSectionDown", "arrow-down"]]) {
+      if (index + delta < 0 || index + delta >= count) continue;
+      const label = this.t(message, { title });
+      const button = row.createEl("button", { attr: { "aria-label": label, title: label } });
+      setIcon(button, icon);
+      button.addEventListener("click", () => void this.runContent(() => this.moveSection(index, index + delta, source)));
+    }
+  }
+
+  enableSectionDrag(list, file, source) {
+    const rows = Array.from(list.children);
+    let gesture;
+    let indicator;
+    const findRow = element => {
+      const row = element?.closest(".resume-layout-section-row");
+      return row?.parentElement === list ? row : null;
+    };
+    const atPointer = event => {
+      const row = findRow(list.ownerDocument.elementFromPoint(event.clientX, event.clientY));
+      if (!row) return null;
+      const { top, height } = row.getBoundingClientRect();
+      return { row, after: event.clientY >= top + height / 2 };
+    };
+    const markTarget = target => {
+      indicator?.row.classList.remove("is-drop-before", "is-drop-after");
+      indicator = target;
+      indicator?.row.classList.add(indicator.after ? "is-drop-after" : "is-drop-before");
+    };
+    const clear = () => {
+      gesture?.row.classList.remove("is-dragging");
+      gesture = null;
+      markTarget(null);
+    };
+    list.addEventListener("pointerdown", event => {
+      const row = findRow(event.target);
+      if (!row || event.button !== 0 || event.target.closest("button")) return;
+      clear();
+      event.preventDefault();
+      gesture = { row, pointerId: event.pointerId, from: rows.indexOf(row) };
+      list.setPointerCapture(event.pointerId);
+      row.classList.add("is-dragging");
+    });
+    list.addEventListener("pointermove", event => {
+      if (gesture?.pointerId !== event.pointerId) return;
+      const target = atPointer(event);
+      markTarget(target?.row === gesture.row ? null : target);
+    });
+    list.addEventListener("pointerup", event => {
+      if (gesture?.pointerId !== event.pointerId) return;
+      const { from } = gesture;
+      const target = atPointer(event);
+      clear();
+      if (!target) return;
+      const insertion = rows.indexOf(target.row) + Number(target.after);
+      const to = insertion - Number(from < insertion);
+      if (to >= 0 && to !== from && this.selected?.file === file) {
+        void this.runContent(() => this.moveSection(from, to, source));
+      }
+    });
+    list.addEventListener("pointercancel", clear);
+  }
+
+  addSection(title, source) {
+    return this.changeContent(source, body => {
+      if (!title || /[\r\n]/.test(title)) throw new Error(this.t("sectionNameRequired"));
+      if (splitSectionBody(body).sections.some(section => section.title.toLowerCase() === title.toLowerCase())) {
+        throw new Error(this.t("sectionNameDuplicate"));
+      }
+      const newline = body.includes("\r\n") ? "\r\n" : "\n";
+      const separator = body.endsWith(newline.repeat(2)) || !body ? "" : body.endsWith(newline) ? newline : newline.repeat(2);
+      return body + separator + `## ${title}` + newline;
+    }, this.t("sectionAdded"));
+  }
+
+  async moveSection(from, to, source) {
+    if (from === to) return;
+    await this.changeContent(source, body => {
+      const { intro, sections } = splitSectionBody(body);
+      if (!sections[from] || !sections[to]) throw new Error(this.t("sectionsChanged"));
+      sections.splice(to, 0, sections.splice(from, 1)[0]);
+      const newline = body.includes("\r\n") ? "\r\n" : "\n";
+      return intro + sections.map(({ markdown }, index) => {
+        if (index === sections.length - 1 || markdown.endsWith(newline.repeat(2))) return markdown;
+        return markdown + (markdown.endsWith(newline) ? newline : newline.repeat(2));
+      }).join("");
+    }, this.t("sectionsReordered"));
+  }
+
+  async changeContent(source, transform, message) {
+    const resume = this.selected;
+    if (!resume || source == null || source !== this.sourceMarkdown || this.plugin.isProtected(resume)) {
+      throw new Error(this.t("noteChanged"));
+    }
+    const { prefix, body } = sourceParts(source);
+    const next = prefix + transform(body);
+    await this.plugin.writeContent(resume.file, source, next);
+    const before = editableBody(source);
+    const history = this.contentUndo.get(resume.file) ?? [];
+    if (history.length && history.at(-1).after !== before) history.length = 0;
+    history.push({ before, after: editableBody(next) });
+    if (history.length > 5) history.shift();
+    this.contentUndo.set(resume.file, history);
+    if (this.selected?.file === resume.file) await this.show(resume.file);
+    new Notice(message);
+  }
+
+  async runContent(run) {
+    try {
+      await run();
+    } catch (error) {
+      new Notice(error.message);
+    }
+  }
+
+  marginSide(key) {
+    return key === "top" || key === "bottom" ? "top" : "left";
+  }
+
+  alignLocks() {
+    this.marginLocks = { top: this.layout.top === this.layout.bottom, left: this.layout.left === this.layout.right };
+    this.lockOrigins = {};
+  }
+
+  toggleMarginLock(side) {
+    this.marginLocks[side] = !this.marginLocks[side];
+    const other = MARGIN_PAIRS[side];
+    if (this.marginLocks[side] && this.layout[side] !== this.layout[other]) {
+      const field = MARGINS.find(({ key }) => key === side);
+      const original = [this.layout[side], this.layout[other]];
+      this.setMargin(field, (this.layout[side] + this.layout[other]) / 2);
+      this.lockOrigins[side] = original;
+      this.commit();
+    } else if (!this.marginLocks[side] && this.lockOrigins[side]) {
+      [this.layout[side], this.layout[other]] = this.lockOrigins[side];
+      delete this.lockOrigins[side];
+      this.commit();
+      new Notice(this.t("marginLinkUndone"));
+    } else {
+      this.update();
+    }
+  }
+
+  setMargin({ key, min, max, step }, raw) {
+    const value = Math.min(max, Math.max(min, Math.round(raw / step) * step));
+    if (this.layout[key] !== value) delete this.lockOrigins[this.marginSide(key)];
+    this.layout[key] = value;
+    if (this.marginLocks[this.marginSide(key)]) this.layout[MARGIN_PAIRS[key]] = value;
+  }
+
+  addMarginHandle(field) {
+    const { key } = field;
+    const handle = this.guide.createSpan({
+      cls: `resume-layout-margin-handle is-${key}`,
+      attr: { title: this.t("dragMargin", { side: this.t(key) }) },
+    });
+    this.marginHandles.set(key, handle);
+    const vertical = key === "top" || key === "bottom";
+    const direction = key === "left" || key === "top" ? 1 : -1;
+    const coordinate = event => vertical ? event.clientY : event.clientX;
+    let drag;
+    handle.addEventListener("pointerdown", event => {
+      if (!this.selected || event.button !== 0) return;
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      drag = { coordinate: coordinate(event), layout: { ...this.layout }, file: this.selected.file };
+      handle.addClass("is-dragging");
+    });
+    handle.addEventListener("pointermove", event => {
+      const box = handle.getBoundingClientRect();
+      const fraction = vertical ? (event.clientX - box.left) / box.width : (event.clientY - box.top) / box.height;
+      handle.style.setProperty("--guide-position", `${100 * Math.max(0.08, Math.min(0.92, fraction))}%`);
+      if (!drag || drag.file !== this.selected?.file) return;
+      const pixelsPerMm = this.paper.getBoundingClientRect().width / A4_WIDTH;
+      if (!pixelsPerMm) return;
+      const value = drag.layout[key] + direction * (coordinate(event) - drag.coordinate) / pixelsPerMm;
+      this.resetUndo.delete(drag.file);
+      this.setMargin(field, value);
+      this.update();
+    });
+    const end = (event, save) => {
+      handle.removeClass("is-dragging");
+      if (drag && drag.file === this.selected?.file) {
+        if (save) this.commit();
+        else {
+          this.layout = drag.layout;
+          this.update();
+        }
+      }
+      drag = null;
+      if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+    };
+    handle.addEventListener("pointerup", event => end(event, true));
+    handle.addEventListener("pointercancel", event => end(event, false));
+  }
+
+  updateFileTitle() {
+    const resume = this.selected;
+    const path = resume?.file.path ?? "";
+    this.fileTitle.setText(resume?.label ?? this.t("selectResume"));
+    const badges = {
+      master: [this.t("masterBadge"), this.t("masterHelp")],
+      frozen: [this.t("frozenBadge"), this.t("frozenHelp")],
+      protected: [this.t("protectedBadge"), this.t("protectedHelp")],
+      preview: [this.t("previewBadge"), this.t("previewHelp")],
+    };
+    const badge = badges[resume?.protectionReason ?? (resume && !resume.recognized ? "preview" : "")];
+    this.filePath.setText(badge?.[0] ?? "");
+    this.filePath.title = badge?.[1] ?? "";
+    this.filePath.hidden = !badge;
+    this.staleBanner.hidden = !resume?.stale;
+    this.pickButton.title = path || this.t("selectResumeOrNote");
+    this.pickButton.setAttribute("aria-label", resume ? this.t("changeResume", { name: resume.label }) : this.t("selectResume"));
+  }
+
+  addControl(container, field) {
+    const row = container.createDiv({ cls: "resume-layout-field" });
+    const caption = row.createDiv({ cls: "resume-layout-field-caption" });
+    const label = this.t(field.key);
+    caption.createSpan({ text: label });
+    const value = caption.createSpan({ cls: "resume-layout-value", attr: { "aria-hidden": "true" } });
+    const input = row.createEl("input", {
+      type: "range",
+      attr: {
+        min: String(field.min),
+        max: String(field.max),
+        step: String(field.step),
+        "aria-label": field.unit === "mm"
+          ? this.t("marginLabel", { side: label }) : this.t("typographyLabel", { field: label }),
+      },
+    });
+    const handle = this.marginHandles.get(field.key);
+    if (handle) {
+      input.addEventListener("focus", () => handle.classList.add("is-focused"));
+      input.addEventListener("blur", () => handle.classList.remove("is-focused"));
+    }
+    input.addEventListener("input", () => {
+      if (!this.selected) return;
+      this.resetUndo.delete(this.selected.file);
+      if (handle) this.setMargin(field, input.valueAsNumber);
+      else this.layout[field.key] = input.valueAsNumber;
+      this.update();
+    });
+    input.addEventListener("change", () => this.commit());
+    this.controls.set(field.key, { field, input, value });
+  }
+
+  clearPreview() {
+    if (this.rendered) {
+      this.observer?.unobserve(this.rendered);
+      this.rendered.remove();
+      this.rendered = null;
+    }
+    if (this.renderer) {
+      this.removeChild(this.renderer);
+      this.renderer = null;
+    }
+    this.renderedFile = null;
+    this.previewBody = null;
+    this.previewBlocks = null;
+    this.highlightedBlock = null;
+  }
+
+  async show(file) {
+    if (!this.paper) return;
+    const version = this.renderVersion = (this.renderVersion ?? 0) + 1;
+    const prior = this.selected;
+    let resume = this.plugin.resume(file, true);
+    let markdown;
+    let body;
+    if (resume) {
+      try {
+        const edit = this.sourceEdit?.file === file ? this.sourceEdit : null;
+        markdown = edit ? withEditedBody(edit.saved, edit.text) : await this.app.vault.cachedRead(file);
+        if (version !== this.renderVersion) return;
+        body = edit?.text ?? sourceParts(markdown).body;
+        resume = this.plugin.resumeForContent(resume, body);
+      } catch (error) {
+        if (version === this.renderVersion) this.setPageMeasurement(this.t("previewUnavailable"));
+        console.error("CareerOS resume preview failed", error);
+        return;
+      }
+    }
+    const sameFile = resume && prior?.file === file;
+    if (!sameFile) this.fitButton.hidden = true;
+    if (resume) {
+      resume.protectionReason = this.plugin.protectionReason(resume);
+      resume.protected = !!resume.protectionReason;
+    }
+    this.selected = resume;
+    const canonical = resume && this.plugin.noteLayout(resume);
+    const ownWrite = sameFile && this.layoutWrite?.file === file && this.layoutWrite.key === noteLayoutKey(resume);
+    if (resume && !ownWrite && (!sameFile || noteLayoutKey(prior) !== noteLayoutKey(resume)
+      || prior.protected !== resume.protected || !sameLayout(canonical, this.savedLayout))) {
+      const draft = this.draftLayouts.get(file);
+      const useDraft = !resume.protected && draft?.key === noteLayoutKey(resume);
+      if (!useDraft) this.draftLayouts.delete(file);
+      if (sameFile && noteLayoutKey(prior) !== noteLayoutKey(resume) && !useDraft) this.layoutUndo.delete(file);
+      this.savedLayout = canonical;
+      this.layout = useDraft ? { ...draft.layout } : this.plugin.previewLayout(resume);
+      this.lastCommittedLayout = { ...this.layout };
+      this.layoutFeedback = resume.stored ? this.t("saved") : "";
+      this.alignLocks();
+    }
+    this.updateFileTitle();
+    this.headerCenter.hidden = this.exportButton.hidden = this.openButton.hidden = !resume;
+    this.editButton.hidden = !resume;
+    this.syncSourceControls();
+    this.paper.hidden = !resume;
+    this.emptyState.hidden = !!resume;
+    this.updateExportButton();
+
+    if (!resume) {
+      this.clearPreview();
+      this.sourceMarkdown = null;
+      this.updateEmptyChoices();
+      this.setPageMeasurement("");
+      this.renderContent();
+      return;
+    }
+
+    this.plugin.rememberFile(file.path);
+    if (!sameFile) {
+      this.sourceMarkdown = null;
+      this.setPageMeasurement(this.t("loading"));
+    }
+    this.updateTemplateControls();
+    const next = this.paper.createDiv({
+      cls: "resume-layout-rendered resume-layout-surface resume-layout-styled markdown-rendered resume-layout-buffer",
+    });
+    next.classList.add(...resume.classes);
+    const renderer = this.addChild(new Component());
+    let swapped = false;
+    try {
+      this.stylePreview(next);
+      // The file's YAML is already separated. A second leading delimiter belongs to the body.
+      await MarkdownRenderer.render(this.app, sourceParts(body).hasYaml ? `\n${body}` : body, next, file.path, renderer);
+      if (version !== this.renderVersion) return;
+      decorateResumeMarkup(next, resume.classes.includes("lapis-cv-zh"));
+      this.stylePreview(next);
+
+      const scrollTop = sameFile ? this.stage.scrollTop : 0;
+      this.clearPreview();
+      next.removeClass("resume-layout-buffer");
+      this.rendered = next;
+      this.renderedFile = file;
+      this.renderer = renderer;
+      this.sourceMarkdown = markdown;
+      this.previewBody = sourceText(body);
+      this.renderContent();
+      this.observer.observe(next);
+      this.stage.scrollTop = scrollTop;
+      swapped = true;
+      this.updateExportButton();
+      this.measure();
+      this.queueCursorFollow();
+    } catch (error) {
+      if (version === this.renderVersion) {
+        this.setPageMeasurement(this.t("previewUnavailable"));
+        console.error("CareerOS resume preview failed", error);
+      }
+    } finally {
+      if (!swapped) {
+        next.remove();
+        this.removeChild(renderer);
+      }
+    }
+  }
+
+  stylePreview(root) {
+    const { layout } = this;
+    applyTypography(root, layout);
+    const theme = this.plugin.templates.get(layout.template);
+    applyTemplate(root, this.cssEdit?.text ?? theme?.css);
+  }
+
+  updateLayoutActions() {
+    if (!this.layoutActions || !this.selected) return;
+    const { protected: readOnly, recognized, file } = this.selected;
+    const needsManualSave = recognized && !this.plugin.settings.autoSaveLayout && !sameLayout(this.layout, this.savedLayout);
+    this.applyTemplateButton.hidden = readOnly || (recognized && !needsManualSave);
+    this.applyTemplateButton.setText(recognized ? this.t("saveLayout") : this.t("applyLayout"));
+    this.applyTemplateButton.disabled = this.applyingLayout;
+    this.undoLayoutButton.hidden = readOnly || !recognized || !(this.layoutUndo.get(file)?.length);
+    const hint = readOnly ? this.t("localPreviewHelp")
+      : this.applyingLayout || this.queuedLayout ? this.t("layoutSaving")
+      : !recognized ? this.t("previewOnly")
+      : needsManualSave ? this.t("layoutUnsaved")
+      : this.layoutFeedback || "";
+    this.layoutHint.setText(hint);
+  }
+
+  updateExportButton() {
+    this.exportButton.disabled = !this.selected || this.renderedFile !== this.selected.file || !!this.cssEdit || !!this.exporting;
+    this.exportButton.title = this.cssEdit ? this.t("finishThemeBeforeExport") : "";
+  }
+
+  update() {
+    if (!this.selected || !this.layout) return;
+    const { layout } = this;
+    this.templateSelect.value = layout.template;
+    for (const [density, button] of this.densityButtons) button.setAttribute("aria-pressed", String(density === layout.density));
+    for (const { field, input, value } of this.controls.values()) {
+      const number = layout[field.key];
+      const label = field.unit ? `${number} ${field.unit}` : number.toFixed(2);
+      input.value = String(number);
+      input.setAttribute("aria-valuetext", label);
+      value.setText(label);
+      const handle = this.marginHandles.get(field.key);
+      if (handle) handle.dataset.guideValue = `${this.t(field.key)} ${number.toFixed(1)} mm`;
+    }
+    for (const [side, button] of this.lockButtons) {
+      button.setAttribute("aria-pressed", String(this.marginLocks[side]));
+    }
+    applyMargins(this.paper, layout);
+    if (this.rendered) this.stylePreview(this.rendered);
+    const { file, classes } = this.selected;
+    const defaults = layoutFor(classes, { density: layout.density });
+    const canUndo = this.resetUndo.has(file);
+    this.resetButton.setText(canUndo ? this.t("undoReset") : this.t("resetFineTuning"));
+    this.resetButton.hidden = !canUndo && FIELDS.every(({ key }) => layout[key] === defaults[key]);
+    this.updateLayoutActions();
+    this.measure();
+  }
+
+  resetLayout() {
+    if (!this.selected) return;
+    const { file, classes } = this.selected;
+    const prior = this.resetUndo.get(file);
+    if (prior) {
+      this.resetUndo.delete(file);
+      this.layout = { ...this.layout, ...prior };
+    } else {
+      this.resetUndo.set(file, dimensions(this.layout));
+      const defaults = layoutFor(classes, { density: this.layout.density });
+      this.layout = { ...this.layout, ...dimensions(defaults) };
+    }
+    this.alignLocks();
+    this.commit();
+    new Notice(prior ? this.t("layoutRestored") : this.t("layoutDefaultsRestored"));
+  }
+
+  setPageMeasurement(label, detail = "") {
+    if (this.measurement.textContent !== label) this.measurement.setText(label);
+    if (this.pageStatus.title === detail) return;
+    this.pageStatus.title = detail;
+    if (detail) this.measurement.setAttribute("aria-label", detail);
+    else this.measurement.removeAttribute("aria-label");
+  }
+
+  measure() {
+    if (!this.selected || !this.paper || !this.stage.clientWidth) return;
+    const margins = this.stage.ownerDocument.defaultView.getComputedStyle(this.stage);
+    const width = this.stage.clientWidth - parseFloat(margins.paddingLeft) - parseFloat(margins.paddingRight);
+    const height = this.stage.clientHeight - parseFloat(margins.paddingTop) - parseFloat(margins.paddingBottom);
+    const fitWidth = Math.max(0.12, width / (A4_WIDTH * PX_PER_MM));
+    const fitHeight = Math.max(0.12, height / (A4_HEIGHT * PX_PER_MM));
+    const zoom = this.zoomSelect.value === "actual" ? 1
+      : Math.min(1, fitWidth, this.zoomSelect.value === "page" ? fitHeight : Infinity);
+    const scale = zoom.toFixed(4);
+    if (this.paper.style.zoom !== scale) this.paper.style.zoom = scale;
+    if (!this.rendered || this.renderedFile !== this.selected.file) return;
+
+    const { used, printable, overflow } = this.pageMetrics();
+    const breaks = this.rendered.querySelectorAll("hr").length;
+    const pages = Math.ceil(used / printable);
+    const last = used - (pages - 1) * printable;
+    const usage = Math.min(100, Math.round(100 * used / printable));
+    const excess = Math.ceil(used - printable);
+    const label = breaks ? this.t("minimumPages", { pages: breaks + 1 })
+      : overflow ? this.t("overflowPages", { excess, pages }) : this.t("onePage", { usage });
+    const detail = breaks ? this.t("pageBreaks", { label }) : overflow
+      ? this.t("overflowPagesDetail", { pages, usage: Math.max(1, Math.round(100 * last / printable)), excess })
+      : this.t("onePageDetail", { usage, remaining: Math.max(0, Math.floor(printable - used)) });
+    this.pageStatus.toggleClass("is-overflowing", overflow || !!breaks);
+    this.paper.toggleClass("is-overflowing", overflow);
+    this.cutoff.hidden = !overflow;
+    this.fill.style.setProperty("--page-usage", `${Math.min(100, used / printable * 100)}%`);
+    this.setPageMeasurement(label, detail);
+    const undo = this.fitUndo.get(this.selected.file);
+    const canUndo = undo && sameLayout(undo.after, this.layout);
+    this.fitButton.hidden = !!this.cssEdit || (!canUndo && (!overflow || !!breaks));
+    this.fitButton.setText(canUndo ? this.t("undoFit") : this.t("fitOnePage"));
+  }
+
+  pageMetrics() {
+    const scale = Number(this.paper.style.zoom) || 1;
+    const used = this.rendered.getBoundingClientRect().height / scale / PX_PER_MM;
+    const printable = A4_HEIGHT - this.layout.top - this.layout.bottom;
+    return { used, printable, overflow: used - printable > 0.2 };
+  }
+
+  fitToPage() {
+    const resume = this.selected;
+    if (!resume || this.renderedFile !== resume.file || this.cssEdit) return;
+    const { file, classes } = resume;
+    const undo = this.fitUndo.get(file);
+    if (undo && sameLayout(undo.after, this.layout)) {
+      this.fitUndo.delete(file);
+      this.layout = { ...undo.before };
+      const history = this.layoutUndo.get(file);
+      if (history?.length && sameLayout(history.at(-1), undo.before)) history.pop();
+      this.alignLocks();
+      this.commit(false);
+      return;
+    }
+    if (!this.pageMetrics().overflow || this.rendered.querySelector("hr")) return;
+
+    const before = { ...this.layout };
+    const language = classes.includes("lapis-cv-zh") ? "zh" : "en";
+    const lineHeightFloor = language === "zh" ? 1.32 : 1.24;
+    const measure = () => {
+      applyMargins(this.paper, this.layout);
+      this.stylePreview(this.rendered);
+      return this.pageMetrics();
+    };
+    const decrement = (value, step, floor) => value <= floor
+      ? value : Math.max(floor, Number((value - step).toFixed(2)));
+    this.layout.density = "compact";
+    this.layout.lineHeight = DENSITIES.compact.lineHeight[language];
+    let page = measure();
+    while (page.overflow && this.layout.lineHeight > lineHeightFloor) {
+      this.layout.lineHeight = decrement(this.layout.lineHeight, 0.02, lineHeightFloor);
+      page = measure();
+    }
+    while (page.overflow && (this.layout.top > 7.5 || this.layout.bottom > 7.5)) {
+      this.layout.top = decrement(this.layout.top, 0.5, 7.5);
+      this.layout.bottom = decrement(this.layout.bottom, 0.5, 7.5);
+      page = measure();
+    }
+    while (page.overflow && this.layout.fontSize > 8.4) {
+      this.layout.fontSize = decrement(this.layout.fontSize, 0.05, 8.4);
+      page = measure();
+    }
+    if (page.overflow) {
+      this.layout = before;
+      this.update();
+      new Notice(this.t("fitCannotReach", { excess: Math.ceil(page.used - page.printable) }));
+      return;
+    }
+    this.fitUndo.set(file, { before, after: { ...this.layout } });
+    this.resetUndo.delete(file);
+    this.alignLocks();
+    this.commit();
+  }
+
+  rememberDraft() {
+    const resume = this.selected;
+    if (!resume || resume.protected) return;
+    if (sameLayout(this.layout, this.savedLayout)) this.draftLayouts.delete(resume.file);
+    else this.draftLayouts.set(resume.file, { key: noteLayoutKey(resume), layout: { ...this.layout } });
+  }
+
+  commit(record = true) {
+    if (!this.selected) return;
+    const { file, protected: readOnly, recognized } = this.selected;
+    const changed = !sameLayout(this.layout, this.lastCommittedLayout);
+    if (changed) {
+      if (record && recognized && !readOnly && this.lastCommittedLayout) {
+        const history = this.layoutUndo.get(file) ?? [];
+        history.push(this.lastCommittedLayout);
+        if (history.length > 10) history.shift();
+        this.layoutUndo.set(file, history);
+      }
+      this.lastCommittedLayout = { ...this.layout };
+      this.layoutFeedback = "";
+      if (readOnly) this.plugin.saveLocalLayout(file.path, this.layout);
+      else {
+        this.rememberDraft();
+        if (recognized && this.plugin.settings.autoSaveLayout) this.queueLayoutSave(file);
+      }
+    }
+    this.update();
+  }
+
+  undoLayoutChange() {
+    if (!this.selected || this.selected.protected) return;
+    const { file } = this.selected;
+    const prior = this.layoutUndo.get(file)?.pop();
+    if (!prior) return;
+    this.resetUndo.delete(file);
+    this.layout = { ...prior };
+    this.alignLocks();
+    this.commit(false);
+  }
+
+  queueLayoutSave(file) {
+    const win = this.stage.ownerDocument.defaultView;
+    let job = this.queuedLayout;
+    if (!job || job.timer === undefined) {
+      job = { file };
+      job.promise = new Promise(resolve => { job.done = resolve; });
+      this.queuedLayout = job;
+    } else {
+      win.clearTimeout(job.timer);
+    }
+    const save = async () => {
+      if (this.applyingLayout) {
+        job.timer = win.setTimeout(save, 50);
+        return;
+      }
+      job.timer = undefined;
+      try {
+        if (this.selected?.file === job.file && this.selected.recognized && !this.selected.protected
+          && this.plugin.settings.autoSaveLayout && !sameLayout(this.layout, this.savedLayout)) {
+          await this.saveNoteLayout(false);
+        }
+      } finally {
+        if (this.queuedLayout === job) this.queuedLayout = null;
+        job.done();
+        this.updateLayoutActions();
+      }
+    };
+    job.timer = win.setTimeout(save, 400);
+  }
+
+  async waitForLayoutSave() {
+    while (this.queuedLayout) await this.queuedLayout.promise;
+  }
+
+  async exportPdf() {
+    const resume = this.selected;
+    if (!resume || this.exportButton.disabled) return;
+    const { file } = resume;
+    const layout = { ...this.layout };
+    this.exporting = true;
+    this.updateExportButton();
+    try {
+      if (!await this.saveSource()) return;
+      await this.waitForLayoutSave();
+      if (file !== this.selected?.file) return;
+      this.plugin.assertEditorInSync(file, await this.app.vault.read(file));
+      await this.plugin.openNativeExport(file, this.leaf, layout);
+    } catch (error) {
+      new Notice(error.message || this.t("nativeExportFailed"));
+      console.error("CareerOS PDF export failed", error);
+    } finally {
+      this.exporting = false;
+      this.updateExportButton();
+    }
+  }
+}
+
+module.exports = class ResumeLayoutPlugin extends Plugin {
+  async onload() {
+    const data = await this.loadData();
+    this.settings = { ...DEFAULT_SETTINGS, ...data?.settings };
+    delete this.settings.interfaceLanguage;
+    this.uiLanguage = obsidianLanguage();
+    this.t = createTranslator(this.uiLanguage);
+    if (!Object.hasOwn(DENSITIES, this.settings.defaultDensity)) this.settings.defaultDensity = DEFAULT_SETTINGS.defaultDensity;
+    if (!Array.isArray(this.settings.protectedFolders)) this.settings.protectedFolders = [];
+    this.layouts = new Map(Object.entries(data?.layouts ?? {}));
+    this.lastPath = data?.lastPath;
+    this.saveQueue = Promise.resolve();
+    this.templates = new Map(Object.entries(BUILT_IN_TEMPLATE_CSS).map(([id, css]) => [id, this.themeRecord(id, css)]));
+    this.readingClasses = new WeakMap();
+    this.detectedLanguages = new WeakMap();
+    this.templateFolder = `${this.app.vault.configDir}/plugins/${this.manifest.id}/templates`;
+    await this.loadTemplates();
+
+    this.registerView(VIEW_TYPE, (leaf) => new ResumeLayoutView(leaf, this));
+    this.addSettingTab(new ResumeLayoutSettingTab(this.app, this));
+    this.addCommand({ id: "open", name: this.t("openCommand"), callback: () => void this.open() });
+    this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
+      const target = this.resumeForNote(file);
+      if (!target && file?.extension !== "md") return;
+      menu.addItem((item) => item
+        .setTitle(target ? target.file === file ? this.t("layoutThisResume") : this.t("layoutLinkedResume") : this.t("previewAsResume"))
+        .setIcon("file-text")
+        .onClick(() => void this.open((target?.file ?? file).path)));
+    }));
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => this.moveLayouts(file.path, oldPath)));
+    this.registerEvent(this.app.vault.on("delete", (file) => this.removeLayouts(file.path)));
+    const refresh = () => this.scheduleReadingStyles();
+    this.app.workspace.onLayoutReady(refresh);
+    this.registerEvent(this.app.workspace.on("active-leaf-change", refresh));
+    this.registerEvent(this.app.workspace.on("file-open", refresh));
+    this.registerEvent(this.app.workspace.on("layout-change", refresh));
+    this.registerEvent(this.app.metadataCache.on("changed", refresh));
+    this.registerMarkdownPostProcessor((element, context) => {
+      const root = element.closest(".print > .markdown-preview-view");
+      const file = this.app.vault.getAbstractFileByPath(context.sourcePath);
+      if (root) {
+        this.styleNativePrint(root, file);
+        if (root.dataset.careerosPrint) decorateResumeMarkup(element, root.classList.contains("lapis-cv-zh"));
+      } else {
+        const resume = this.resume(file);
+        if (resume) decorateResumeMarkup(element, resume.classes.includes("lapis-cv-zh"));
+      }
+    });
+  }
+
+  onunload() {
+    if (this.readingRefresh !== undefined) window.cancelAnimationFrame(this.readingRefresh);
+    this.forEachReadingView((root, file) => {
+      if (this.readingClasses.has(root)) this.clearReadingStyle(root, this.resume(file, true)?.declaredClasses);
+    });
+  }
+
+  resume(file, allowAny = false) {
+    if (file?.extension !== "md") return null;
+    const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+    const declaredClasses = [frontmatter?.cssclasses].flat().filter((entry) => typeof entry === "string")
+      .flatMap((entry) => entry.split(/[\s,]+/)).filter(Boolean);
+    const classes = [...declaredClasses];
+    const metadata = layoutMetadata(frontmatter);
+    const master = classes.includes("lapis-cv-master") || frontmatter.type === "master-resume";
+    const legacy = classes.includes("lapis-cv") && classes.includes("careeros-resume");
+    const recognized = legacy || !!(metadata.template || metadata.geometry || metadata.density)
+      || master || ["resume-draft", "tailored-resume"].includes(frontmatter.type);
+    if (!recognized && !allowAny) return null;
+    for (const required of ["lapis-cv", "careeros-resume"]) {
+      if (!classes.includes(required)) classes.push(required);
+    }
+    const explicitLanguage = classes.includes("lapis-cv-zh") || !!frontmatter.language;
+    if ((frontmatter.language === "zh" || (!explicitLanguage && this.detectedLanguages.get(file)))
+      && !classes.includes("lapis-cv-zh")) classes.push("lapis-cv-zh");
+    if (master && !classes.includes("lapis-cv-master")) classes.push("lapis-cv-master");
+    const chinese = classes.includes("lapis-cv-zh");
+    const job = this.linkedFile(frontmatter.job, file.path);
+    const jobProperties = job && this.app.metadataCache.getFileCache(job)?.frontmatter;
+    const title = jobProperties?.title;
+    const label = master ? this.t(chinese ? "zhMaster" : "enMaster")
+      : frontmatter.type === "tailored-resume"
+        ? this.t(chinese ? "zhTailored" : "enTailored", { title: title || file.parent?.name || file.basename })
+      : file.basename;
+    const source = master ? this.linkedFile(frontmatter.source, file.path) : null;
+    return {
+      file, classes, declaredClasses, label, master, source, explicitLanguage, recognized, ...metadata,
+      sourceLink: master && frontmatter.source, explicitProtection: frontmatter.resume_protected === true,
+      stale: frontmatter.stale === true, status: frontmatter.status, company: jobProperties?.company,
+    };
+  }
+
+  resumeForContent(resume, body) {
+    if (!resume.explicitLanguage) {
+      this.detectedLanguages.set(resume.file, guessChinese(body));
+      return this.resume(resume.file, true);
+    }
+    return resume;
+  }
+
+  themeRecord(id, raw) {
+    const metadata = raw.match(/^\/\* CareerOS theme: (.+?) \*\/\r?\n/u);
+    const builtIn = BUILT_IN_TEMPLATES.includes(id);
+    const customLabel = !builtIn && TEMPLATE_NAME.test(metadata?.[1] ?? "") ? metadata[1] : id;
+    return {
+      id,
+      label: THEME_LABELS[id] ?? customLabel,
+      css: metadata ? raw.slice(metadata[0].length) : raw,
+      raw,
+      builtIn,
+    };
+  }
+
+  themeName(theme) {
+    return theme.builtIn ? this.t(BUILT_IN_THEME_MESSAGES[theme.id]) : theme.label;
+  }
+
+  async loadTemplates() {
+    const adapter = this.app.vault.adapter;
+    try {
+      if (!await adapter.exists(this.templateFolder)) return;
+      const { files } = await adapter.list(this.templateFolder);
+      for (const path of files.sort((a, b) => a.localeCompare(b, "zh"))) {
+        const leaf = path.split("/").at(-1);
+        if (!leaf.endsWith(".css")) continue;
+        const id = leaf.slice(0, -4);
+        if (TEMPLATE_NAME.test(id) && id !== BASE_TEMPLATE && id !== "紧凑") {
+          this.templates.set(id, this.themeRecord(id, await adapter.read(path)));
+        }
+      }
+    } catch (error) {
+      console.error("CareerOS could not read resume templates", error);
+      new Notice(this.t("themesLoadFailed"));
+    }
+  }
+
+  templateId(name) {
+    if (typeof name !== "string" || !name) return undefined;
+    if (this.templates.has(name)) return name;
+    return [...this.templates.values()].find(theme => theme.label.toLowerCase() === name.toLowerCase())?.id;
+  }
+
+  noteLayout(resume) {
+    return layoutFor(resume.classes, {
+      ...resume.geometry,
+      density: resume.density || (resume.template === "紧凑" ? "compact" : this.settings.defaultDensity),
+      template: this.templateId(resume.template) ?? this.templateId(this.settings.defaultTemplate) ?? BASE_TEMPLATE,
+    });
+  }
+
+  previewLayout(resume) {
+    const canonical = this.noteLayout(resume);
+    const saved = this.layouts.get(resume.file.path);
+    if (!saved) return canonical;
+    if (resume.protected && saved.preview) {
+      return layoutFor(resume.classes, {
+        ...canonical, ...saved, template: this.templateId(saved.template) ?? canonical.template,
+      });
+    }
+    const values = resume.geometry || resume.density ? canonical : { ...canonical, ...saved };
+    return layoutFor(resume.classes, {
+      ...values,
+      density: resume.density || (resume.template === "紧凑" || (!resume.template && saved.template === "紧凑") ? "compact" : canonical.density),
+      template: resume.template ? canonical.template : this.templateId(saved.template) ?? canonical.template,
+    });
+  }
+
+  templateUsers(id) {
+    return this.app.vault.getMarkdownFiles().filter(file =>
+      this.templateId(this.app.metadataCache.getFileCache(file)?.frontmatter?.resume_style) === id,
+    );
+  }
+
+  async saveTemplate(label, css, original) {
+    if (!TEMPLATE_NAME.test(label) || [...BUILT_IN_TEMPLATES, "紧凑"].some(name => name.toLowerCase() === label.toLowerCase())) {
+      throw new Error(this.t("invalidThemeName"));
+    }
+    if (css.trim() && !scopedCss(css, ".resume-template-preview", document)) {
+      throw new Error(this.t("invalidThemeCss"));
+    }
+    const id = original?.id ?? label;
+    if ([...this.templates.values()].some(theme =>
+      theme.id !== id && [theme.label, theme.id].some(name => name.toLowerCase() === label.toLowerCase()))) {
+      throw new Error(this.t("duplicateTheme"));
+    }
+    const adapter = this.app.vault.adapter;
+    const path = `${this.templateFolder}/${id}.css`;
+    if (original) {
+      if (original.builtIn || await adapter.read(path) !== original.raw) throw new Error(this.t("themeEditStale"));
+      if (css !== original.css && this.templateUsers(id).some(file => this.isProtected(this.resume(file)))) {
+        throw new Error(this.t("themeProtected"));
+      }
+    } else if (this.templates.has(id) || await adapter.exists(path)) {
+      throw new Error(this.t("duplicateTheme"));
+    }
+    if (!await adapter.exists(this.templateFolder)) await adapter.mkdir(this.templateFolder);
+    const raw = label === id ? css : `/* CareerOS theme: ${label} */\n${css}`;
+    await adapter.write(path, raw);
+    this.templates.set(id, this.themeRecord(id, raw));
+    this.scheduleReadingStyles();
+    return id;
+  }
+
+  async deleteTemplate(id) {
+    const theme = this.templates.get(id);
+    if (!theme || theme.builtIn) throw new Error(this.t("customThemeRequired"));
+    if (this.templateUsers(id).length) throw new Error(this.t("themeStillInUse"));
+    const adapter = this.app.vault.adapter;
+    const path = `${this.templateFolder}/${id}.css`;
+    const bin = `${this.templateFolder}/.deleted`;
+    const deletedPath = `${bin}/${Date.now()}-${id}.css`;
+    if (await adapter.read(path) !== theme.raw) throw new Error(this.t("themeDeleteStale"));
+    if (!await adapter.exists(bin)) await adapter.mkdir(bin);
+    await adapter.rename(path, deletedPath);
+    this.deletedTemplate = { theme, path, deletedPath };
+    this.templates.delete(id);
+    this.scheduleReadingStyles();
+  }
+
+  async restoreTemplate() {
+    const deleted = this.deletedTemplate;
+    if (!deleted) throw new Error(this.t("noThemeToRestore"));
+    const { theme, path, deletedPath } = deleted;
+    const adapter = this.app.vault.adapter;
+    if (this.templateId(theme.id) || this.templateId(theme.label) || await adapter.exists(path)) {
+      throw new Error(this.t("duplicateTheme"));
+    }
+    await adapter.rename(deletedPath, path);
+    this.templates.set(theme.id, theme);
+    this.deletedTemplate = null;
+    this.scheduleReadingStyles();
+    return theme.id;
+  }
+
+  linkedFile(value, originPath) {
+    const path = typeof value === "string" && value.match(/^\[\[([^|#\]]+)/)?.[1];
+    return path ? this.app.metadataCache.getFirstLinkpathDest(path, originPath) : null;
+  }
+
+  resumeForNote(file) {
+    if (file?.extension !== "md") return null;
+    const direct = this.resume(file);
+    if (direct) return direct;
+
+    const properties = this.app.metadataCache.getFileCache(file)?.frontmatter;
+    if (properties?.type === "application") {
+      return this.resume(this.linkedFile(properties.resume, file.path));
+    }
+    const masters = this.resumes().filter(resume => resume.source === file);
+    return masters.length === 1 ? masters[0] : null;
+  }
+
+  resumes(all = false) {
+    return this.app.vault.getMarkdownFiles().map((file) => this.resume(file, all)).filter(Boolean)
+      .sort((a, b) => Number(b.master) - Number(a.master) || a.label.localeCompare(b.label, this.uiLanguage));
+  }
+
+  protectionReason(resume) {
+    if (resume.master) return "master";
+    if (resume.explicitProtection || resume.status === "source-preserved"
+      || this.settings.protectedFolders.some(folder => resume.file.path.startsWith(`${folder}/`))) return "protected";
+    const frozen = this.app.vault.getMarkdownFiles().some(file => {
+      const properties = this.app.metadataCache.getFileCache(file)?.frontmatter;
+      if (properties?.type !== "application") return false;
+      if ([properties.frozen_resume_markdown, properties.submitted_resume]
+        .some(link => this.linkedFile(link, file.path) === resume.file)) return true;
+      return PROTECTED_APPLICATION_STATES.has(properties.status)
+        && this.linkedFile(properties.resume, file.path) === resume.file;
+    });
+    return frozen ? "frozen" : null;
+  }
+
+  isProtected(resume) {
+    return !!this.protectionReason(resume);
+  }
+
+  async draftPath(file, name) {
+    const { vault } = this.app;
+    const folder = this.settings.draftLocationMode === "folder"
+      ? vaultFolder(this.settings.draftFolder || DRAFT_FOLDER, this.t)
+      : file?.parent?.path;
+    if (!folder || folder === "/") return vault.getAvailablePath(name, "md");
+    if (!vault.getAbstractFileByPath(folder)) {
+      try {
+        await vault.createFolder(folder);
+      } catch (error) {
+        if (!vault.getAbstractFileByPath(folder)) throw error;
+      }
+    }
+    return vault.getAvailablePath(`${folder}/${name}`, "md");
+  }
+
+  async createExampleResume() {
+    const path = await this.draftPath(null, this.t("sampleResume"));
+    const body = this.uiLanguage === "zh" ? [
+      "# 林安", "", "数据分析 · 示例城市", "",
+      "## 工作经历", "",
+      sourceEntryMarkup("数据分析师", "示例团队", "2023.06 – 至今"), "",
+      "- **指标维护**：整理周报的指标口径，补齐数据核对步骤。", "",
+      "## 项目经历", "",
+      sourceEntryMarkup("运营周报", "数据可视化", "2024.01 – 2024.06"), "",
+      "- **报表改进**：汇总现有数据，制作团队可直接查阅的周报。", "",
+      "## 核心技能", "", "- SQL、数据可视化、需求访谈", "",
+    ] : [
+      "# Alex Lin", "", "Data analysis · Example City", "",
+      "## Work Experience", "",
+      sourceEntryMarkup("Data Analyst", "Example Team", "Jun 2023 – Present"), "",
+      "- **Metrics maintenance**: Documented weekly reporting metrics and added data validation steps.", "",
+      "## Projects", "",
+      sourceEntryMarkup("Weekly Operations Report", "Data Visualization", "Jan 2024 – Jun 2024"), "",
+      "- **Reporting improvements**: Combined existing data into a weekly report the team could consult directly.", "",
+      "## Skills", "", "- SQL, data visualization, requirements interviews", "",
+    ];
+    const markdown = ["---", "type: resume-draft", `language: ${this.uiLanguage}`, "---", "", ...body].join("\n");
+    return this.app.vault.create(path, markdown);
+  }
+
+  async copyForEditing(resume, layout, body) {
+    if (body === undefined) {
+      const source = resume.source ?? resume.file;
+      if (resume.sourceLink && !resume.source) throw new Error(this.t("missingMasterSource"));
+      body = sourceParts(await this.app.vault.read(source)).body;
+    }
+    const title = resume.label.replace(/[\\/:*?"<>|]/g, " ").trim().slice(0, 90) || this.t("resume");
+    const path = await this.draftPath(resume.file, this.t("draftName", { name: title }));
+    const zh = resume.classes.includes("lapis-cv-zh");
+    const meta = [
+      "---",
+      "type: resume-draft",
+      `language: ${zh ? "zh" : "en"}`,
+      `resume_style: ${JSON.stringify(layout.template)}`,
+      `resume_density: ${layout.density}`,
+      "resume_layout:",
+      ...Object.entries(dimensions(layout)).map(([key, value]) => `  ${key}: ${value}`),
+      `draft_source: ${JSON.stringify(`[[${resume.file.path}]]`)}`,
+      "cssclasses: [lapis-cv, careeros-resume" + (zh ? ", lapis-cv-zh]" : "]"),
+      "---",
+      "",
+      "",
+    ].join("\n");
+    return this.app.vault.create(path, meta + body);
+  }
+
+  async writeNoteLayout(file, expected, layout) {
+    const resume = this.resume(file, true);
+    if (!resume || this.isProtected(resume) || this.app.vault.getAbstractFileByPath(file.path) !== file) {
+      throw new Error(this.t("editableLayoutRequired"));
+    }
+    this.assertEditorInSync(file, await this.app.vault.read(file));
+    await this.app.fileManager.processFrontMatter(file, properties => {
+      if (noteLayoutKey(layoutMetadata(properties)) !== expected) {
+        throw new Error(this.t("noteLayoutChanged"));
+      }
+      properties.resume_style = layout.template;
+      properties.resume_density = layout.density;
+      properties.resume_layout = dimensions(layout);
+    });
+    if (this.layouts.delete(file.path)) this.saveSettings();
+    this.scheduleReadingStyles();
+  }
+
+  async processResumeContent(file, transform) {
+    const resume = this.resume(file, true);
+    if (!resume || this.isProtected(resume) || this.app.vault.getAbstractFileByPath(file.path) !== file) {
+      throw new Error(this.t("editableResumeRequired"));
+    }
+    return this.app.vault.process(file, current => {
+      this.assertEditorInSync(file, current);
+      return transform(current);
+    });
+  }
+
+  async writeContent(file, before, after) {
+    return this.processResumeContent(file, current => {
+      if (current !== before) throw new Error(this.t("fileUpdated"));
+      return after;
+    });
+  }
+
+  async writeSourceBody(file, before, after) {
+    return this.processResumeContent(file, current => {
+      const body = editableBody(current);
+      if (body === after) return current;
+      if (body !== before) {
+        const error = new Error(this.t("sourceConflict"));
+        error.code = "CONFLICT";
+        throw error;
+      }
+      const next = withEditedBody(current, after);
+      if (!sourceParts(current).hasYaml && sourceParts(next).hasYaml) {
+        throw new Error(this.t("yamlRequired"));
+      }
+      return next;
+    });
+  }
+
+  assertEditorInSync(file, source) {
+    const expected = sourceText(source);
+    const hasPendingEdit = this.app.workspace.getLeavesOfType("markdown").some(({ view }) =>
+      view.file === file && view.getMode() === "source" && sourceText(view.editor.getValue()) !== expected,
+    );
+    if (hasPendingEdit) throw new Error(this.t("sourceBusy"));
+  }
+
+  async open(path, allowPreview = false) {
+    const { workspace, vault } = this.app;
+    let file;
+    if (path) {
+      file = vault.getAbstractFileByPath(path);
+      if (file?.extension !== "md") {
+        new Notice(this.t("noteNotFound"));
+        return;
+      }
+    } else {
+      file = this.resumeForNote(workspace.getActiveViewOfType(MarkdownView)?.file)?.file;
+      const recent = this.lastPath && vault.getAbstractFileByPath(this.lastPath);
+      if (!file && recent?.extension === "md") file = recent;
+      if (!file) {
+        const notes = vault.getMarkdownFiles().sort((a, b) => b.stat.mtime - a.stat.mtime);
+        for (const note of notes) {
+          const properties = this.app.metadataCache.getFileCache(note)?.frontmatter;
+          if (properties?.type !== "application" || properties.status !== "preparing") continue;
+          file = this.resumeForNote(note)?.file;
+          if (file) break;
+        }
+        file ??= notes.find(note => this.resume(note));
+        if (allowPreview) file ??= notes[0];
+      }
+    }
+    let [leaf] = workspace.getLeavesOfType(VIEW_TYPE);
+    if (!leaf) {
+      leaf = workspace.getLeaf("tab");
+      await leaf.setViewState({ type: VIEW_TYPE, active: true, state: { file: file?.path ?? "" } });
+    }
+    await workspace.revealLeaf(leaf);
+    if (!(leaf.view instanceof ResumeLayoutView)) return;
+    if (file && leaf.view.file !== file) await leaf.view.bindFile(file);
+    else if (file && path) await leaf.view.show(file);
+    if (!leaf.view.file && !allowPreview && vault.getMarkdownFiles().length) leaf.view.openPicker();
+    return leaf.view;
+  }
+
+  showSettings() {
+    this.app.setting.open();
+    this.app.setting.openTabById(this.manifest.id);
+  }
+
+  async openTheme(mode, id) {
+    this.app.setting.close();
+    const view = await this.open(undefined, true);
+    if (!view?.selected) {
+      new Notice(this.t("themeNeedsNote"));
+      return;
+    }
+    if (!await view.endSourceEdit()) return;
+    view.toggleInspector(false);
+    view.editTemplate(mode, id);
+  }
+
+  async deletedThemeFiles() {
+    const { adapter } = this.app.vault;
+    const folder = `${this.templateFolder}/.deleted`;
+    if (!await adapter.exists(folder)) return [];
+    return (await adapter.list(folder)).files.filter(path => path.endsWith(".css"));
+  }
+
+  updateSetting(key, value) {
+    this.settings[key] = value;
+    this.scheduleReadingStyles();
+    for (const { view } of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
+      if (view instanceof ResumeLayoutView && view.file) void view.show(view.file);
+    }
+    return this.saveSettings();
+  }
+
+  rememberFile(path) {
+    if (this.lastPath === path) return;
+    this.lastPath = path;
+    this.saveSettings();
+  }
+
+  saveLocalLayout(path, layout) {
+    this.layouts.set(path, { ...layout, preview: true });
+    this.saveSettings();
+  }
+
+  saveSettings() {
+    this.saveQueue = this.saveQueue.then(() => this.saveData({
+      settings: this.settings,
+      layouts: Object.fromEntries(this.layouts),
+      lastPath: this.lastPath,
+    })).catch((error) => {
+      new Notice(this.t("settingsSaveFailed"));
+      console.error("CareerOS resume layout settings failed to save", error);
+    });
+    return this.saveQueue;
+  }
+
+  moveLayouts(newPath, oldPath) {
+    const move = (path) => path === oldPath || path?.startsWith(`${oldPath}/`)
+      ? newPath + path.slice(oldPath.length)
+      : path;
+    let changed = false;
+    for (const [path, layout] of [...this.layouts]) {
+      const destination = move(path);
+      if (destination === path) continue;
+      this.layouts.delete(path);
+      this.layouts.set(destination, layout);
+      changed = true;
+    }
+    const lastPath = move(this.lastPath);
+    if (lastPath !== this.lastPath) {
+      this.lastPath = lastPath;
+      changed = true;
+    }
+    if (changed) this.saveSettings();
+  }
+
+  removeLayouts(folderOrFile) {
+    const removed = (path) => path === folderOrFile || path?.startsWith(`${folderOrFile}/`);
+    let changed = false;
+    for (const path of this.layouts.keys()) {
+      if (!removed(path)) continue;
+      this.layouts.delete(path);
+      changed = true;
+    }
+    if (removed(this.lastPath)) {
+      this.lastPath = undefined;
+      changed = true;
+    }
+    if (changed) this.saveSettings();
+  }
+
+  async revealNote(file, focus) {
+    const { vault, workspace } = this.app;
+    if (vault.getAbstractFileByPath(file.path) !== file) throw new Error(this.t("originalNoteMissing"));
+    let leaf = workspace.getLeavesOfType("markdown").find((item) => item.getViewState().state?.file === file.path);
+    if (!leaf) {
+      leaf = workspace.getLeaf("tab");
+      await leaf.openFile(file, { state: { mode: "preview" } });
+    }
+    await workspace.revealLeaf(leaf);
+    workspace.setActiveLeaf(leaf, { focus });
+  }
+
+  async openNativeExport(file, studioLeaf, layout) {
+    const { vault, workspace } = this.app;
+    if (vault.getAbstractFileByPath(file.path) !== file) throw new Error(this.t("exportNoteMissing"));
+    if (typeof vault.getConfig !== "function" || typeof vault.setConfig !== "function") {
+      throw new Error(this.t("nativeExportUnavailable"));
+    }
+    let leaf = workspace.getLeavesOfType("markdown").find(item => item.getViewState().state?.file === file.path);
+    const temporary = !leaf;
+    try {
+      if (!leaf) {
+        leaf = workspace.getLeaf("tab");
+        await leaf.openFile(file, { active: false, state: { mode: "preview" } });
+      }
+      await leaf.loadIfDeferred?.();
+      // The desktop native exporter captures the file and settings when it opens.
+      const noteView = leaf.view;
+      if (studioLeaf.view.file !== file || !(noteView instanceof MarkdownView) || noteView.file !== file) {
+        throw new Error(this.t("exportNoteOpenFailed"));
+      }
+      if (typeof noteView.printToPdf !== "function") throw new Error(this.t("nativeExportUnavailable"));
+      const previous = vault.getConfig("pdfExportSettings");
+      try {
+        vault.setConfig("pdfExportSettings", {
+          ...previous, includeName: false, pageSize: "A4", landscape: false, margin: "1", downscalePercent: 100,
+        });
+        this.printRequest = { file, studioLeaf, layout };
+        noteView.printToPdf();
+      } catch (error) {
+        this.printRequest = null;
+        throw error;
+      } finally {
+        vault.setConfig("pdfExportSettings", previous);
+      }
+    } finally {
+      if (temporary) {
+        leaf?.detach();
+        // Closing the temporary note can activate its neighboring tab.
+        if (studioLeaf.view.file === file && workspace.activeLeaf !== studioLeaf) {
+          workspace.setActiveLeaf(studioLeaf, { focus: false });
+        }
+      }
+    }
+  }
+
+  scheduleReadingStyles() {
+    if (this.readingRefresh !== undefined) return;
+    this.readingRefresh = window.requestAnimationFrame(() => {
+      this.readingRefresh = undefined;
+      this.forEachReadingView((root, file, view) => void this.styleReadingNote(root, file, view));
+    });
+  }
+
+  forEachReadingView(callback) {
+    for (const { view } of this.app.workspace.getLeavesOfType("markdown")) {
+      if (!(view instanceof MarkdownView)) continue;
+      const preview = view.previewMode?.containerEl;
+      const root = preview?.matches(".markdown-preview-view") ? preview : view.contentEl.querySelector(".markdown-reading-view > .markdown-preview-view");
+      if (root) callback(root, view.file, view);
+    }
+  }
+
+  async styleReadingNote(root, file, view) {
+    let resume = this.resume(file);
+    if (!resume) {
+      if (this.readingClasses.has(root)) this.clearReadingStyle(root, this.resume(file, true)?.declaredClasses);
+      return;
+    }
+    if (!resume.explicitLanguage) {
+      try {
+        const contents = await this.app.vault.cachedRead(file);
+        if (view.file !== file) return;
+        resume = this.resume(file);
+        if (!resume) return;
+        resume = this.resumeForContent(resume, editableBody(contents));
+      } catch (error) {
+        console.error("Could not read resume language", error);
+      }
+    }
+    const added = [...resume.classes.filter(cssClass => !resume.declaredClasses.includes(cssClass)),
+      "resume-layout-reading", "resume-layout-styled"];
+    for (const cssClass of this.readingClasses.get(root) ?? []) {
+      if (!resume.declaredClasses.includes(cssClass) && !added.includes(cssClass)) root.classList.remove(cssClass);
+    }
+    root.classList.add(...added);
+    this.readingClasses.set(root, added);
+    const layout = this.noteLayout(resume);
+    applyMargins(root, layout);
+    applyTypography(root, layout);
+    applyTemplate(root, this.templates.get(layout.template)?.css);
+    decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+  }
+
+  clearReadingStyle(root, declaredClasses = []) {
+    for (const cssClass of this.readingClasses.get(root) ?? []) {
+      if (!declaredClasses.includes(cssClass)) root.classList.remove(cssClass);
+    }
+    this.readingClasses.delete(root);
+    delete root.dataset.resumeDensity;
+    for (const { key } of MARGINS) root.style.removeProperty(`--resume-margin-${key}`);
+    root.style.removeProperty("--text-size");
+    root.style.removeProperty("--line-height");
+    applyTemplate(root, null);
+  }
+
+  styleNativePrint(root, file) {
+    if (root.dataset.careerosPrint) return;
+    const request = this.printRequest;
+    const fromStudio = request && request.file === file && request.studioLeaf === this.app.workspace.activeLeaf;
+    const resume = this.resume(file, fromStudio);
+    if (!resume) return;
+    const layout = fromStudio ? request.layout : this.noteLayout(resume);
+    if (fromStudio) this.printRequest = null;
+
+    // The print root is removed by Obsidian when this export finishes.
+    root.dataset.careerosPrint = "true";
+    root.classList.add("resume-layout-surface", "resume-layout-styled", ...resume.classes);
+    applyTypography(root, layout);
+    applyTemplate(root, this.templates.get(layout.template)?.css);
+    decorateResumeMarkup(root, resume.classes.includes("lapis-cv-zh"));
+    const { top, right, bottom, left } = layout;
+    const style = root.ownerDocument.createElement("style");
+    style.textContent = `@media print { @page { size: A4 portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
+    root.append(style);
+  }
+};

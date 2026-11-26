@@ -1,0 +1,1469 @@
+.workspace-leaf-content[data-type="careeros-resume-layout"] > .view-content {
+  padding: 0;
+}
+
+.careeros-resume-layout {
+  --studio-bg: var(--co-bg, var(--background-primary));
+  --studio-panel: var(--co-surface, var(--background-primary));
+  --studio-inset: var(--co-muted-bg, var(--background-secondary));
+  --studio-border: var(--co-border, var(--background-modifier-border));
+  --studio-ink: var(--co-ink, var(--text-normal));
+  --studio-muted: var(--co-muted, var(--text-muted));
+  --studio-accent: var(--co-accent, var(--text-accent));
+  --studio-hover: var(--co-hover, var(--background-modifier-hover));
+  --studio-warning: #a73a35;
+  --studio-inspector: 276px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--studio-ink);
+  background: var(--studio-bg);
+  container-type: inline-size;
+}
+
+body.theme-dark .careeros-resume-layout { --studio-warning: #f2a8a2; }
+
+.careeros-resume-layout [hidden] { display: none !important; }
+
+.careeros-resume-layout .resume-layout-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  min-height: 50px;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--studio-border);
+  background: var(--studio-panel);
+}
+
+.careeros-resume-layout :is(.resume-layout-identity, .resume-layout-header-center, .resume-layout-actions) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.careeros-resume-layout .resume-layout-header-center { gap: 12px; }
+.careeros-resume-layout .resume-layout-actions { justify-self: end; }
+
+.careeros-resume-layout button:not(.mod-cta) {
+  background: var(--studio-inset);
+  color: var(--studio-ink);
+  box-shadow: none;
+}
+
+.careeros-resume-layout button:not(.mod-cta):hover {
+  background: var(--studio-hover);
+}
+
+.careeros-resume-layout button.mod-cta {
+  background: var(--co-cta-bg, var(--interactive-accent));
+  color: var(--co-cta-ink, var(--text-on-accent));
+  box-shadow: none;
+}
+
+.careeros-resume-layout button.mod-cta:hover { filter: brightness(1.09); }
+
+.careeros-resume-layout button.resume-layout-picker {
+  height: 36px;
+  min-width: 0;
+  max-width: 100%;
+  gap: 8px;
+  padding-inline: 8px;
+  justify-content: start;
+  background: transparent;
+}
+
+.careeros-resume-layout .resume-layout-identity-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  text-align: start;
+  line-height: 1.16;
+}
+
+.careeros-resume-layout :is(.resume-layout-title, .resume-layout-path) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout .resume-layout-title { font-size: 13px; font-weight: 650; }
+.careeros-resume-layout .resume-layout-path { font-size: 10px; color: var(--studio-muted); }
+
+.careeros-resume-layout .resume-layout-picker-icon {
+  display: inline-flex;
+  color: var(--studio-muted);
+}
+
+.careeros-resume-layout .resume-layout-picker-icon svg { width: 13px; height: 13px; }
+
+.careeros-resume-layout .resume-layout-icon-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex: none;
+}
+
+.careeros-resume-layout .resume-layout-icon-button svg { width: 15px; height: 15px; }
+.careeros-resume-layout .resume-layout-actions > :is(.mod-cta, .resume-layout-edit-button) {
+  min-height: 30px;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout select.dropdown {
+  color: var(--studio-ink);
+  background-color: var(--studio-inset);
+  box-shadow: none;
+}
+
+.careeros-resume-layout .resume-layout-zoom { min-height: 29px; font-size: 12px; }
+
+.careeros-resume-layout .resume-layout-page-status {
+  display: grid;
+  gap: 5px;
+  min-width: 68px;
+  color: var(--studio-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout .resume-layout-page-progress {
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--studio-border);
+}
+
+.careeros-resume-layout .resume-layout-page-progress::after {
+  display: block;
+  width: var(--page-usage, 0%);
+  height: 100%;
+  background: var(--co-ready, var(--studio-accent));
+  content: "";
+}
+
+.careeros-resume-layout .resume-layout-page-status.is-overflowing { color: var(--studio-warning); }
+.careeros-resume-layout .resume-layout-fit-button { flex-shrink: 0; white-space: nowrap; font-size: 12px; }
+.careeros-resume-layout .is-overflowing .resume-layout-page-progress::after { background: var(--studio-warning); }
+
+.careeros-resume-layout .resume-layout-body {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr) var(--studio-inspector);
+  flex: 1;
+  min-height: 0;
+}
+
+.careeros-resume-layout .resume-layout-body:has(.resume-layout-inspector[hidden]):not(.is-source-editing) {
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+
+.careeros-resume-layout .resume-layout-body.is-source-editing {
+  grid-template: minmax(0, 1fr) / repeat(2, minmax(0, 1fr));
+}
+
+.careeros-resume-layout .resume-layout-source {
+  display: flex;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border-inline-start: 1px solid var(--studio-border);
+  background: var(--studio-panel);
+  container: resume-source / inline-size;
+}
+
+.careeros-resume-layout .resume-layout-source-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  min-height: 38px;
+  gap: 6px;
+  padding: 4px 9px;
+  border-bottom: 1px solid var(--studio-border);
+  color: var(--studio-muted);
+  font-size: 12px;
+}
+
+.careeros-resume-layout :is(.resume-layout-source-tools, .resume-layout-source-group, .resume-layout-source-info) {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.careeros-resume-layout .resume-layout-source-tools { flex: none; }
+.careeros-resume-layout .resume-layout-source-info { min-width: 0; justify-content: flex-end; }
+.careeros-resume-layout .resume-layout-source-group + .resume-layout-source-group {
+  margin-inline-start: 2px;
+  padding-inline-start: 5px;
+  border-inline-start: 1px solid var(--studio-border);
+}
+
+.careeros-resume-layout .resume-layout-source-header button {
+  display: inline-flex;
+  flex: none;
+  min-width: 28px;
+  height: 28px;
+  align-items: center;
+  gap: 4px;
+  padding-inline: 7px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--studio-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout .resume-layout-source-header button > span { display: inline-flex; align-items: center; }
+.careeros-resume-layout .resume-layout-source-header button svg { width: 14px; height: 14px; }
+.careeros-resume-layout .resume-layout-source-header .resume-layout-source-chevron svg { width: 11px; height: 11px; }
+
+.careeros-resume-layout button.resume-layout-source-entry-button {
+  background: var(--studio-inset);
+  color: var(--studio-ink);
+  font-weight: 600;
+}
+
+.careeros-resume-layout .resume-layout-source-header button:is([aria-pressed="true"], [aria-expanded="true"], .is-current-entry) {
+  background: color-mix(in srgb, var(--studio-accent) 12%, var(--studio-panel));
+  color: var(--studio-accent);
+}
+
+.careeros-resume-layout .resume-layout-source-header button:disabled { opacity: 0.4; }
+.careeros-resume-layout .resume-layout-source-header button.resume-layout-source-help { width: 25px; min-width: 25px; padding: 0; }
+.careeros-resume-layout .resume-layout-source-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.careeros-resume-layout .resume-layout-source-status::before {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-inline-end: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 0.2em;
+  content: "";
+}
+
+.careeros-resume-layout .resume-layout-source-status.is-pending { color: var(--studio-accent); }
+.careeros-resume-layout .resume-layout-source-status.has-error { color: var(--studio-warning); }
+
+@container resume-source (max-width: 340px) {
+  .careeros-resume-layout .resume-layout-source-header { padding-inline: 5px; gap: 4px; }
+  .careeros-resume-layout .resume-layout-source-header :is(.resume-layout-source-caption, .resume-layout-source-entry-icon) { display: none; }
+  .careeros-resume-layout .resume-layout-source-group + .resume-layout-source-group { margin-inline-start: 0; padding-inline-start: 3px; }
+}
+
+.careeros-resume-layout .resume-layout-source-popover {
+  position: absolute;
+  z-index: 12;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--studio-border);
+  border-radius: 9px;
+  background: var(--studio-panel);
+  box-shadow: 0 8px 22px #0002;
+  font-size: 12px;
+}
+
+.careeros-resume-layout .resume-layout-source-entry {
+  width: min(560px, calc(100% - 16px));
+  container: resume-entry / inline-size;
+}
+
+.careeros-resume-layout .resume-layout-source-entry-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr));
+  grid-template-areas: "title subtitle date";
+  gap: 8px 10px;
+  color: var(--studio-muted);
+}
+
+.careeros-resume-layout .resume-layout-entry-title { grid-area: title; }
+.careeros-resume-layout .resume-layout-entry-subtitle { grid-area: subtitle; }
+.careeros-resume-layout .resume-layout-entry-date { grid-area: date; }
+
+@container resume-entry (max-width: 424px) {
+  .careeros-resume-layout .resume-layout-source-entry-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "title date" "subtitle subtitle";
+  }
+}
+
+.careeros-resume-layout .resume-layout-source-entry input {
+  width: 100%;
+  min-width: 0;
+}
+
+.careeros-resume-layout .resume-layout-entry-preview {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  min-height: 31px;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--studio-border);
+}
+
+.careeros-resume-layout .resume-layout-entry-preview-heading { min-width: 0; }
+.careeros-resume-layout .resume-layout-entry-preview :is(.resume-layout-entry-preview-heading, .resume-layout-entry-preview-date) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.careeros-resume-layout .resume-layout-entry-preview-subtitle { margin-inline-start: 6px; color: var(--studio-muted); }
+.careeros-resume-layout .resume-layout-entry-preview-date { flex: 0 1 auto; max-width: 48%; color: var(--studio-muted); text-align: end; font-variant-numeric: tabular-nums; }
+.careeros-resume-layout .resume-layout-source-entry-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
+.careeros-resume-layout .resume-layout-source-help-panel { width: min(215px, calc(100% - 16px)); }
+.careeros-resume-layout .resume-layout-source-help-panel dl { display: grid; grid-template-columns: max-content 1fr; align-items: center; gap: 7px 9px; margin: 0; }
+.careeros-resume-layout .resume-layout-source-help-panel dd { margin: 0; color: var(--studio-muted); }
+
+.careeros-resume-layout .resume-layout-source-conflict {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.careeros-resume-layout .resume-layout-source-conflict-message { flex: 1 1 100%; color: var(--studio-warning); font-size: 12px; }
+
+.resume-layout-recovery .modal-close-button { display: none; }
+
+.resume-layout-recovery textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 12em;
+  font-family: var(--font-monospace);
+  resize: vertical;
+}
+
+.careeros-resume-layout .resume-layout-source textarea {
+  box-sizing: border-box;
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  padding: 14px 18px 28px;
+  border: 0;
+  border-radius: 0;
+  color: var(--studio-ink);
+  caret-color: var(--studio-ink);
+  background: var(--studio-bg);
+  box-shadow: none;
+  font: 14px/1.7 var(--font-monospace, monospace);
+  resize: none;
+  tab-size: 2;
+}
+
+.careeros-resume-layout .resume-layout-source textarea::selection {
+  background: color-mix(in srgb, var(--studio-accent) 35%, transparent);
+}
+
+.careeros-resume-layout .resume-layout-stage {
+  min-width: 0;
+  padding: 18px;
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+  background-color: var(--co-paper-surround, var(--background-secondary));
+  background-image: radial-gradient(ellipse at 50% 32%, color-mix(in srgb, var(--studio-panel), transparent 22%), transparent 74%);
+}
+
+.careeros-resume-layout .resume-layout-empty:not([hidden]) {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+  color: var(--studio-muted);
+  text-align: center;
+}
+
+.careeros-resume-layout .resume-layout-empty-content { display: grid; justify-items: center; gap: 12px; }
+.careeros-resume-layout .resume-layout-empty-content p { margin: 0; }
+.careeros-resume-layout .resume-layout-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+.careeros-resume-layout .resume-layout-paper {
+  box-sizing: border-box;
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  margin-inline: auto;
+  padding: var(--resume-margin-top) var(--resume-margin-right) var(--resume-margin-bottom) var(--resume-margin-left);
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(49, 61, 74, 0.12), 0 2px 7px rgba(9, 17, 29, 0.14), 0 16px 36px -12px rgba(9, 17, 29, 0.38);
+  color-scheme: light;
+}
+
+.careeros-resume-layout .resume-layout-paper.is-overflowing {
+  background-image: linear-gradient(to bottom, #fff 0 297mm, #e1e5eb 297mm, #fff calc(297mm + 2mm));
+}
+
+.careeros-resume-layout .resume-layout-rendered {
+  display: flow-root;
+  min-width: 0;
+  color: var(--text-normal);
+}
+
+.careeros-resume-layout .resume-layout-rendered .resume-layout-current-block {
+  outline: 1px solid #86a9cc;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.careeros-resume-layout .resume-layout-buffer {
+  position: absolute;
+  top: var(--resume-margin-top);
+  inset-inline: var(--resume-margin-left) var(--resume-margin-right);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.careeros-resume-layout .resume-layout-guide {
+  --guide-ink: #6582a3;
+  position: absolute;
+  box-sizing: border-box;
+  top: var(--resume-margin-top);
+  right: var(--resume-margin-right);
+  left: var(--resume-margin-left);
+  height: calc(297mm - var(--resume-margin-top) - var(--resume-margin-bottom));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.careeros-resume-layout .resume-layout-crop {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  opacity: 0.4;
+  border: 0 solid var(--guide-ink);
+}
+
+.careeros-resume-layout .resume-layout-guide.is-guides-muted .resume-layout-crop { opacity: 0; }
+.careeros-resume-layout .resume-layout-guide:has(.resume-layout-margin-handle:is(:hover, .is-dragging)) .resume-layout-crop { opacity: 0.7; }
+
+.careeros-resume-layout .resume-layout-crop.is-top-left { top: 0; left: 0; border-top-width: 1px; border-left-width: 1px; }
+.careeros-resume-layout .resume-layout-crop.is-top-right { top: 0; right: 0; border-top-width: 1px; border-right-width: 1px; }
+.careeros-resume-layout .resume-layout-crop.is-bottom-left { bottom: 0; left: 0; border-bottom-width: 1px; border-left-width: 1px; }
+.careeros-resume-layout .resume-layout-crop.is-bottom-right { bottom: 0; right: 0; border-bottom-width: 1px; border-right-width: 1px; }
+
+.careeros-resume-layout .resume-layout-margin-handle {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+  border: 0 dashed transparent;
+}
+
+.careeros-resume-layout .resume-layout-margin-handle:is(:hover, .is-dragging, .is-focused) {
+  border-color: var(--guide-ink);
+}
+
+.careeros-resume-layout .resume-layout-margin-handle:is(.is-top, .is-bottom) { inset-inline: 0; height: 10px; cursor: ns-resize; }
+.careeros-resume-layout .resume-layout-margin-handle.is-top { bottom: 100%; border-bottom-width: 1px; }
+.careeros-resume-layout .resume-layout-margin-handle.is-bottom { top: 100%; border-top-width: 1px; }
+.careeros-resume-layout .resume-layout-margin-handle:is(.is-left, .is-right) { inset-block: 0; width: 10px; cursor: ew-resize; }
+.careeros-resume-layout .resume-layout-margin-handle.is-left { right: 100%; border-right-width: 1px; }
+.careeros-resume-layout .resume-layout-margin-handle.is-right { left: 100%; border-left-width: 1px; }
+
+.careeros-resume-layout .resume-layout-margin-handle:is(:hover, .is-dragging, .is-focused)::after {
+  position: absolute;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #304761;
+  color: white;
+  font: 11px/1.5 var(--font-interface);
+  pointer-events: none;
+  white-space: nowrap;
+  content: attr(data-guide-value);
+}
+
+.careeros-resume-layout .resume-layout-margin-handle:is(.is-top, .is-bottom)::after {
+  left: var(--guide-position, 50%);
+  transform: translateX(-50%);
+}
+
+.careeros-resume-layout .resume-layout-margin-handle.is-top::after { bottom: 7px; }
+.careeros-resume-layout .resume-layout-margin-handle.is-bottom::after { top: 7px; }
+.careeros-resume-layout .resume-layout-margin-handle:is(.is-left, .is-right)::after { top: var(--guide-position, 50%); }
+.careeros-resume-layout .resume-layout-margin-handle.is-left::after { left: 0; }
+.careeros-resume-layout .resume-layout-margin-handle.is-right::after { right: 0; }
+
+.careeros-resume-layout .resume-layout-cutoff {
+  position: absolute;
+  top: calc(297mm - var(--resume-margin-bottom));
+  inset-inline: 3mm;
+  border-top: 1px dashed #b14b43;
+  pointer-events: none;
+}
+
+.careeros-resume-layout .resume-layout-cutoff span {
+  position: absolute;
+  right: 0;
+  padding: 1px 4px;
+  color: #a13530;
+  background: #fff6f4;
+  font-size: 10px;
+}
+
+.careeros-resume-layout .resume-layout-inspector {
+  min-width: 0;
+  padding: 14px;
+  overflow: auto;
+  border-inline-start: 1px solid var(--studio-border);
+  background: var(--studio-panel);
+  font-size: var(--font-ui-small);
+}
+
+.careeros-resume-layout :is(.resume-layout-panels, .resume-layout-template-actions, .resume-layout-content-actions, .resume-layout-locks) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.careeros-resume-layout .resume-layout-panels {
+  margin-bottom: 14px;
+  padding: 3px;
+  border: 1px solid var(--studio-border);
+  border-radius: 8px;
+  background: var(--studio-inset);
+}
+
+.careeros-resume-layout .resume-layout-panels button {
+  flex: 1;
+  min-height: 26px;
+  color: var(--studio-muted);
+  background: transparent;
+}
+
+.careeros-resume-layout .resume-layout-panels button[aria-pressed="true"] {
+  color: var(--studio-ink);
+  background: var(--studio-panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.careeros-resume-layout .resume-layout-template-controls {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 13px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.careeros-resume-layout :is(.resume-layout-template-controls, .resume-layout-css-panel) label,
+.resume-layout-modal-form label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.careeros-resume-layout .resume-layout-template-controls select { width: 100%; min-width: 0; }
+
+.careeros-resume-layout .resume-layout-theme-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px;
+}
+
+.careeros-resume-layout .resume-layout-density {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.careeros-resume-layout .resume-layout-density button { padding-inline: 4px; }
+.careeros-resume-layout .resume-layout-density button[aria-pressed="true"] {
+  color: var(--studio-accent);
+  background: var(--co-accent-soft, var(--studio-inset));
+}
+
+.careeros-resume-layout :is(.resume-layout-fine-tune, .resume-layout-css-examples) summary,
+.resume-layout-settings details summary {
+  cursor: pointer;
+  padding-block: 8px;
+}
+
+.careeros-resume-layout .resume-layout-stale {
+  width: fit-content;
+  margin: 0 auto 12px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: var(--studio-panel);
+  color: var(--studio-warning);
+  font-size: var(--font-ui-small);
+}
+
+.careeros-resume-layout .resume-layout-css-panel h3 {
+  margin: 12px 0;
+  font-size: var(--font-ui-medium);
+}
+
+.careeros-resume-layout .resume-layout-css-panel form { display: grid; gap: 10px; }
+
+.careeros-resume-layout .resume-layout-css-editor {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  tab-size: 2;
+  font: 12px/1.5 var(--font-monospace);
+}
+
+.careeros-resume-layout .resume-layout-css-examples pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 7px;
+  border-radius: 5px;
+  background: var(--studio-inset);
+}
+
+.careeros-resume-layout .resume-layout-section-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.careeros-resume-layout .resume-layout-section-suggestions button {
+  border-radius: 999px;
+  font-size: var(--font-ui-smaller);
+}
+
+.resume-layout-settings details { margin-top: var(--size-4-4); }
+
+.careeros-resume-layout .resume-layout-content {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.careeros-resume-layout .resume-layout-section-list { display: grid; gap: 6px; }
+
+.careeros-resume-layout .resume-layout-section-row {
+  position: relative;
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 5px;
+  border: 1px solid var(--studio-border);
+  border-radius: var(--co-radius, 6px);
+}
+
+.careeros-resume-layout .resume-layout-section-row:is(.is-drop-before, .is-drop-after)::before {
+  position: absolute;
+  inset-inline: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--studio-accent);
+  content: "";
+}
+
+.careeros-resume-layout .resume-layout-section-row.is-drop-before::before { top: -4px; }
+.careeros-resume-layout .resume-layout-section-row.is-drop-after::before { bottom: -4px; }
+.careeros-resume-layout .resume-layout-section-row.is-sortable { cursor: grab; touch-action: none; user-select: none; }
+.careeros-resume-layout .resume-layout-section-row.is-dragging { cursor: grabbing; opacity: 0.5; }
+
+.careeros-resume-layout .resume-layout-section-row .resume-layout-section-label {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  min-height: 26px;
+  padding: 2px 4px;
+  justify-content: start;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: transparent;
+}
+
+.careeros-resume-layout .resume-layout-section-grip { display: inline-flex; color: var(--studio-muted); }
+.careeros-resume-layout .resume-layout-section-row button:not(.resume-layout-section-label) { width: 26px; height: 26px; padding: 0; }
+
+.resume-layout-modal-hint,
+.careeros-resume-layout .resume-layout-hint {
+  color: var(--co-muted, var(--text-muted));
+  font-size: var(--font-ui-smaller);
+  line-height: 1.45;
+}
+
+.resume-layout-modal-hint:empty,
+.careeros-resume-layout .resume-layout-hint:empty { display: none; }
+
+.careeros-resume-layout .resume-layout-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.careeros-resume-layout .resume-layout-section-heading h3 { margin: 0; font-size: var(--font-ui-small); font-weight: 650; }
+
+.careeros-resume-layout .resume-layout-locks { margin-top: 7px; }
+.careeros-resume-layout .resume-layout-locks button { min-height: 24px; font-size: 11px; }
+.careeros-resume-layout .resume-layout-locks button[aria-pressed="true"] { color: var(--studio-accent); background: var(--co-accent-soft, var(--studio-inset)); }
+
+.careeros-resume-layout .resume-layout-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
+  margin: 9px 0 15px;
+}
+
+.careeros-resume-layout .resume-layout-field-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  color: var(--studio-muted);
+}
+
+.careeros-resume-layout .resume-layout-field input { display: block; width: 100%; margin: 5px 0 0; }
+.careeros-resume-layout .resume-layout-value { color: var(--studio-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.careeros-resume-layout button.resume-layout-reset {
+  height: auto;
+  padding: 3px 6px;
+  font-size: var(--font-ui-smaller);
+  color: var(--studio-muted);
+  background: transparent;
+}
+
+.careeros-resume-layout .resume-layout-toggle { display: flex; align-items: center; gap: 7px; margin-block: 11px; color: var(--studio-muted); }
+.careeros-resume-layout .resume-layout-save { display: grid; gap: 6px; justify-items: start; }
+
+.careeros-resume-layout :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--studio-accent); outline-offset: 2px; }
+
+.resume-layout-surface.lapis-cv-master > :is(
+  h1, div:has(> h1), .callout[data-callout="info"], div:has(> .callout[data-callout="info"])
+) {
+  display: none !important;
+}
+
+.resume-layout-surface.lapis-cv-master .markdown-embed :is(
+  .markdown-embed-content, .markdown-preview-view, .markdown-preview-sizer
+) {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+@container (max-width: 730px) {
+  .careeros-resume-layout .resume-layout-body { --studio-inspector: 216px; }
+  .careeros-resume-layout .resume-layout-header {
+    display: flex;
+    flex-wrap: wrap;
+    padding-inline: 9px;
+    gap: 6px 8px;
+  }
+  .careeros-resume-layout .resume-layout-identity { flex: 1 1 140px; }
+  .careeros-resume-layout .resume-layout-actions { margin-inline-start: auto; }
+  .careeros-resume-layout :is(.resume-layout-stage, .resume-layout-inspector) { padding: 11px; }
+}
+
+@container (max-width: 490px) {
+  .careeros-resume-layout .resume-layout-header-center { order: 1; flex: 1 1 100%; }
+  .careeros-resume-layout .resume-layout-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(92px, 41%);
+  }
+  .careeros-resume-layout .resume-layout-inspector { border-inline-start: 0; border-top: 1px solid var(--studio-border); }
+  .careeros-resume-layout .resume-layout-body.is-source-editing {
+    grid-template: minmax(0, 1fr) minmax(0, 1fr) / minmax(0, 1fr);
+  }
+  .careeros-resume-layout .resume-layout-source { border-inline-start: 0; border-top: 1px solid var(--studio-border); }
+}
+
+@media print {
+  .print > .resume-layout-surface {
+    --file-margins: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+}
+
+/*
+ * Resume paper styles and icons adapted from LapisCV v2.0.1
+ * https://github.com/BingyanStudio/LapisCV
+ *
+ * MIT License
+ *
+ * Copyright (c) 2024 YiNN
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+/*
+ * CareerOS refined editorial port of LapisCV Serif for Obsidian.
+ *
+ * Upstream: https://github.com/BingyanStudio/LapisCV (v2.0.1, MIT)
+ *
+ * Scoped to notes with `cssclasses: [lapis-cv]` so the CareerOS dashboard and
+ * ordinary notes keep their own theme. Uses matching Latin and CJK type
+ * families for each text role, with the LapisCV icon face reserved for icons.
+ */
+
+.lapis-cv:where(.resume-layout-styled),
+body.theme-dark .lapis-cv:where(.resume-layout-styled),
+body.theme-light .lapis-cv:where(.resume-layout-styled) {
+  /* Page & typographic scale tuned for high-density executive A4 output */
+  --file-margins: var(--resume-margin-top, 10mm) var(--resume-margin-right, 13.5mm)
+                  var(--resume-margin-bottom, 10mm) var(--resume-margin-left, 13.5mm);
+  --text-size: 9.05pt;
+  --line-height: 1.37;
+  --avatar-width: 24mm;
+  --h1-size: 19.5pt;
+  --h2-size: 9.8pt;
+  --h3-size: 9.5pt;
+  --blockquote-size: 8.85pt;
+  --resume-default-heading-top: 2.8mm;
+  --resume-default-heading-bottom: 1.15mm;
+  --resume-default-list-gap: 0.5mm;
+  --resume-heading-top: var(--resume-density-heading-top, var(--resume-default-heading-top));
+  --resume-heading-bottom: var(--resume-density-heading-bottom, var(--resume-default-heading-bottom));
+  --resume-list-gap: var(--resume-density-list-gap, var(--resume-default-list-gap));
+  --resume-entry-gap: var(--resume-density-entry-gap, 1.65mm);
+
+  /* Platform fonts keep the vault portable without a bundled CJK font. */
+  --icon-font: "CareerOS Resume Icons";
+  --resume-serif-font: "Charter", "Georgia", "Iowan Old Style", "CareerOS Resume Icons", "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
+  --resume-sans-font: "Inter", "Helvetica Neue", Arial, "CareerOS Resume Icons", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --title-font: var(--resume-serif-font);
+  --text-font: var(--resume-serif-font);
+  --link-font: var(--text-font);
+  --code-font: var(--text-font);
+
+  /* Editorial Lapis palette */
+  --color-accent: #1f4478;
+  --text-strong: #111827;
+  --text-normal: #262e3a;
+  --text-muted: #526071;
+  --text-faint: #8c9aab;
+  --link-color: var(--color-accent);
+  --h1-color: var(--text-strong);
+  --h2-color: var(--color-accent);
+  --h3-color: var(--text-strong);
+  --bold-color: var(--text-strong);
+  --italic-color: inherit;
+  --border-color: color-mix(in srgb, var(--color-accent), transparent 62%);
+  --shadow-color: rgba(15, 23, 42, 0.14);
+  --background-primary: #ffffff;
+  --code-background: transparent;
+  --code-normal: var(--text-normal);
+
+  /* Obsidian theme variables scoped to resume sheets */
+  --font-text: var(--text-font);
+  --font-text-size: var(--text-size);
+  --line-height-normal: var(--line-height);
+  --p-spacing: 0;
+  --h1-weight: 700;
+  --h1-line-height: 1.15;
+  --h1-font: var(--title-font);
+  --h2-weight: 700;
+  --h2-line-height: 1.2;
+  --h2-font: var(--title-font);
+  --h3-weight: 700;
+  --h3-line-height: 1.3;
+  --h3-font: var(--title-font);
+  --font-monospace: var(--code-font);
+  --link-external-color: var(--link-color);
+  --link-external-decoration: none;
+  --text-accent: var(--link-color);
+  --text-accent-hover: var(--link-color);
+  --code-size: inherit;
+  --heading-spacing: 0;
+  --list-spacing: 0;
+  --list-indent-editing: 0;
+  --list-indent: 3.2mm;
+  --list-marker-color: color-mix(in srgb, var(--color-accent), var(--text-muted) 35%);
+  --file-line-width: 210mm;
+}
+
+.lapis-cv:where(.resume-layout-styled)[data-resume-density="comfortable"] {
+  --resume-density-heading-top: 3.45mm;
+  --resume-density-heading-bottom: 1.45mm;
+  --resume-density-entry-gap: 2.05mm;
+  --resume-density-list-gap: 0.7mm;
+}
+
+.lapis-cv:where(.resume-layout-styled)[data-resume-density="compact"] {
+  --resume-density-heading-top: 1.9mm;
+  --resume-density-heading-bottom: 0.85mm;
+  --resume-density-entry-gap: 1.15mm;
+  --resume-density-list-gap: 0.28mm;
+}
+
+/* Paper sheet preview inside Obsidian */
+.lapis-cv:where(.resume-layout-styled) .markdown-preview-sizer,
+.lapis-cv:where(.resume-layout-styled) .cm-sizer {
+  box-sizing: border-box;
+  margin: 12px auto 24px;
+  max-width: var(--file-line-width) !important;
+  min-height: 297mm;
+  padding: var(--file-margins);
+  background: #ffffff;
+  color: var(--text-normal);
+  box-shadow: 0 2px 14px var(--shadow-color);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@media screen {
+  .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) {
+    padding: 16px 18px 20px;
+  }
+
+  .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) > .markdown-preview-sizer {
+    min-height: 297mm !important;
+    padding: var(--file-margins) !important;
+  }
+
+  .markdown-preview-view.resume-layout-reading.lapis-cv:where(.resume-layout-styled) > .markdown-preview-sizer > div {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0 !important;
+  }
+}
+
+/* Base text — unified serif, crisp lining numerals */
+.lapis-cv:where(.resume-layout-styled) p,
+.lapis-cv:where(.resume-layout-styled) li {
+  font-family: var(--text-font) !important;
+  font-size: var(--text-size);
+  line-height: var(--line-height);
+  color: var(--text-normal);
+  font-variant-numeric: lining-nums;
+}
+
+.lapis-cv:where(.resume-layout-styled) a,
+.lapis-cv:where(.resume-layout-styled) a span {
+  font-family: var(--link-font) !important;
+  color: var(--link-color);
+  text-decoration: none;
+  font-weight: 400;
+}
+
+.lapis-cv:where(.resume-layout-styled) .external-link {
+  background-image: none;
+  padding-right: 0;
+}
+
+.lapis-cv:where(.resume-layout-styled) code {
+  font-family: var(--code-font) !important;
+  font-size: inherit !important;
+  font-variant-numeric: lining-nums tabular-nums;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--text-normal) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) strong,
+.lapis-cv:where(.resume-layout-styled) b {
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+/* Headings */
+.lapis-cv:where(.resume-layout-styled) h1,
+.lapis-cv:where(.resume-layout-styled) h2,
+.lapis-cv:where(.resume-layout-styled) h3,
+.lapis-cv:where(.resume-layout-styled) h4,
+.lapis-cv:where(.resume-layout-styled) h5,
+.lapis-cv:where(.resume-layout-styled) h6 {
+  font-family: var(--title-font) !important;
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+}
+
+.lapis-cv:where(.resume-layout-styled) h1 {
+  color: var(--h1-color);
+  font-size: var(--h1-size);
+  line-height: 1.12;
+  letter-spacing: 0.025em;
+  text-align: left;
+  border-bottom: 0;
+  padding: 0;
+  margin: 0 0 1mm 0;
+}
+
+.lapis-cv:where(.resume-layout-styled) h2 {
+  display: flex;
+  align-items: center;
+  gap: 1.3mm;
+  color: var(--h2-color);
+  font-size: var(--h2-size);
+  line-height: 1.18;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  border-bottom: 0.75pt solid var(--border-color);
+  margin-top: var(--resume-heading-top) !important;
+  margin-bottom: var(--resume-heading-bottom) !important;
+  padding: 0 0 0.65mm 0;
+}
+
+.lapis-cv:where(.resume-layout-styled) h2 > .resume-layout-icon {
+  font-family: var(--icon-font) !important;
+  font-weight: 400;
+  font-size: 1.02em;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1;
+  opacity: 0.9;
+  transform: translateY(-0.03em);
+}
+
+.lapis-cv:where(.resume-layout-styled) h3,
+.lapis-cv:where(.resume-layout-styled) h4,
+.lapis-cv:where(.resume-layout-styled) h5,
+.lapis-cv:where(.resume-layout-styled) h6 {
+  color: var(--h3-color);
+  font-size: var(--h3-size);
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+}
+
+.lapis-cv:where(.resume-layout-styled) h3 a,
+.lapis-cv:where(.resume-layout-styled) h4 a,
+.lapis-cv:where(.resume-layout-styled) h5 a,
+.lapis-cv:where(.resume-layout-styled) h6 a {
+  font-size: calc(var(--h3-size) - 0.5pt);
+  font-weight: 400;
+}
+
+.lapis-cv:where(.resume-layout-styled) :is(h1, h3, h4, h5, h6, blockquote, p, li p) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Contact row beneath name */
+.lapis-cv:where(.resume-layout-styled) blockquote,
+.lapis-cv:where(.resume-layout-styled) blockquote * {
+  line-height: 1.35;
+  padding: 0;
+  border-inline-start: 0 !important;
+  border-left: 0 !important;
+  background: transparent !important;
+  font-size: var(--blockquote-size);
+}
+
+.lapis-cv:where(.resume-layout-styled) blockquote {
+  margin: 0 0 2mm 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) blockquote p {
+  text-align: left;
+  color: var(--text-muted);
+}
+
+.lapis-cv:where(.resume-layout-styled) blockquote code,
+.lapis-cv:where(.resume-layout-styled) blockquote a {
+  color: var(--text-normal) !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) .contact-sep {
+  color: var(--text-faint);
+  margin: 0 1.8mm;
+}
+
+/* Icons */
+.lapis-cv:where(.resume-layout-styled) :is(.resume-layout-icon, .icon, span[alt="icon"]) {
+  color: var(--color-accent);
+  font-family: var(--icon-font) !important;
+  font-weight: 400;
+  font-size: 0.94em;
+  margin-right: 0.25mm;
+  vertical-align: -0.04em;
+}
+
+/* Entry headers (role/org/date, project/stack/context, school/degree/date) */
+.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: var(--resume-entry-gap);
+  margin-bottom: 0.45mm;
+}
+
+/* Tighter top spacing right after section divider */
+.lapis-cv:where(.resume-layout-styled) h2 + :is(.entry-title, div[alt="entry-title"]),
+.lapis-cv:where(.resume-layout-styled) .el-h2 + .el-div :is(.entry-title, div[alt="entry-title"]) {
+  margin-top: 0.45mm;
+}
+
+/* Compact spacing between consecutive single-line entries (e.g. Education) */
+.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) + :is(.entry-title, div[alt="entry-title"]),
+.lapis-cv:where(.resume-layout-styled) .el-div:has([alt="entry-title"]) + .el-div:has([alt="entry-title"]) :is(.entry-title, div[alt="entry-title"]) {
+  margin-top: 0.7mm;
+}
+
+.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-strong);
+  font-size: var(--h3-size);
+  font-weight: 700;
+  line-height: 1.28;
+}
+
+.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 .entry-sep {
+  font-weight: 400;
+  font-style: normal;
+  color: var(--text-faint);
+  margin: 0 1.25mm;
+}
+
+.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 .entry-sub {
+  font-weight: 400;
+  font-style: italic;
+  font-size: 8.8pt;
+  color: var(--text-muted);
+}
+
+.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) p {
+  flex-shrink: 0;
+  margin: 0;
+  font-family: var(--text-font) !important;
+  font-size: 8.45pt;
+  font-weight: 400;
+  line-height: 1.28;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Lists — clean single indent, subtle lapis bullet markers */
+.lapis-cv:where(.resume-layout-styled) ul {
+  list-style-type: "\2022";
+  padding-inline-start: 3mm !important;
+  padding-inline-end: 0 !important;
+  margin-block: 0.3mm 0.65mm !important;
+  margin-inline: 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) ol {
+  padding-inline-start: 4.5mm !important;
+  padding-inline-end: 0 !important;
+  margin-block: 0.3mm 0.65mm !important;
+  margin-inline: 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) ul > li,
+.lapis-cv:where(.resume-layout-styled) .markdown-rendered ul > li {
+  margin-inline-start: 0 !important;
+  padding-left: 1.2mm !important;
+  margin-top: 0 !important;
+  margin-bottom: var(--resume-list-gap) !important;
+  line-height: var(--line-height);
+}
+
+.lapis-cv:where(.resume-layout-styled) li > p {
+  margin-block: 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) ul > li:last-child,
+.lapis-cv:where(.resume-layout-styled) .markdown-rendered ul > li:last-child {
+  margin-bottom: 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) ol > li {
+  padding-left: 0.6mm;
+  margin-bottom: 0.55mm;
+}
+
+.lapis-cv:where(.resume-layout-styled) ul > li::marker {
+  color: var(--list-marker-color);
+  font-size: 0.86em;
+  font-weight: 700;
+}
+
+.lapis-cv:where(.resume-layout-styled) ol > li::marker {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Compact bullet lists (Skills / Certifications / Honors) */
+.lapis-cv:where(.resume-layout-styled) .el-h2 + .el-ul ul,
+.lapis-cv:where(.resume-layout-styled) h2 + ul {
+  margin-top: 0.55mm !important;
+}
+
+/* Project / entry intro summary paragraph directly below entry-title */
+.lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) + p,
+.lapis-cv:where(.resume-layout-styled) .el-div:has([alt="entry-title"]) + .el-p > p {
+  margin-top: 0.35mm;
+  margin-bottom: 0.55mm;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+ * Chinese Resume Variant (`cssclasses: [lapis-cv, careeros-resume, lapis-cv-zh]`)
+ * Uses serif headings and a matched Latin/CJK sans-serif body.
+ * ========================================================================== */
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh,
+body.theme-dark .lapis-cv:where(.resume-layout-styled).lapis-cv-zh,
+body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
+  --text-size: 8.85pt;
+  --line-height: 1.48;
+  --h1-size: 19pt;
+  --h2-size: 10.4pt;
+  --h3-size: 9.5pt;
+  --blockquote-size: 8.75pt;
+
+  --resume-default-heading-top: 3mm;
+  --resume-default-heading-bottom: 1.25mm;
+  --resume-default-list-gap: 0.55mm;
+  --text-font: var(--resume-sans-font);
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh h1 {
+  letter-spacing: 0.04em;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh h2 {
+  text-transform: none;
+  letter-spacing: 0.1em;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh strong,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh b {
+  font-weight: 600;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh p,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh li {
+  text-align: justify;
+  text-justify: inter-ideograph;
+  letter-spacing: 0.01em;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh blockquote p,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) p {
+  text-align: left;
+  letter-spacing: 0;
+}
+
+/* Upright secondary subtitle for Chinese (never faux-oblique CJK glyphs) */
+.lapis-cv:where(.resume-layout-styled).lapis-cv-zh :is(.entry-title, div[alt="entry-title"]) h3 .entry-sub {
+  font-family: var(--text-font) !important;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 8.65pt;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+ * Master Resume Wrapper (`cssclasses: [..., lapis-cv-master]`)
+ * - Renders embedded original resume (`![[profile/...]]`) seamlessly on screen
+ * - Automatically hides wrapper heading & info callout during PDF export
+ * ========================================================================== */
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] {
+  margin: 0 0 4mm 0 !important;
+  padding: 2.2mm 3.2mm !important;
+  border: 1px solid color-mix(in srgb, var(--color-accent), transparent 72%) !important;
+  border-left: 3px solid var(--color-accent) !important;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-accent), transparent 94%) !important;
+  font-size: 8.4pt;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] .callout-title {
+  color: var(--color-accent);
+  font-size: 8.6pt;
+  font-weight: 600;
+  margin-bottom: 0.8mm;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] .callout-content p {
+  font-size: 8.2pt;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .internal-embed.markdown-embed {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed-content {
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed-title,
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed-link {
+  display: none !important;
+}
+
+.lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed .markdown-preview-sizer {
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Optional avatar from the upstream template */
+.lapis-cv:where(.resume-layout-styled) :is(.avatar, img[alt="avatar"]) {
+  display: block;
+  position: relative;
+  top: 1mm;
+  right: 0;
+  z-index: 9999;
+  float: right;
+  object-fit: cover;
+  overflow: hidden;
+  width: var(--avatar-width);
+  height: var(--avatar-width);
+  border-radius: 50%;
+  border: 0;
+  box-shadow: none;
+  margin: -23mm 0 0 3mm;
+}
+
+.lapis-cv:where(.resume-layout-styled) p:has(.avatar, img[alt="avatar"]) {
+  height: 0;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+}
+
+/* Editing-mode details from the upstream Obsidian stylesheet */
+.lapis-cv:where(.resume-layout-styled) .cm-line:has(br) {
+  height: 0;
+}
+
+.lapis-cv:where(.resume-layout-styled) .inline-title {
+  visibility: hidden;
+  height: 0;
+  margin: 0;
+}
+
+.lapis-cv:where(.resume-layout-styled) .HyperMD-header.HyperMD-header-1.cm-line {
+  text-align: left;
+  margin-block-start: 0 !important;
+  margin-block-end: 1.4mm !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) .HyperMD-header.HyperMD-header-2.cm-line {
+  border-bottom: 0.75pt solid var(--border-color);
+  padding: 0 0 0.75mm 0;
+  margin-block-start: 3.1mm !important;
+  margin-block-end: 1.3mm !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) :is(
+  .HyperMD-header.HyperMD-header-3.cm-line,
+  .HyperMD-header.HyperMD-header-4.cm-line,
+  .HyperMD-header.HyperMD-header-5.cm-line,
+  .HyperMD-header.HyperMD-header-6.cm-line
+) {
+  padding-top: 0;
+  margin-block-start: 0 !important;
+  margin-block-end: 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) .cm-formatting-list {
+  padding-right: 1.8mm;
+}
+
+.lapis-cv:where(.resume-layout-styled) .HyperMD-quote.cm-line {
+  line-height: 1.35;
+  border-left: 0;
+  text-align: left;
+  padding: 0 0 2.5mm 0 !important;
+}
+
+.lapis-cv:where(.resume-layout-styled) .cm-line:has(.avatar, img[alt="avatar"]) {
+  height: 0;
+  text-align: center;
+}
+
+/* Explicit page break supported by the LapisCV template */
+.lapis-cv:where(.resume-layout-styled) hr {
+  border-top: 1.5px solid var(--border-color);
+  border-bottom: 0;
+  margin: 8mm 0;
+}
+
+@media print {
+  .lapis-cv:where(.resume-layout-styled),
+  body.theme-dark .lapis-cv:where(.resume-layout-styled),
+  body.theme-light .lapis-cv:where(.resume-layout-styled) {
+    --file-margins: 10mm 13.5mm 10mm 13.5mm;
+    --background-primary: #ffffff;
+    --code-background: transparent !important;
+    --text-normal: #262e3a;
+    --text-strong: #111827;
+  }
+
+  /* Hide only the outer Master Resume wrapper heading & info callout on print,
+     never the embedded resume's own h1 or contact blockquote */
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master > .markdown-preview-sizer > :is(h1, .el-h1, .el-callout, .callout[data-callout="info"], .el-blockquote:has(.callout)),
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master > :is(h1, .callout[data-callout="info"]),
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master .callout[data-callout="info"] {
+    display: none !important;
+  }
+
+  .lapis-cv:where(.resume-layout-styled).lapis-cv-master .markdown-embed :is(h1, .el-h1, blockquote, .el-blockquote) {
+    display: block !important;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) .markdown-preview-sizer {
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) :is(h1, h2, h3, h4, h5, h6, .entry-title, div[alt="entry-title"]) {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .lapis-cv:where(.resume-layout-styled) hr {
+    break-after: page;
+    page-break-after: always;
+    margin: 0;
+    visibility: hidden;
+  }
+}
+
+/* LapisCV v2.0.1 icon font by YiNN / BingyanStudio.
+ * https://github.com/BingyanStudio/LapisCV
+ * Resume text uses local system fonts.
+ */
+
+@font-face {
+    font-family: "CareerOS Resume Icons";
+    src: url(data:application/font-ttf;charset=utf-8;base64,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) format('truetype');
+}
