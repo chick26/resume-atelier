@@ -38,9 +38,22 @@ class ResumeFiles {
     return vault.getAvailablePath(`${folder}/${name}`, "md");
   }
 
-  async createExampleResume() {
-    const path = await this.draftPath(null, this.t("sampleResume"));
-    return this.app.vault.create(path, this.exampleMarkdown);
+  async createExampleResume(folder) {
+    const { vault } = this.app;
+    const title = this.t("sampleResume");
+    const name = folder && !folder.isRoot() ? `${folder.path}/${title}` : title;
+    const nextPath = () => folder ? vault.getAvailablePath(name, "md") : this.draftPath(null, title);
+    let path = await nextPath();
+    for (;;) {
+      try {
+        return await vault.create(path, this.exampleMarkdown);
+      } catch (error) {
+        if (!vault.getAbstractFileByPath(path)) throw error;
+        const available = await nextPath();
+        if (available === path) throw error;
+        path = available;
+      }
+    }
   }
 
   async copyForEditing(resume, layout, body) {

@@ -86,9 +86,9 @@ class SectionsPanel {
     };
     for (const title of suggestions) {
       if (chosen.has(title.toLowerCase())) continue;
-      pills.createEl("button", { text: title, type: "button" }).addEventListener("click", () => void submit(title));
+      pills.createEl("button", { text: title, attr: { type: "button" } }).addEventListener("click", () => void submit(title));
     }
-    form.createEl("button", { text: this.t("addSection"), type: "submit" });
+    form.createEl("button", { text: this.t("addSection"), attr: { type: "submit" } });
     form.addEventListener("submit", event => {
       event.preventDefault();
       void submit(name.value.trim());

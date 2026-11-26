@@ -4,6 +4,7 @@ const { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourc
 const { copySourceText, runWithNotice } = require("./dom");
 const { SourceRecoveryModal, PhotoPicker } = require("./modals");
 const { avatarEdit } = require("../resume/avatar");
+const { previewSourceLine } = require("../resume/rendered-markup");
 const { mountSourceTools } = require("./source-toolbar");
 
 class SourceEditor {
@@ -397,23 +398,37 @@ class SourceEditor {
     }
   }
 
-  focusSourceFromPreview(event) {
-    const edit = this.edit;
-    if (!edit || edit.file !== this.view.preview.renderedFile || edit.text !== this.view.preview.renderedBody
-      || !this.view.preview.rendered?.contains(event.target) || this.sourceField.readOnly) return;
-    const location = this.previewBlocks?.findLast(block => block.element.contains(event.target));
+  async focusSourceFromPreview(event, open = false) {
+    const { preview, selected } = this.view;
+    const { target } = event;
+    if (!selected || preview.renderedFile !== selected.file || !preview.rendered?.contains(target)
+      || target.closest("a, .internal-embed, .markdown-embed, .resume-portrait-block, img, button, input, select, textarea, [contenteditable=true]")) return;
+    const location = this.previewBlocks?.findLast(block => block.element.contains(target));
     if (!location) return;
+    const body = preview.renderedBody;
+    const line = previewSourceLine(location, body, event);
+    if (!this.edit) {
+      if (!open) return;
+      event.preventDefault();
+      if (selected.protected) {
+        new Notice(this.t("protectedHelp"));
+        return;
+      }
+      await this.openEditor();
+    }
+    const edit = this.edit;
+    if (edit?.file !== selected.file || edit.text !== body || this.sourceField.readOnly) return;
     event.preventDefault();
-    const lines = edit.text.split("\n");
-    const start = lines.slice(0, location.line).reduce((length, line) => length + line.length + 1, 0);
+    const lines = body.split("\n");
+    const start = lines.slice(0, line).reduce((length, text) => length + text.length + 1, 0);
     const field = this.sourceField;
     field.focus({ preventScroll: true });
-    field.setSelectionRange(start, start + lines[location.line].length);
+    field.setSelectionRange(start, start + lines[line].length);
     this.toolbar.update();
     this.scrollSourceTo(start);
     this.highlightedBlock?.classList.remove("resume-layout-current-block");
-    this.highlightedBlock = location.element;
-    this.highlightedBlock.classList.add("resume-layout-current-block");
+    this.highlightedBlock = this.previewBlocks?.find(block => block.line === location.line)?.element;
+    this.highlightedBlock?.classList.add("resume-layout-current-block");
   }
 
   scrollSourceTo(offset) {

@@ -47,6 +47,8 @@ var require_localization = __commonJS({
       applyBeforeEdit: ["\u5148\u5E94\u7528\u7B80\u5386\u6392\u7248\uFF0C\u5373\u53EF\u7F16\u8F91\u6B64\u7B14\u8BB0\u3002", "Apply the resume layout to edit this note."],
       pluginName: ["\u7B80\u5386\u5DE5\u574A", "Resume Atelier"],
       openCommand: ["\u6253\u5F00\u5DE5\u4F5C\u53F0", "Open workbench"],
+      openAtelier: ["\u6253\u5F00\u7B80\u5386\u5DE5\u574A", "Open Resume Atelier"],
+      newResumeMenu: ["\u65B0\u5EFA\u7B80\u5386", "New resume"],
       layoutThisResume: ["\u6392\u7248\u8FD9\u4EFD\u7B80\u5386", "Lay out this resume"],
       layoutLinkedResume: ["\u6392\u7248\u5173\u8054\u7B80\u5386", "Lay out linked resume"],
       previewAsResume: ["\u4EE5\u7B80\u5386\u6837\u5F0F\u9884\u89C8", "Preview as a resume"],
@@ -770,9 +772,22 @@ var require_files = __commonJS({
         }
         return vault.getAvailablePath(`${folder}/${name}`, "md");
       }
-      async createExampleResume() {
-        const path = await this.draftPath(null, this.t("sampleResume"));
-        return this.app.vault.create(path, this.exampleMarkdown);
+      async createExampleResume(folder) {
+        const { vault } = this.app;
+        const title = this.t("sampleResume");
+        const name = folder && !folder.isRoot() ? `${folder.path}/${title}` : title;
+        const nextPath = () => folder ? vault.getAvailablePath(name, "md") : this.draftPath(null, title);
+        let path = await nextPath();
+        for (; ; ) {
+          try {
+            return await vault.create(path, this.exampleMarkdown);
+          } catch (error) {
+            if (!vault.getAbstractFileByPath(path)) throw error;
+            const available = await nextPath();
+            if (available === path) throw error;
+            path = available;
+          }
+        }
       }
       async copyForEditing(resume, layout, body) {
         const source = body === void 0 ? resume.source ?? resume.file : resume.file;
@@ -1637,7 +1652,26 @@ var require_rendered_markup = __commonJS({
       }
       return locations;
     }
-    module2.exports = { decorateResumeMarkup, locatePreviewBlocks };
+    function previewSourceLine({ line, element }, body, event) {
+      if (!element.matches("p,li,blockquote")) return line;
+      const doc = element.ownerDocument;
+      const caret = doc.caretRangeFromPoint?.(event.clientX, event.clientY);
+      if (!caret || !element.contains(caret.startContainer)) return line;
+      const range = doc.createRange();
+      range.selectNodeContents(element);
+      range.setEnd(caret.startContainer, caret.startOffset);
+      const prefix = previewMatchText(range.toString());
+      const lines = body.split("\n");
+      let consumed = previewMatchText(lines[line]);
+      while (consumed.length < prefix.length && prefix.startsWith(consumed) && lines[line + 1]?.trim()) {
+        const next = consumed + previewMatchText(lines[line + 1]);
+        if (next === consumed || !(prefix.startsWith(next) || next.startsWith(prefix))) break;
+        consumed = next;
+        line++;
+      }
+      return line;
+    }
+    module2.exports = { decorateResumeMarkup, locatePreviewBlocks, previewSourceLine };
   }
 });
 
@@ -2010,14 +2044,14 @@ var require_dom = __commonJS({
       button.addEventListener("click", callback);
       return button;
     }
-    async function runWithNotice(run) {
+    async function runWithNotice2(run) {
       try {
         await run();
       } catch (error) {
         new Notice2(error.message);
       }
     }
-    module2.exports = { copySourceText, iconButton, runWithNotice };
+    module2.exports = { copySourceText, iconButton, runWithNotice: runWithNotice2 };
   }
 });
 
@@ -2810,7 +2844,12 @@ var require_preview_pane = __commonJS({
             }
             return;
           }
-          this.view.editor.focusSourceFromPreview(event);
+          if (this.view.editor.edit) void this.view.editor.focusSourceFromPreview(event);
+        });
+        this.stage.addEventListener("dblclick", (event) => {
+          if (!this.view.editor.edit && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+            void this.view.editor.focusSourceFromPreview(event, true);
+          }
         });
         this.staleBanner = this.stage.createDiv({ cls: "resume-layout-stale", text: this.t("contentStale") });
         this.staleBanner.hidden = true;
@@ -3031,18 +3070,20 @@ var require_theme_editor = __commonJS({
         ];
         for (const snippet of snippets) {
           examples.createEl("pre", { text: snippet });
-          examples.createEl("button", { text: this.t("copySnippet"), type: "button" }).addEventListener("click", () => void copySourceText(editor, this.t, snippet));
+          examples.createEl("button", { text: this.t("copySnippet"), attr: { type: "button" } }).addEventListener("click", () => void copySourceText(editor, this.t, snippet));
         }
         const feedback = form.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
         const actions = form.createDiv({ cls: "resume-layout-template-actions" });
-        const cancel = actions.createEl("button", { type: "button", text: this.t("cancel") });
-        const save = actions.createEl("button", { type: "submit", text: this.t("saveTheme"), cls: "mod-cta" });
+        const cancel = actions.createEl("button", { text: this.t("cancel"), attr: { type: "button" } });
+        const save = actions.createEl("button", { text: this.t("saveTheme"), cls: "mod-cta", attr: { type: "submit" } });
+        let afterClose;
         const close = () => {
           this.draft = null;
           this.view.setPanel("layout");
           panel.empty();
           this.layout.updateTemplateControls();
           this.layout.templateSelect.focus();
+          afterClose?.();
         };
         const initialName = input.value;
         const initialCss = editor.value;
@@ -3050,18 +3091,20 @@ var require_theme_editor = __commonJS({
         confirm.hidden = true;
         const keep = confirm.createEl("button", { text: this.t("keepEditing") });
         const discard = confirm.createEl("button", { text: this.t("discardThemeConfirm"), cls: "mod-warning" });
-        const requestClose = () => {
+        const requestClose = this.draft.requestClose = (next) => {
+          afterClose = next;
           if (initialName === input.value && initialCss === editor.value) return close();
           confirm.hidden = false;
           keep.focus();
         };
         keep.addEventListener("click", () => {
+          afterClose = void 0;
           confirm.hidden = true;
           (initialCss === editor.value ? input : editor).focus();
         });
         discard.addEventListener("click", close);
-        back.addEventListener("click", requestClose);
-        cancel.addEventListener("click", requestClose);
+        back.addEventListener("click", () => requestClose());
+        cancel.addEventListener("click", () => requestClose());
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           if (save.disabled) return;
@@ -3686,9 +3729,10 @@ var require_source_editor = __commonJS({
     var { Notice: Notice2, Scope } = require("obsidian");
     var { editableBody, withEditedBody } = require_markdown();
     var { changeSourceIndent, continueSourceList, sourceEditorContext, toggleSourceBold, replaceSourceSelection } = require_formatting();
-    var { copySourceText, runWithNotice } = require_dom();
+    var { copySourceText, runWithNotice: runWithNotice2 } = require_dom();
     var { SourceRecoveryModal, PhotoPicker } = require_modals();
     var { avatarEdit } = require_avatar();
+    var { previewSourceLine } = require_rendered_markup();
     var { mountSourceTools } = require_source_toolbar();
     var SourceEditor = class {
       constructor(view) {
@@ -3804,7 +3848,7 @@ var require_source_editor = __commonJS({
         }
         this.view.editButton.disabled = true;
         try {
-          await runWithNotice(async () => {
+          await runWithNotice2(async () => {
             if (this.edit) {
               if (await this.endSourceEdit()) await this.view.show(this.view.file);
               return;
@@ -3864,8 +3908,8 @@ var require_source_editor = __commonJS({
         const returnFocus = () => {
           if (edit && this.edit === edit && this.view.selected?.file === file) field.focus({ preventScroll: true });
         };
-        if (pick) new PhotoPicker(this.app, this.t, (image) => void runWithNotice(() => apply(image)), returnFocus).open();
-        else void runWithNotice(() => apply(null));
+        if (pick) new PhotoPicker(this.app, this.t, (image) => void runWithNotice2(() => apply(image)), returnFocus).open();
+        else void runWithNotice2(() => apply(null));
       }
       syncSourceControls() {
         const editing = !!this.edit;
@@ -4064,22 +4108,36 @@ var require_source_editor = __commonJS({
           this.view.preview.stage.scrollTop += position.top - viewport.top - this.view.preview.stage.clientHeight / 3;
         }
       }
-      focusSourceFromPreview(event) {
-        const edit = this.edit;
-        if (!edit || edit.file !== this.view.preview.renderedFile || edit.text !== this.view.preview.renderedBody || !this.view.preview.rendered?.contains(event.target) || this.sourceField.readOnly) return;
-        const location = this.previewBlocks?.findLast((block) => block.element.contains(event.target));
+      async focusSourceFromPreview(event, open = false) {
+        const { preview, selected } = this.view;
+        const { target } = event;
+        if (!selected || preview.renderedFile !== selected.file || !preview.rendered?.contains(target) || target.closest("a, .internal-embed, .markdown-embed, .resume-portrait-block, img, button, input, select, textarea, [contenteditable=true]")) return;
+        const location = this.previewBlocks?.findLast((block) => block.element.contains(target));
         if (!location) return;
+        const body = preview.renderedBody;
+        const line = previewSourceLine(location, body, event);
+        if (!this.edit) {
+          if (!open) return;
+          event.preventDefault();
+          if (selected.protected) {
+            new Notice2(this.t("protectedHelp"));
+            return;
+          }
+          await this.openEditor();
+        }
+        const edit = this.edit;
+        if (edit?.file !== selected.file || edit.text !== body || this.sourceField.readOnly) return;
         event.preventDefault();
-        const lines = edit.text.split("\n");
-        const start = lines.slice(0, location.line).reduce((length, line) => length + line.length + 1, 0);
+        const lines = body.split("\n");
+        const start = lines.slice(0, line).reduce((length, text) => length + text.length + 1, 0);
         const field = this.sourceField;
         field.focus({ preventScroll: true });
-        field.setSelectionRange(start, start + lines[location.line].length);
+        field.setSelectionRange(start, start + lines[line].length);
         this.toolbar.update();
         this.scrollSourceTo(start);
         this.highlightedBlock?.classList.remove("resume-layout-current-block");
-        this.highlightedBlock = location.element;
-        this.highlightedBlock.classList.add("resume-layout-current-block");
+        this.highlightedBlock = this.previewBlocks?.find((block) => block.line === location.line)?.element;
+        this.highlightedBlock?.classList.add("resume-layout-current-block");
       }
       scrollSourceTo(offset) {
         const field = this.sourceField;
@@ -4130,7 +4188,7 @@ var require_sections_panel = __commonJS({
     var { editableBody, sourceParts, splitSectionBody } = require_markdown();
     var { sectionRuleIssues } = require_structure();
     var { changeSectionRule, ruleFor } = require_section_layout();
-    var { runWithNotice } = require_dom();
+    var { runWithNotice: runWithNotice2 } = require_dom();
     var SectionsPanel = class {
       constructor(view) {
         this.view = view;
@@ -4206,9 +4264,9 @@ var require_sections_panel = __commonJS({
         };
         for (const title of suggestions) {
           if (chosen.has(title.toLowerCase())) continue;
-          pills.createEl("button", { text: title, type: "button" }).addEventListener("click", () => void submit(title));
+          pills.createEl("button", { text: title, attr: { type: "button" } }).addEventListener("click", () => void submit(title));
         }
-        form.createEl("button", { text: this.t("addSection"), type: "submit" });
+        form.createEl("button", { text: this.t("addSection"), attr: { type: "submit" } });
         form.addEventListener("submit", (event) => {
           event.preventDefault();
           void submit(name.value.trim());
@@ -4259,7 +4317,7 @@ var require_sections_panel = __commonJS({
           const label = this.t(message, { title });
           const button = row.createEl("button", { attr: { "aria-label": label, title: label } });
           setIcon(button, icon);
-          button.addEventListener("click", () => void runWithNotice(() => this.moveSection(index, index + delta, source)));
+          button.addEventListener("click", () => void runWithNotice2(() => this.moveSection(index, index + delta, source)));
         }
       }
       ruleButton(row, title, message, icon, key, value) {
@@ -4320,7 +4378,7 @@ var require_sections_panel = __commonJS({
           const insertion = rows.indexOf(target.row) + Number(target.after);
           const to = insertion - Number(from < insertion);
           if (to >= 0 && to !== from && this.view.selected?.file === file) {
-            void runWithNotice(() => this.moveSection(from, to, source));
+            void runWithNotice2(() => this.moveSection(from, to, source));
           }
         });
         list.addEventListener("pointercancel", clear);
@@ -4560,6 +4618,10 @@ var require_view = __commonJS({
         if (count) this.hiddenBadge.setText(this.t("hiddenExportHint", { count }));
       }
       setPanel(mode) {
+        if (this.panelMode === "css" && mode !== "css" && this.themeEditor.draft) {
+          this.themeEditor.draft.requestClose(() => this.setPanel(mode));
+          return;
+        }
         this.panelMode = mode;
         const content = mode === "content";
         const css = mode === "css";
@@ -4686,7 +4748,7 @@ var require_sample_resume_zh = __commonJS({
 });
 
 // src/main.js
-var { MarkdownView, Notice, Plugin } = require("obsidian");
+var { MarkdownView, Notice, Plugin, TFolder } = require("obsidian");
 var { VIEW_TYPE } = require_identity();
 var { obsidianLanguage, createTranslator } = require_localization();
 var { SettingsStore } = require_store();
@@ -4697,6 +4759,7 @@ var { ThemeLibrary } = require_library();
 var { ResumeLayouts } = require_resolution();
 var { ResumePresentation } = require_presentation();
 var { ResumeLayoutView } = require_view();
+var { runWithNotice } = require_dom();
 var EXAMPLES = {
   en: require_sample_resume_en(),
   zh: require_sample_resume_zh()
@@ -4720,7 +4783,15 @@ var ResumeLayoutPlugin = class extends Plugin {
     this.registerView(VIEW_TYPE, (leaf) => new ResumeLayoutView(leaf, this));
     this.addSettingTab(new ResumeLayoutSettingTab(this.app, this));
     this.addCommand({ id: "open", name: this.t("openCommand"), callback: () => void this.open() });
+    this.addRibbonIcon("file-text", this.t("openAtelier"), () => void this.open());
     this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
+      if (file instanceof TFolder) {
+        menu.addItem((item) => item.setTitle(this.t("newResumeMenu")).setIcon("file-plus").onClick(() => runWithNotice(async () => {
+          const note = await this.files.createExampleResume(file);
+          await this.open(note.path);
+        })));
+        return;
+      }
       const target = this.catalog.resumeForNote(file);
       if (!target && file?.extension !== "md") return;
       menu.addItem((item) => item.setTitle(target ? target.file === file ? this.t("layoutThisResume") : this.t("layoutLinkedResume") : this.t("previewAsResume")).setIcon("file-text").onClick(() => void this.open((target?.file ?? file).path)));
@@ -4767,8 +4838,10 @@ var ResumeLayoutPlugin = class extends Plugin {
       leaf = workspace.getLeaf("tab");
       await leaf.setViewState({ type: VIEW_TYPE, active: true, state: { file: file?.path ?? "" } });
     }
+    await leaf.loadIfDeferred?.();
     await workspace.revealLeaf(leaf);
     if (!(leaf.view instanceof ResumeLayoutView)) return;
+    if (workspace.activeLeaf !== leaf) workspace.setActiveLeaf(leaf, { focus: true });
     if (file && leaf.view.file !== file) await leaf.view.bindFile(file);
     else if (file && path) await leaf.view.show(file);
     if (!leaf.view.file && !allowPreview && vault.getMarkdownFiles().length) leaf.view.openPicker();

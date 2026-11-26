@@ -47,7 +47,12 @@ class PreviewPane {
         }
         return;
       }
-      this.view.editor.focusSourceFromPreview(event);
+      if (this.view.editor.edit) void this.view.editor.focusSourceFromPreview(event);
+    });
+    this.stage.addEventListener("dblclick", event => {
+      if (!this.view.editor.edit && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+        void this.view.editor.focusSourceFromPreview(event, true);
+      }
     });
     this.staleBanner = this.stage.createDiv({ cls: "resume-layout-stale", text: this.t("contentStale") });
     this.staleBanner.hidden = true;

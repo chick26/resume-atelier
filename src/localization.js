@@ -32,6 +32,8 @@ const MESSAGES = {
   applyBeforeEdit: ["先应用简历排版，即可编辑此笔记。", "Apply the resume layout to edit this note."],
   pluginName: ["简历工坊", "Resume Atelier"],
   openCommand: ["打开工作台", "Open workbench"],
+  openAtelier: ["打开简历工坊", "Open Resume Atelier"],
+  newResumeMenu: ["新建简历", "New resume"],
   layoutThisResume: ["排版这份简历", "Lay out this resume"],
   layoutLinkedResume: ["排版关联简历", "Lay out linked resume"],
   previewAsResume: ["以简历样式预览", "Preview as a resume"],

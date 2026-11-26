@@ -21,6 +21,10 @@ class FileView {
 }
 
 class MarkdownView {}
+class TFolder {
+  constructor(path) { this.path = path; }
+  isRoot() { return this.path === "/"; }
+}
 
 function frontMatterInfo(markdown) {
   const prefix = markdown.match(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/)?.[0];
@@ -33,7 +37,7 @@ async function loadPlugin({ language = "en", data, notes = new Map() } = {}) {
     require(name) {
       assert.equal(name, "obsidian");
       return {
-        FileView, MarkdownView, getFrontMatterInfo: frontMatterInfo,
+        FileView, MarkdownView, TFolder, getFrontMatterInfo: frontMatterInfo,
         stringifyYaml: JSON.stringify,
         getLanguage: () => language, normalizePath: value => value,
         Plugin: class {}, PluginSettingTab: class {}, FuzzySuggestModal: class {},
@@ -46,8 +50,9 @@ async function loadPlugin({ language = "en", data, notes = new Map() } = {}) {
   const plugin = new Plugin();
   const writes = [];
   const persisted = [];
+  const listeners = new Map();
   const workspace = {
-    on() {},
+    on(name, callback) { listeners.set(name, callback); },
     onLayoutReady() {},
     getLeavesOfType: () => [],
   };
@@ -81,6 +86,7 @@ async function loadPlugin({ language = "en", data, notes = new Map() } = {}) {
   };
   let viewFactory;
   let command;
+  let ribbon;
   Object.assign(plugin, {
     manifest,
     app: { workspace, metadataCache, vault, fileManager: {
@@ -93,12 +99,13 @@ async function loadPlugin({ language = "en", data, notes = new Map() } = {}) {
       viewFactory = factory;
     },
     addCommand(value) { command = value; },
+    addRibbonIcon(icon, title, callback) { ribbon = { icon, title, callback }; },
     addSettingTab() {},
     registerEvent() {},
     registerMarkdownPostProcessor() {},
   });
   await plugin.onload();
-  return { plugin, viewFactory, command, writes, persisted, workspace, vault };
+  return { plugin, viewFactory, command, ribbon, listeners, writes, persisted, workspace, vault };
 }
 
 function note(filePath, properties, contents = "") {
@@ -129,6 +136,87 @@ test("the sample notes used by the UI come from the downloadable Markdown files"
     assert.equal(writes[0].contents, readFileSync(path.join(root, "examples", `sample-resume.${language}.md`), "utf8"));
     assert.match(writes[0].contents, /^### .+ · .+ \| .+$/m);
   }
+});
+
+test("ribbon and folder menu create and open a localized sample in the chosen folder", async () => {
+  for (const [language, title, action] of [["en", "Sample Resume", "New resume"], ["zh", "示例简历", "新建简历"]]) {
+    const { plugin, vault, ribbon, listeners, writes } = await loadPlugin({ language });
+    const opened = [];
+    plugin.open = async path => opened.push(path);
+    ribbon.callback();
+    assert.equal(ribbon.title, plugin.t("openAtelier"));
+    assert.deepEqual(opened, [undefined]);
+    let callback;
+    const item = {
+      setTitle(value) { assert.equal(value, action); return this; },
+      setIcon() { return this; },
+      onClick(fn) { callback = fn; return this; },
+    };
+    const existing = new Set([`Jobs/${title}.md`]);
+    vault.getAvailablePath = (name, ext) => existing.has(name + "." + ext) ? name + " 1." + ext : name + "." + ext;
+    plugin.settings.draftLocationMode = "folder";
+    plugin.settings.draftFolder = "Elsewhere";
+    for (const path of ["Jobs", "/"]) {
+      listeners.get("file-menu")({ addItem: fn => fn(item) }, new TFolder(path));
+      await callback();
+    }
+    assert.deepEqual(opened.slice(1), [`Jobs/${title} 1.md`, title + ".md"]);
+    assert.equal(writes[0].contents, readFileSync(path.join(root, "examples", `sample-resume.${language}.md`), "utf8"));
+  }
+});
+
+test("only the theme save button submits a draft form in Obsidian", async () => {
+  const { plugin, viewFactory } = await loadPlugin();
+  const view = viewFactory({ app: plugin.app });
+  const buttons = [];
+  function element(tag, options = {}) {
+    const node = {
+      value: options.value ?? "", text: options.text, type: options.attr?.type,
+      createEl: element, createDiv: () => element("div"), empty() {}, addEventListener() {}, focus() {},
+    };
+    if (tag === "button") buttons.push(node);
+    return node;
+  }
+  view.cssPanel = element("div");
+  view.layout.current = { template: "LapisCV" };
+  view.setPanel = view.layout.update = () => {};
+  view.themeEditor.open("new");
+  for (const button of buttons.filter(b => [plugin.t("cancel"), plugin.t("copySnippet")].includes(b.text))) {
+    assert.equal(button.type, "button");
+  }
+  assert.equal(buttons.find(b => b.text === plugin.t("saveTheme")).type, "submit");
+});
+
+test("paper editing selects the second matching line and preserves links, embeds and protected notes", async () => {
+  const { plugin, viewFactory } = await loadPlugin();
+  const view = viewFactory({ app: plugin.app });
+  const editor = view.editor;
+  const file = { path: "Draft.md" };
+  const body = "## One\n- Shared\n## Two\n- Shared";
+  const target = { closest: () => null };
+  const block = { contains: () => true, matches: () => false, classList: { add() {}, remove() {} } };
+  Object.assign(view.preview, { renderedFile: file, renderedBody: body, rendered: block });
+  view.selected = { file };
+  editor.previewBlocks = [{ element: block, line: 3 }];
+  let opened = 0;
+  let range;
+  editor.sourceField = { focus() {}, setSelectionRange(...values) { range = values; } };
+  editor.toolbar = { update() {} };
+  editor.scrollSourceTo = () => {};
+  editor.openEditor = async () => { opened++; editor.edit = { file, text: body }; };
+  const event = { target, preventDefault() {} };
+  for (const name of ["a", ".internal-embed"]) {
+    target.closest = selector => selector.includes(name);
+    await editor.focusSourceFromPreview(event, true);
+  }
+  target.closest = () => null;
+  view.selected.protected = true;
+  await editor.focusSourceFromPreview(event, true);
+  assert.equal(opened, 0);
+  view.selected.protected = false;
+  await editor.focusSourceFromPreview(event, true);
+  assert.deepEqual(range, [body.lastIndexOf("- Shared"), body.length]);
+  assert.equal(opened, 1);
 });
 
 test("older settings, local layouts and the recent note survive a folder rename", async () => {

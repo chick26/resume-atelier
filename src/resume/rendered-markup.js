@@ -131,4 +131,24 @@ function locatePreviewBlocks(root, body) {
 }
 
 
-module.exports = { decorateResumeMarkup, locatePreviewBlocks };
+function previewSourceLine({ line, element }, body, event) {
+  if (!element.matches("p,li,blockquote")) return line;
+  const doc = element.ownerDocument;
+  const caret = doc.caretRangeFromPoint?.(event.clientX, event.clientY);
+  if (!caret || !element.contains(caret.startContainer)) return line;
+  const range = doc.createRange();
+  range.selectNodeContents(element);
+  range.setEnd(caret.startContainer, caret.startOffset);
+  const prefix = previewMatchText(range.toString());
+  const lines = body.split("\n");
+  let consumed = previewMatchText(lines[line]);
+  while (consumed.length < prefix.length && prefix.startsWith(consumed) && lines[line + 1]?.trim()) {
+    const next = consumed + previewMatchText(lines[line + 1]);
+    if (next === consumed || !(prefix.startsWith(next) || next.startsWith(prefix))) break;
+    consumed = next;
+    line++;
+  }
+  return line;
+}
+
+module.exports = { decorateResumeMarkup, locatePreviewBlocks, previewSourceLine };

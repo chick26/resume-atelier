@@ -121,16 +121,6 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   padding-inline-end: 3mm;
 }
 
-/* Keep dates beside their roles in a sidebar theme, including page groups
-   whose sidebar is empty. PDF readers can treat a distant date as a column. */
-.lapis-cv.resume-layout-styled .resume-layout-columns:has(> .resume-sidebar) :is(h3.resume-entry-heading, .entry-title, div[alt="entry-title"]) {
-  justify-content: flex-start;
-  column-gap: 0.7em;
-}
-.lapis-cv.resume-layout-styled .resume-layout-columns:has(> .resume-sidebar) :is(.entry-title, div[alt="entry-title"]) > h3 {
-  flex: 0 1 auto;
-}
-
 .resume-layout-styled .resume-timeline .resume-entry {
   --timeline-indent: calc(var(--timeline-date-width, 24mm) + 5mm);
   position: relative;
@@ -161,6 +151,7 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
 .resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-main,h3) { grid-area: 1 / 2; }
 .lapis-cv.resume-layout-styled .resume-timeline :is(.resume-entry-heading, .entry-title, div[alt="entry-title"]) > :is(.entry-date,p) {
   grid-area: 1 / 1;
+  margin-inline-start: 0;
   text-align: start;
   white-space: normal;
 }

@@ -47,19 +47,21 @@ class ThemeEditor {
     ];
     for (const snippet of snippets) {
       examples.createEl("pre", { text: snippet });
-      examples.createEl("button", { text: this.t("copySnippet"), type: "button" })
+      examples.createEl("button", { text: this.t("copySnippet"), attr: { type: "button" } })
         .addEventListener("click", () => void copySourceText(editor, this.t, snippet));
     }
     const feedback = form.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
     const actions = form.createDiv({ cls: "resume-layout-template-actions" });
-    const cancel = actions.createEl("button", { type: "button", text: this.t("cancel") });
-    const save = actions.createEl("button", { type: "submit", text: this.t("saveTheme"), cls: "mod-cta" });
+    const cancel = actions.createEl("button", { text: this.t("cancel"), attr: { type: "button" } });
+    const save = actions.createEl("button", { text: this.t("saveTheme"), cls: "mod-cta", attr: { type: "submit" } });
+    let afterClose;
     const close = () => {
       this.draft = null;
       this.view.setPanel("layout");
       panel.empty();
       this.layout.updateTemplateControls();
       this.layout.templateSelect.focus();
+      afterClose?.();
     };
     const initialName = input.value;
     const initialCss = editor.value;
@@ -67,18 +69,20 @@ class ThemeEditor {
     confirm.hidden = true;
     const keep = confirm.createEl("button", { text: this.t("keepEditing") });
     const discard = confirm.createEl("button", { text: this.t("discardThemeConfirm"), cls: "mod-warning" });
-    const requestClose = () => {
+    const requestClose = this.draft.requestClose = next => {
+      afterClose = next;
       if (initialName === input.value && initialCss === editor.value) return close();
       confirm.hidden = false;
       keep.focus();
     };
     keep.addEventListener("click", () => {
+      afterClose = undefined;
       confirm.hidden = true;
       (initialCss === editor.value ? input : editor).focus();
     });
     discard.addEventListener("click", close);
-    back.addEventListener("click", requestClose);
-    cancel.addEventListener("click", requestClose);
+    back.addEventListener("click", () => requestClose());
+    cancel.addEventListener("click", () => requestClose());
     form.addEventListener("submit", async event => {
       event.preventDefault();
       if (save.disabled) return;

@@ -213,6 +213,10 @@ class ResumeLayoutView extends FileView {
   }
 
   setPanel(mode) {
+    if (this.panelMode === "css" && mode !== "css" && this.themeEditor.draft) {
+      this.themeEditor.draft.requestClose(() => this.setPanel(mode));
+      return;
+    }
     this.panelMode = mode;
     const content = mode === "content";
     const css = mode === "css";

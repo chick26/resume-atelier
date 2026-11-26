@@ -1,4 +1,4 @@
-const { MarkdownView, Notice, Plugin } = require("obsidian");
+const { MarkdownView, Notice, Plugin, TFolder } = require("obsidian");
 const { VIEW_TYPE } = require("./identity");
 const { obsidianLanguage, createTranslator } = require("./localization");
 const { SettingsStore } = require("./settings/store");
@@ -9,6 +9,7 @@ const { ThemeLibrary } = require("./themes/library");
 const { ResumeLayouts } = require("./layout/resolution");
 const { ResumePresentation } = require("./obsidian/presentation");
 const { ResumeLayoutView } = require("./workbench/view");
+const { runWithNotice } = require("./workbench/dom");
 
 const EXAMPLES = {
   en: require("../examples/sample-resume.en.md"),
@@ -36,7 +37,16 @@ class ResumeLayoutPlugin extends Plugin {
     this.registerView(VIEW_TYPE, leaf => new ResumeLayoutView(leaf, this));
     this.addSettingTab(new ResumeLayoutSettingTab(this.app, this));
     this.addCommand({ id: "open", name: this.t("openCommand"), callback: () => void this.open() });
+    this.addRibbonIcon("file-text", this.t("openAtelier"), () => void this.open());
     this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
+      if (file instanceof TFolder) {
+        menu.addItem(item => item.setTitle(this.t("newResumeMenu")).setIcon("file-plus")
+          .onClick(() => runWithNotice(async () => {
+            const note = await this.files.createExampleResume(file);
+            await this.open(note.path);
+          })));
+        return;
+      }
       const target = this.catalog.resumeForNote(file);
       if (!target && file?.extension !== "md") return;
       menu.addItem((item) => item
@@ -88,8 +98,10 @@ class ResumeLayoutPlugin extends Plugin {
       leaf = workspace.getLeaf("tab");
       await leaf.setViewState({ type: VIEW_TYPE, active: true, state: { file: file?.path ?? "" } });
     }
+    await leaf.loadIfDeferred?.();
     await workspace.revealLeaf(leaf);
     if (!(leaf.view instanceof ResumeLayoutView)) return;
+    if (workspace.activeLeaf !== leaf) workspace.setActiveLeaf(leaf, { focus: true });
     if (file && leaf.view.file !== file) await leaf.view.bindFile(file);
     else if (file && path) await leaf.view.show(file);
     if (!leaf.view.file && !allowPreview && vault.getMarkdownFiles().length) leaf.view.openPicker();

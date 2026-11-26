@@ -156,14 +156,15 @@
 .lapis-cv:where(.resume-layout-styled) h3.resume-entry-heading {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 2.5mm;
+  justify-content: flex-start;
+  column-gap: 0.7em;
   margin-top: var(--resume-entry-gap) !important;
 }
 .lapis-cv:where(.resume-layout-styled) .resume-entry-heading .entry-main { min-width: 0; }
 .lapis-cv:where(.resume-layout-styled) .resume-entry-heading .entry-sub { font-family: var(--text-font); font-weight: 400; color: var(--text-muted); }
 .lapis-cv:where(.resume-layout-styled) .resume-entry-heading .entry-date {
   flex: 0 1 auto;
+  margin-inline-start: var(--resume-date-offset, 0);
   text-align: end;
   font: normal 400 var(--text-size)/var(--line-height) var(--text-font);
   color: var(--text-muted);
@@ -172,9 +173,9 @@
 
 .lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: baseline;
-  gap: 10px;
+  gap: 0.7em;
   margin-top: var(--resume-entry-gap);
   margin-bottom: 0.45mm;
 }
@@ -192,7 +193,7 @@
 }
 
 .lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) h3 {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   margin: 0;
   color: var(--text-strong);
@@ -218,6 +219,7 @@
 .lapis-cv:where(.resume-layout-styled) :is(.entry-title, div[alt="entry-title"]) p {
   flex-shrink: 0;
   margin: 0;
+  margin-inline-start: var(--resume-date-offset, 0);
   font-family: var(--text-font) !important;
   font-size: 8.45pt;
   font-weight: 400;
