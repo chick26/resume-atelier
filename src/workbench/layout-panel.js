@@ -1,6 +1,6 @@
 const { Notice } = require("obsidian");
 const {
-  DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, noteLayoutKey, sameLayout,
+  A4_WIDTH, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, noteLayoutKey, sameLayout,
 } = require("../layout/geometry");
 const { iconButton } = require("./dom");
 
@@ -224,7 +224,7 @@ class LayoutPanel {
       const fraction = vertical ? (event.clientX - box.left) / box.width : (event.clientY - box.top) / box.height;
       handle.style.setProperty("--guide-position", `${100 * Math.max(0.08, Math.min(0.92, fraction))}%`);
       if (!drag || drag.file !== this.view.selected?.file) return;
-      const pixelsPerMm = this.paper.getBoundingClientRect().width / A4_WIDTH;
+      const pixelsPerMm = this.view.preview.paper.getBoundingClientRect().width / A4_WIDTH;
       if (!pixelsPerMm) return;
       const value = drag.layout[key] + direction * (coordinate(event) - drag.coordinate) / pixelsPerMm;
       this.resetUndo.delete(drag.file);

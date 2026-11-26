@@ -205,3 +205,53 @@ test("native PDF export uses A4 and restores the vault preferences on error", as
   assert.equal(config, original);
   assert.equal(plugin.presentation.printRequest, null);
 });
+
+test("margin handles measure the displayed paper at both zooms and preserve locks, cancellation and undo", async () => {
+  const { plugin, viewFactory } = await loadPlugin();
+  const file = note("Draft.md", { type: "resume-draft" });
+  const view = viewFactory({ app: plugin.app });
+  const panel = view.layout;
+  view.selected = { file, classes: [], recognized: true };
+  panel.update = () => {};
+  const saves = [];
+  panel.queueLayoutSave = target => saves.push(target);
+  const handles = new Map();
+  let width;
+  view.preview.paper = { getBoundingClientRect: () => ({ width }) };
+  view.preview.guide = { createSpan({ cls }) {
+    const events = new Map();
+    handles.set(cls.split("is-")[1], events);
+    return { style: { setProperty() {} }, addClass() {}, removeClass() {},
+      getBoundingClientRect: () => ({ left: 0, top: 0, width, height: 10 }),
+      setPointerCapture() {}, hasPointerCapture: () => false,
+      addEventListener: (name, callback) => events.set(name, callback) };
+  } };
+  panel.mountMarginHandles();
+  for (const zoom of [1, 0.6]) {
+    width = 210 * 96 / 25.4 * zoom;
+    for (const [side, opposite] of [["top", "bottom"], ["bottom", "top"], ["left", "right"], ["right", "left"]]) {
+      panel.current = layoutFor([], {});
+      panel.savedLayout = panel.lastCommittedLayout = { ...panel.current };
+      panel.alignLocks();
+      const before = panel.current[side];
+      const delta = (side === "right" || side === "bottom" ? -1 : 1) * 4 * width / 210;
+      const fire = (name, offset) => handles.get(side).get(name)({
+        button: 0, pointerId: 1, clientX: 80 + offset, clientY: 80 + offset, preventDefault() {},
+      });
+      fire("pointerdown", 0);
+      fire("pointermove", delta);
+      assert.equal(panel.current[side], before + 4, side);
+      assert.equal(panel.current[opposite], before + 4, opposite);
+      fire("pointercancel", delta);
+      assert.equal(panel.current[side], before);
+      assert.equal(saves.length, 0);
+      fire("pointerdown", 0);
+      fire("pointermove", delta);
+      fire("pointerup", delta);
+      assert.equal(saves.pop(), file);
+      panel.undoLayoutChange();
+      assert.equal(panel.current[side], before);
+      assert.equal(saves.pop(), file);
+    }
+  }
+});

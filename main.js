@@ -292,7 +292,7 @@ var require_localization = __commonJS({
 // src/layout/geometry.js
 var require_geometry = __commonJS({
   "src/layout/geometry.js"(exports2, module2) {
-    var A4_WIDTH2 = 210;
+    var A4_WIDTH = 210;
     var A4_HEIGHT = 297;
     var PX_PER_MM = 96 / 25.4;
     var BASE_TEMPLATE = "LapisCV";
@@ -359,7 +359,7 @@ var require_geometry = __commonJS({
     function applyMargins(element, layout) {
       for (const { key } of MARGINS) element.style.setProperty(`--resume-margin-${key}`, `${layout[key]}mm`);
     }
-    module2.exports = { A4_WIDTH: A4_WIDTH2, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
+    module2.exports = { A4_WIDTH, A4_HEIGHT, PX_PER_MM, BASE_TEMPLATE, DENSITIES, ZOOM_OPTIONS, MARGIN_PAIRS, MARGINS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, layoutMetadata, noteLayoutKey, sameLayout, applyTypography, applyMargins };
   }
 });
 
@@ -1475,6 +1475,7 @@ var require_layout_panel = __commonJS({
   "src/workbench/layout-panel.js"(exports2, module2) {
     var { Notice: Notice2 } = require("obsidian");
     var {
+      A4_WIDTH,
       DENSITIES,
       MARGINS,
       MARGIN_PAIRS,
@@ -1688,7 +1689,7 @@ var require_layout_panel = __commonJS({
           const fraction = vertical ? (event.clientX - box.left) / box.width : (event.clientY - box.top) / box.height;
           handle.style.setProperty("--guide-position", `${100 * Math.max(0.08, Math.min(0.92, fraction))}%`);
           if (!drag || drag.file !== this.view.selected?.file) return;
-          const pixelsPerMm = this.paper.getBoundingClientRect().width / A4_WIDTH;
+          const pixelsPerMm = this.view.preview.paper.getBoundingClientRect().width / A4_WIDTH;
           if (!pixelsPerMm) return;
           const value = drag.layout[key] + direction * (coordinate(event) - drag.coordinate) / pixelsPerMm;
           this.resetUndo.delete(drag.file);
@@ -1922,7 +1923,7 @@ var require_layout_panel = __commonJS({
 var require_preview_pane = __commonJS({
   "src/workbench/preview-pane.js"(exports2, module2) {
     var { Component, MarkdownRenderer } = require("obsidian");
-    var { A4_WIDTH: A4_WIDTH2, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
+    var { A4_WIDTH, A4_HEIGHT, PX_PER_MM, ZOOM_OPTIONS, applyMargins, applyTypography } = require_geometry();
     var { sourceParts, sourceText } = require_markdown();
     var { decorateResumeMarkup } = require_rendered_markup();
     var { applyTemplate } = require_scoped_css();
@@ -2055,7 +2056,7 @@ ${body}` : body, next, file.path, renderer);
         const margins = this.stage.ownerDocument.defaultView.getComputedStyle(this.stage);
         const width = this.stage.clientWidth - parseFloat(margins.paddingLeft) - parseFloat(margins.paddingRight);
         const height = this.stage.clientHeight - parseFloat(margins.paddingTop) - parseFloat(margins.paddingBottom);
-        const fitWidth = Math.max(0.12, width / (A4_WIDTH2 * PX_PER_MM));
+        const fitWidth = Math.max(0.12, width / (A4_WIDTH * PX_PER_MM));
         const fitHeight = Math.max(0.12, height / (A4_HEIGHT * PX_PER_MM));
         const zoom = this.zoomSelect.value === "actual" ? 1 : Math.min(1, fitWidth, this.zoomSelect.value === "page" ? fitHeight : Infinity);
         const scale = zoom.toFixed(4);
