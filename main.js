@@ -31,8 +31,9 @@ var __commonJS = (cb, mod) => function __require() {
 // src/identity.js
 var require_identity = __commonJS({
   "src/identity.js"(exports2, module2) {
-    var VIEW_TYPE2 = "careeros-resume-layout";
-    module2.exports = { VIEW_TYPE: VIEW_TYPE2 };
+    var VIEW_TYPE2 = "resume-atelier";
+    var RESUME_CLASS = "resume-atelier-note";
+    module2.exports = { VIEW_TYPE: VIEW_TYPE2, RESUME_CLASS };
   }
 });
 
@@ -520,7 +521,7 @@ var require_store = __commonJS({
           lastPath: this.lastPath
         })).catch((error) => {
           new Notice2(this.t("settingsSaveFailed"));
-          console.error("CareerOS resume layout settings failed to save", error);
+          console.error("Resume Atelier resume layout settings failed to save", error);
         });
         return this.saveQueue;
       }
@@ -727,6 +728,7 @@ var require_avatar = __commonJS({
 var require_files = __commonJS({
   "src/resume/files.js"(exports2, module2) {
     var { normalizePath, stringifyYaml } = require("obsidian");
+    var { RESUME_CLASS } = require_identity();
     var { geometryForSave, layoutMetadata, noteLayoutKey } = require_geometry();
     var { DRAFT_FOLDER } = require_store();
     var { sourceText, sourceParts, editableBody, withEditedBody } = require_markdown();
@@ -794,7 +796,7 @@ var require_files = __commonJS({
           resume_layout: geometryForSave(layout, resume.geometry),
           ...Object.keys(layout.sections).length ? { resume_sections: layout.sections } : {},
           draft_source: `[[${resume.file.path}]]`,
-          cssclasses: ["lapis-cv", "careeros-resume", ...zh ? ["lapis-cv-zh"] : []]
+          cssclasses: ["lapis-cv", RESUME_CLASS, ...zh ? ["lapis-cv-zh"] : []]
         };
         return this.app.vault.create(path, `---
 ${stringifyYaml(properties).trimEnd()}
@@ -1016,6 +1018,7 @@ var require_tab = __commonJS({
 // src/resume/catalog.js
 var require_catalog = __commonJS({
   "src/resume/catalog.js"(exports2, module2) {
+    var { RESUME_CLASS } = require_identity();
     var { layoutMetadata } = require_geometry();
     var { guessChinese } = require_markdown();
     var PROTECTED_APPLICATION_STATES = /* @__PURE__ */ new Set(["ready", "applied", "interviewing", "offer", "rejected", "withdrawn", "closed"]);
@@ -1034,10 +1037,10 @@ var require_catalog = __commonJS({
         const classes = [...declaredClasses];
         const metadata = layoutMetadata(frontmatter);
         const master = classes.includes("lapis-cv-master") || frontmatter.type === "master-resume";
-        const legacy = classes.includes("lapis-cv") && classes.includes("careeros-resume");
-        const recognized = legacy || !!(metadata.template || metadata.geometry || metadata.density || Object.keys(metadata.sections).length) || master || ["resume-draft", "tailored-resume"].includes(frontmatter.type);
+        const markedResume = classes.includes("lapis-cv") && classes.includes(RESUME_CLASS);
+        const recognized = markedResume || !!(metadata.template || metadata.geometry || metadata.density || Object.keys(metadata.sections).length) || master || ["resume-draft", "tailored-resume"].includes(frontmatter.type);
         if (!recognized && !allowAny) return null;
-        for (const required of ["lapis-cv", "careeros-resume"]) {
+        for (const required of ["lapis-cv", RESUME_CLASS]) {
           if (!classes.includes(required)) classes.push(required);
         }
         const explicitLanguage = classes.includes("lapis-cv-zh") || !!frontmatter.language;
@@ -1251,7 +1254,7 @@ span[alt="icon"] {
 // src/themes/scoped-css.js
 var require_scoped_css = __commonJS({
   "src/themes/scoped-css.js"(exports2, module2) {
-    var scopeId = 0;
+    var { RESUME_CLASS } = require_identity();
     function scopeSelectors(selectorText, scope) {
       const selectors = [];
       let quote = "";
@@ -1309,28 +1312,79 @@ var require_scoped_css = __commonJS({
       }).join("\n");
       return render(sheet.cssRules).trim();
     }
-    function applyTemplate(root, css) {
-      let style = root.querySelector(":scope > style[data-careeros-template]");
-      if (!css) {
-        if (style) {
-          root.classList.remove(style.dataset.careerosTemplate);
-          style.remove();
-        }
-        return;
-      }
-      if (style?.careerosCss === css) return;
-      if (!style) {
-        const scope2 = `careeros-template-${++scopeId}`;
-        root.classList.add(scope2);
-        style = root.ownerDocument.createElement("style");
-        style.dataset.careerosTemplate = scope2;
-        root.append(style);
-      }
-      const scope = `.lapis-cv.careeros-resume.resume-layout-styled.${style.dataset.careerosTemplate}`;
-      style.textContent = scopedCss(css, scope, root.ownerDocument);
-      style.careerosCss = css;
+    function printRules(scope, { paper, top, right, bottom, left }) {
+      return `@media print {
+    .${scope} { page: ${scope}; }
+    @page ${scope} { size: ${paper} portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; }
+  }`;
     }
-    module2.exports = { scopeSelectors, scopedCss, applyTemplate };
+    var ResumeStyleSheets2 = class {
+      constructor() {
+        this.documents = /* @__PURE__ */ new Map();
+        this.scopeId = 0;
+        this.disposed = false;
+      }
+      apply(root, theme, layout) {
+        if (this.disposed) return;
+        const doc = root.ownerDocument;
+        let group = this.documents.get(doc);
+        const previous = group?.rules.get(root);
+        if (!theme && !layout) {
+          if (previous) {
+            root.classList.remove(previous.scope);
+            group.rules.delete(root);
+            this.refresh(doc, group);
+          }
+          return;
+        }
+        const scope = previous?.scope ?? `resume-atelier-sheet-${++this.scopeId}`;
+        const page = layout ? printRules(scope, layout) : "";
+        if (previous && previous.theme === theme && previous.page === page) return;
+        const selector = `.lapis-cv.${RESUME_CLASS}.resume-layout-styled.${scope}`;
+        const css = theme ? scopedCss(theme, selector, doc) : "";
+        group ??= this.adopt(doc);
+        group.rules.set(root, { scope, theme, page, css });
+        root.classList.add(scope);
+        this.refresh(doc, group);
+      }
+      adopt(doc) {
+        const sheet = new doc.defaultView.CSSStyleSheet();
+        const rules = /* @__PURE__ */ new Map();
+        const observer = new doc.defaultView.MutationObserver((records) => {
+          if (!records.some((record) => record.removedNodes.length)) return;
+          const count = rules.size;
+          for (const [root, { scope }] of rules) {
+            if (root.isConnected && root.ownerDocument === doc) continue;
+            root.classList.remove(scope);
+            rules.delete(root);
+          }
+          if (rules.size !== count) this.refresh(doc, group);
+        });
+        const group = { sheet, rules, observer };
+        observer.observe(doc.documentElement, { childList: true, subtree: true });
+        doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, sheet];
+        this.documents.set(doc, group);
+        return group;
+      }
+      refresh(doc, group) {
+        if (group.rules.size) {
+          group.sheet.replaceSync([...group.rules.values()].map(({ css, page }) => css + "\n" + page).join("\n"));
+          return;
+        }
+        group.observer.disconnect();
+        doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter((sheet) => sheet !== group.sheet);
+        this.documents.delete(doc);
+      }
+      dispose() {
+        this.disposed = true;
+        for (const [doc, group] of this.documents) {
+          for (const [root, { scope }] of group.rules) root.classList.remove(scope);
+          group.rules.clear();
+          this.refresh(doc, group);
+        }
+      }
+    };
+    module2.exports = { scopeSelectors, scopedCss, ResumeStyleSheets: ResumeStyleSheets2 };
   }
 });
 
@@ -1352,7 +1406,7 @@ var require_library = __commonJS({
         this.templates = new Map(Object.entries(BUILT_IN_TEMPLATE_CSS).map(([id, css]) => [id, this.themeRecord(id, css)]));
       }
       themeRecord(id, raw) {
-        const metadata = raw.match(/^\/\* CareerOS theme: (.+?) \*\/\r?\n/u);
+        const metadata = raw.match(/^\/\* Resume Atelier theme: (.+?) \*\/\r?\n/u);
         const builtIn = BUILT_IN_TEMPLATES.includes(id);
         const customLabel = !builtIn && TEMPLATE_NAME.test(metadata?.[1] ?? "") ? metadata[1] : id;
         return {
@@ -1383,7 +1437,7 @@ var require_library = __commonJS({
             }
           }
         } catch (error) {
-          console.error("CareerOS could not read resume templates", error);
+          console.error("Resume Atelier could not read resume templates", error);
           new Notice2(this.t("themesLoadFailed"));
         }
       }
@@ -1419,7 +1473,7 @@ var require_library = __commonJS({
           throw new Error(this.t("duplicateTheme"));
         }
         if (!await adapter.exists(this.templateFolder)) await adapter.mkdir(this.templateFolder);
-        const raw = label === id ? css : `/* CareerOS theme: ${label} */
+        const raw = label === id ? css : `/* Resume Atelier theme: ${label} */
 ${css}`;
         await adapter.write(path, raw);
         this.templates.set(id, this.themeRecord(id, raw));
@@ -1784,17 +1838,17 @@ var require_presentation = __commonJS({
   "src/obsidian/presentation.js"(exports2, module2) {
     var { MarkdownView: MarkdownView2 } = require("obsidian");
     var { MARGINS, applyMargins, applyTypography } = require_geometry();
-    var { applyTemplate } = require_scoped_css();
     var { editableBody } = require_markdown();
     var { decorateResumeMarkup } = require_rendered_markup();
     var { SectionLayout } = require_section_layout();
     var { applyAppearance } = require_appearance();
     var ResumePresentation2 = class {
-      constructor(app, catalog, layouts, themes, t) {
+      constructor(app, catalog, layouts, themes, styles, t) {
         this.app = app;
         this.catalog = catalog;
         this.layouts = layouts;
         this.themes = themes;
+        this.styles = styles;
         this.t = t;
         this.readingClasses = /* @__PURE__ */ new WeakMap();
       }
@@ -1803,7 +1857,7 @@ var require_presentation = __commonJS({
         const file = this.app.vault.getAbstractFileByPath(sourcePath);
         if (root) {
           if (!element.closest(".internal-embed")) this.styleNativePrint(root, file);
-          if (root.dataset.careerosPrint) decorateResumeMarkup(element);
+          if (root.dataset.resumeAtelierPrint) decorateResumeMarkup(element);
         } else {
           const resume = this.catalog.resume(file);
           if (resume) decorateResumeMarkup(element);
@@ -1918,7 +1972,7 @@ var require_presentation = __commonJS({
         const layout = this.layouts.noteLayout(resume);
         applyMargins(root, layout);
         applyTypography(root, layout);
-        applyTemplate(root, this.themes.templates.get(layout.template)?.css);
+        this.styles.apply(root, this.themes.templates.get(layout.template)?.css);
         decorateResumeMarkup(root);
       }
       clearReadingStyle(root, declaredClasses = []) {
@@ -1933,29 +1987,25 @@ var require_presentation = __commonJS({
         root.style.removeProperty("--resume-paper-height");
         root.style.removeProperty("--text-size");
         root.style.removeProperty("--line-height");
-        applyTemplate(root, null);
+        this.styles.apply(root);
       }
       styleNativePrint(root, file) {
-        if (root.dataset.careerosPrint) return;
+        if (root.dataset.resumeAtelierPrint) return;
         const request = this.printRequest;
         const fromStudio = request && request.file === file && request.studioLeaf === this.app.workspace.activeLeaf;
         const resume = this.catalog.resume(file, fromStudio);
         if (!resume) return;
         const layout = fromStudio ? request.layout : this.layouts.noteLayout(resume);
         if (fromStudio) this.printRequest = null;
-        root.dataset.careerosPrint = "true";
+        root.dataset.resumeAtelierPrint = "true";
         root.classList.add("resume-layout-surface", "resume-layout-styled", ...resume.classes);
         applyMargins(root, layout);
         applyTypography(root, layout);
-        applyTemplate(root, this.themes.templates.get(layout.template)?.css);
+        this.styles.apply(root, this.themes.templates.get(layout.template)?.css, layout);
         decorateResumeMarkup(root);
         const content = root.querySelector(":scope > .markdown-preview-sizer") ?? root;
         const blocks = [...content.children].filter((node) => !node.matches("style, .mod-ui, .mod-frontmatter, .mod-header, .mod-footer"));
         new SectionLayout(content, blocks).apply(layout);
-        const { top, right, bottom, left } = layout;
-        const style = root.ownerDocument.createElement("style");
-        style.textContent = `@media print { @page { size: ${layout.paper} portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
-        root.append(style);
       }
     };
     module2.exports = { ResumePresentation: ResumePresentation2 };
@@ -2725,7 +2775,6 @@ var require_preview_pane = __commonJS({
     var { splitSectionBody } = require_structure();
     var { SectionLayout } = require_section_layout();
     var { decorateResumeMarkup, locatePreviewBlocks } = require_rendered_markup();
-    var { applyTemplate } = require_scoped_css();
     var PreviewPane = class {
       constructor(view) {
         this.view = view;
@@ -2740,10 +2789,10 @@ var require_preview_pane = __commonJS({
         for (const [value, label] of Object.entries(ZOOM_OPTIONS)) {
           this.zoomSelect.createEl("option", { value, text: this.t(label) });
         }
-        const zoom = this.app.loadLocalStorage("careeros-resume-zoom");
+        const zoom = this.app.loadLocalStorage("resume-atelier-zoom");
         this.zoomSelect.value = Object.hasOwn(ZOOM_OPTIONS, zoom) ? zoom : "page";
         this.zoomSelect.addEventListener("change", () => {
-          this.app.saveLocalStorage("careeros-resume-zoom", this.zoomSelect.value);
+          this.app.saveLocalStorage("resume-atelier-zoom", this.zoomSelect.value);
           this.measure();
         });
         const status = this.pageStatus = center.createDiv({ cls: "resume-layout-page-status" });
@@ -2797,6 +2846,7 @@ var require_preview_pane = __commonJS({
         this.guides?.replaceChildren();
         if (this.rendered) {
           this.observer?.unobserve(this.rendered);
+          this.view.plugin.styles.apply(this.rendered);
           this.rendered.remove();
           this.rendered = null;
         }
@@ -2854,10 +2904,11 @@ ${body}` : body, next, file.path, renderer);
         } catch (error) {
           if (version === this.renderVersion) {
             this.setPageMeasurement(this.t("previewUnavailable"));
-            console.error("CareerOS resume preview failed", error);
+            console.error("Resume Atelier resume preview failed", error);
           }
         } finally {
           if (!swapped) {
+            this.view.plugin.styles.apply(next);
             next.remove();
             this.view.removeChild(renderer);
           }
@@ -2872,7 +2923,7 @@ ${body}` : body, next, file.path, renderer);
         const layout = this.view.layout.current;
         applyTypography(root, layout);
         const theme = this.view.plugin.themes.templates.get(layout.template);
-        applyTemplate(root, this.view.themeEditor.draft?.text ?? theme?.css);
+        this.view.plugin.styles.apply(root, this.view.themeEditor.draft?.text ?? theme?.css);
       }
       setPageMeasurement(label, detail = "") {
         if (this.measurement.textContent !== label) this.measurement.setText(label);
@@ -3214,7 +3265,7 @@ var require_modals = __commonJS({
             await this.editor.backupSourceEdit(this.edit);
             this.finish();
           } catch (error) {
-            console.error("CareerOS resume editor recovery failed", error);
+            console.error("Resume Atelier resume editor recovery failed", error);
             feedback.setText(this.t("backupFailed"));
             retry.disabled = discard.disabled = false;
           }
@@ -3581,7 +3632,7 @@ var require_source_editor = __commonJS({
           }
         } catch (error) {
           new Notice2(error.message || this.t("sourceConflictFailed"));
-          console.error("CareerOS source conflict resolution failed", error);
+          console.error("Resume Atelier source conflict resolution failed", error);
         } finally {
           edit.resolving = false;
           field.readOnly = false;
@@ -3661,7 +3712,7 @@ var require_source_editor = __commonJS({
           try {
             await this.backupSourceEdit(edit);
           } catch (error) {
-            console.error("CareerOS resume editor recovery failed", error);
+            console.error("Resume Atelier resume editor recovery failed", error);
             if (!edit.recovery) {
               edit.recovery = new SourceRecoveryModal(this, edit);
               edit.recovery.open();
@@ -4072,7 +4123,7 @@ var require_view = __commonJS({
       async onOpen() {
         const view = this.contentEl;
         view.empty();
-        view.addClass("careeros-resume-layout");
+        view.addClass(VIEW_TYPE2);
         const header = view.createDiv({ cls: "resume-layout-header" });
         const identity = header.createDiv({ cls: "resume-layout-identity" });
         this.pickButton = identity.createEl("button", { cls: "resume-layout-picker" });
@@ -4170,7 +4221,7 @@ var require_view = __commonJS({
           await this.plugin.revealNote(this.selected.file, true);
         } catch (error) {
           new Notice2(this.t("cannotOpenResume"));
-          console.error("CareerOS resume note failed to open", error);
+          console.error("Resume Atelier resume note failed to open", error);
         }
       }
       openPicker() {
@@ -4191,7 +4242,7 @@ var require_view = __commonJS({
             const file = await this.plugin.files.createExampleResume();
             if (this.leaf.view === this && !this.file) await this.bindFile(file);
           } catch (error) {
-            console.error("CareerOS example resume creation failed", error);
+            console.error("Resume Atelier example resume creation failed", error);
             new Notice2(this.t("cannotCreateSample"));
           } finally {
             example.disabled = false;
@@ -4277,7 +4328,7 @@ var require_view = __commonJS({
             resume = this.plugin.catalog.resumeForContent(resume, body);
           } catch (error) {
             if (version === this.preview.renderVersion) this.preview.setPageMeasurement(this.t("previewUnavailable"));
-            console.error("CareerOS resume preview failed", error);
+            console.error("Resume Atelier resume preview failed", error);
             return;
           }
         }
@@ -4330,7 +4381,7 @@ var require_view = __commonJS({
           await this.plugin.presentation.openNativeExport(file, this.leaf, layout);
         } catch (error) {
           new Notice2(error.message || this.t("nativeExportFailed"));
-          console.error("CareerOS PDF export failed", error);
+          console.error("Resume Atelier PDF export failed", error);
         } finally {
           this.exporting = false;
           this.updateExportButton();
@@ -4364,6 +4415,7 @@ var { ResumeLayoutSettingTab } = require_tab();
 var { ResumeCatalog } = require_catalog();
 var { ResumeFiles } = require_files();
 var { ThemeLibrary } = require_library();
+var { ResumeStyleSheets } = require_scoped_css();
 var { ResumeLayouts } = require_resolution();
 var { ResumePresentation } = require_presentation();
 var { ResumeLayoutView } = require_view();
@@ -4386,7 +4438,8 @@ var ResumeLayoutPlugin = class extends Plugin {
     this.themes = new ThemeLibrary(this.app, this.manifest.id, this.catalog, this.t, refresh);
     this.layouts = new ResumeLayouts(this.state, this.themes);
     this.files = new ResumeFiles(this.app, this.catalog, this.state, this.t, EXAMPLES[language], refresh);
-    this.presentation = new ResumePresentation(this.app, this.catalog, this.layouts, this.themes, this.t);
+    this.styles = new ResumeStyleSheets();
+    this.presentation = new ResumePresentation(this.app, this.catalog, this.layouts, this.themes, this.styles, this.t);
     await this.themes.loadTemplates();
     this.registerView(VIEW_TYPE, (leaf) => new ResumeLayoutView(leaf, this));
     this.addSettingTab(new ResumeLayoutSettingTab(this.app, this));
@@ -4415,6 +4468,7 @@ var ResumeLayoutPlugin = class extends Plugin {
   }
   onunload() {
     this.presentation?.dispose();
+    this.styles?.dispose();
   }
   async open(path, allowPreview = false) {
     const { workspace, vault } = this.app;

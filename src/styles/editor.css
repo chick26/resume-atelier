@@ -1,4 +1,4 @@
-.careeros-resume-layout .resume-layout-source {
+.resume-atelier .resume-layout-source {
   display: flex;
   position: relative;
   min-width: 0;
@@ -8,7 +8,7 @@
   background: var(--studio-panel);
 }
 
-.careeros-resume-layout .resume-layout-source-header {
+.resume-atelier .resume-layout-source-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -21,16 +21,16 @@
   font-size: 12px;
 }
 
-.careeros-resume-layout :is(.resume-layout-source-tools, .resume-layout-source-info) {
+.resume-atelier :is(.resume-layout-source-tools, .resume-layout-source-info) {
   display: flex;
   align-items: center;
   gap: 3px;
 }
 
-.careeros-resume-layout .resume-layout-source-tools { flex: none; }
-.careeros-resume-layout .resume-layout-source-info { min-width: 0; justify-content: flex-end; }
+.resume-atelier .resume-layout-source-tools { flex: none; }
+.resume-atelier .resume-layout-source-info { min-width: 0; justify-content: flex-end; }
 
-.careeros-resume-layout .resume-layout-source-header button {
+.resume-atelier .resume-layout-source-header button {
   display: inline-flex;
   flex: none;
   min-width: 28px;
@@ -45,17 +45,17 @@
   white-space: nowrap;
 }
 
-.careeros-resume-layout .resume-layout-source-header button > span { display: inline-flex; align-items: center; }
-.careeros-resume-layout .resume-layout-source-header button svg { width: 14px; height: 14px; }
+.resume-atelier .resume-layout-source-header button > span { display: inline-flex; align-items: center; }
+.resume-atelier .resume-layout-source-header button svg { width: 14px; height: 14px; }
 
-.careeros-resume-layout .resume-layout-source-header button[aria-expanded="true"] {
+.resume-atelier .resume-layout-source-header button[aria-expanded="true"] {
   background: color-mix(in srgb, var(--studio-accent) 12%, var(--studio-panel));
   color: var(--studio-accent);
 }
 
-.careeros-resume-layout .resume-layout-source-header button:disabled { opacity: 0.4; }
-.careeros-resume-layout .resume-layout-source-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.careeros-resume-layout .resume-layout-source-status::before {
+.resume-atelier .resume-layout-source-header button:disabled { opacity: 0.4; }
+.resume-atelier .resume-layout-source-status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resume-atelier .resume-layout-source-status::before {
   display: inline-block;
   width: 4px;
   height: 4px;
@@ -66,10 +66,10 @@
   content: "";
 }
 
-.careeros-resume-layout .resume-layout-source-status.is-pending { color: var(--studio-accent); }
-.careeros-resume-layout .resume-layout-source-status.has-error { color: var(--studio-warning); }
+.resume-atelier .resume-layout-source-status.is-pending { color: var(--studio-accent); }
+.resume-atelier .resume-layout-source-status.has-error { color: var(--studio-warning); }
 
-.careeros-resume-layout .resume-layout-photo-popover {
+.resume-atelier .resume-layout-photo-popover {
   position: absolute;
   z-index: 12;
   box-sizing: border-box;
@@ -84,7 +84,7 @@
   font-size: 12px;
 }
 
-.careeros-resume-layout .resume-layout-source-conflict {
+.resume-atelier .resume-layout-source-conflict {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -92,7 +92,7 @@
   border-bottom: 1px solid var(--studio-border);
 }
 
-.careeros-resume-layout .resume-layout-source-conflict-message { flex: 1 1 100%; color: var(--studio-warning); font-size: 12px; }
+.resume-atelier .resume-layout-source-conflict-message { flex: 1 1 100%; color: var(--studio-warning); font-size: 12px; }
 
 .resume-layout-recovery .modal-close-button { display: none; }
 
@@ -104,7 +104,7 @@
   resize: vertical;
 }
 
-.careeros-resume-layout .resume-layout-source textarea {
+.resume-atelier .resume-layout-source textarea {
   box-sizing: border-box;
   flex: 1 1 0;
   width: 100%;
@@ -121,6 +121,6 @@
   tab-size: 2;
 }
 
-.careeros-resume-layout .resume-layout-source textarea::selection {
+.resume-atelier .resume-layout-source textarea::selection {
   background: color-mix(in srgb, var(--studio-accent) 35%, transparent);
 }

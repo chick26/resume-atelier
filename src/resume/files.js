@@ -1,4 +1,5 @@
 const { normalizePath, stringifyYaml } = require("obsidian");
+const { RESUME_CLASS } = require("../identity");
 const { geometryForSave, layoutMetadata, noteLayoutKey } = require("../layout/geometry");
 const { DRAFT_FOLDER } = require("../settings/store");
 const { sourceText, sourceParts, editableBody, withEditedBody } = require("./markdown");
@@ -72,7 +73,7 @@ class ResumeFiles {
       resume_layout: geometryForSave(layout, resume.geometry),
       ...(Object.keys(layout.sections).length ? { resume_sections: layout.sections } : {}),
       draft_source: `[[${resume.file.path}]]`,
-      cssclasses: ["lapis-cv", "careeros-resume", ...(zh ? ["lapis-cv-zh"] : [])],
+      cssclasses: ["lapis-cv", RESUME_CLASS, ...(zh ? ["lapis-cv-zh"] : [])],
     };
     return this.app.vault.create(path, `---\n${stringifyYaml(properties).trimEnd()}\n---\n${body}`);
   }

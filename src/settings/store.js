@@ -42,7 +42,7 @@ class SettingsStore {
       lastPath: this.lastPath,
     })).catch((error) => {
       new Notice(this.t("settingsSaveFailed"));
-      console.error("CareerOS resume layout settings failed to save", error);
+      console.error("Resume Atelier resume layout settings failed to save", error);
     });
     return this.saveQueue;
   }

@@ -16,7 +16,7 @@ class ThemeLibrary {
   }
 
   themeRecord(id, raw) {
-    const metadata = raw.match(/^\/\* CareerOS theme: (.+?) \*\/\r?\n/u);
+    const metadata = raw.match(/^\/\* Resume Atelier theme: (.+?) \*\/\r?\n/u);
     const builtIn = BUILT_IN_TEMPLATES.includes(id);
     const customLabel = !builtIn && TEMPLATE_NAME.test(metadata?.[1] ?? "") ? metadata[1] : id;
     return {
@@ -50,7 +50,7 @@ class ThemeLibrary {
         }
       }
     } catch (error) {
-      console.error("CareerOS could not read resume templates", error);
+      console.error("Resume Atelier could not read resume templates", error);
       new Notice(this.t("themesLoadFailed"));
     }
   }
@@ -90,7 +90,7 @@ class ThemeLibrary {
       throw new Error(this.t("duplicateTheme"));
     }
     if (!await adapter.exists(this.templateFolder)) await adapter.mkdir(this.templateFolder);
-    const raw = label === id ? css : `/* CareerOS theme: ${label} */\n${css}`;
+    const raw = label === id ? css : `/* Resume Atelier theme: ${label} */\n${css}`;
     await adapter.write(path, raw);
     this.templates.set(id, this.themeRecord(id, raw));
     this.onChange();

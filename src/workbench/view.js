@@ -39,7 +39,7 @@ class ResumeLayoutView extends FileView {
   async onOpen() {
     const view = this.contentEl;
     view.empty();
-    view.addClass("careeros-resume-layout");
+    view.addClass(VIEW_TYPE);
 
     const header = view.createDiv({ cls: "resume-layout-header" });
     const identity = header.createDiv({ cls: "resume-layout-identity" });
@@ -151,7 +151,7 @@ class ResumeLayoutView extends FileView {
       await this.plugin.revealNote(this.selected.file, true);
     } catch (error) {
       new Notice(this.t("cannotOpenResume"));
-      console.error("CareerOS resume note failed to open", error);
+      console.error("Resume Atelier resume note failed to open", error);
     }
   }
 
@@ -174,7 +174,7 @@ class ResumeLayoutView extends FileView {
         const file = await this.plugin.files.createExampleResume();
         if (this.leaf.view === this && !this.file) await this.bindFile(file);
       } catch (error) {
-        console.error("CareerOS example resume creation failed", error);
+        console.error("Resume Atelier example resume creation failed", error);
         new Notice(this.t("cannotCreateSample"));
       } finally {
         example.disabled = false;
@@ -266,7 +266,7 @@ class ResumeLayoutView extends FileView {
         resume = this.plugin.catalog.resumeForContent(resume, body);
       } catch (error) {
         if (version === this.preview.renderVersion) this.preview.setPageMeasurement(this.t("previewUnavailable"));
-        console.error("CareerOS resume preview failed", error);
+        console.error("Resume Atelier resume preview failed", error);
         return;
       }
     }
@@ -324,7 +324,7 @@ class ResumeLayoutView extends FileView {
       await this.plugin.presentation.openNativeExport(file, this.leaf, layout);
     } catch (error) {
       new Notice(error.message || this.t("nativeExportFailed"));
-      console.error("CareerOS PDF export failed", error);
+      console.error("Resume Atelier PDF export failed", error);
     } finally {
       this.exporting = false;
       this.updateExportButton();

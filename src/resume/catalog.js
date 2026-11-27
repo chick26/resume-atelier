@@ -1,3 +1,4 @@
+const { RESUME_CLASS } = require("../identity");
 const { layoutMetadata } = require("../layout/geometry");
 const { guessChinese } = require("./markdown");
 
@@ -20,11 +21,11 @@ class ResumeCatalog {
     const classes = [...declaredClasses];
     const metadata = layoutMetadata(frontmatter);
     const master = classes.includes("lapis-cv-master") || frontmatter.type === "master-resume";
-    const legacy = classes.includes("lapis-cv") && classes.includes("careeros-resume");
-    const recognized = legacy || !!(metadata.template || metadata.geometry || metadata.density || Object.keys(metadata.sections).length)
+    const markedResume = classes.includes("lapis-cv") && classes.includes(RESUME_CLASS);
+    const recognized = markedResume || !!(metadata.template || metadata.geometry || metadata.density || Object.keys(metadata.sections).length)
       || master || ["resume-draft", "tailored-resume"].includes(frontmatter.type);
     if (!recognized && !allowAny) return null;
-    for (const required of ["lapis-cv", "careeros-resume"]) {
+    for (const required of ["lapis-cv", RESUME_CLASS]) {
       if (!classes.includes(required)) classes.push(required);
     }
     const explicitLanguage = classes.includes("lapis-cv-zh") || !!frontmatter.language;

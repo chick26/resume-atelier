@@ -35,13 +35,12 @@
  */
 
 /*
- * CareerOS refined editorial port of LapisCV Serif for Obsidian.
+ * Resume Atelier paper styles based on LapisCV Serif.
  *
  * Upstream: https://github.com/BingyanStudio/LapisCV (v2.0.1, MIT)
  *
- * Scoped to notes with `cssclasses: [lapis-cv]` so the CareerOS dashboard and
- * ordinary notes keep their own theme. Uses matching Latin and CJK type
- * families for each text role, with the LapisCV icon face reserved for icons.
+ * Paper styles apply to surfaces marked by the plugin. Text uses Latin and CJK
+ * fonts, with the LapisCV icon face reserved for icons.
  */
 
 .lapis-cv:where(.resume-layout-styled),
@@ -66,9 +65,9 @@ body.theme-light .lapis-cv:where(.resume-layout-styled) {
   --resume-entry-gap: var(--resume-density-entry-gap, 1.65mm);
 
   /* Platform fonts keep the vault portable without a bundled CJK font. */
-  --icon-font: "CareerOS Resume Icons";
-  --resume-serif-font: "Charter", "Georgia", "Iowan Old Style", "CareerOS Resume Icons", "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
-  --resume-sans-font: "Inter", "Helvetica Neue", Arial, "CareerOS Resume Icons", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --icon-font: "Resume Atelier Resume Icons";
+  --resume-serif-font: "Charter", "Georgia", "Iowan Old Style", "Resume Atelier Resume Icons", "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
+  --resume-sans-font: "Inter", "Helvetica Neue", Arial, "Resume Atelier Resume Icons", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   --title-font: var(--resume-serif-font);
   --text-font: var(--resume-serif-font);
   --link-font: var(--text-font);

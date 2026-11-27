@@ -240,7 +240,7 @@ class SourceEditor {
       }
     } catch (error) {
       new Notice(error.message || this.t("sourceConflictFailed"));
-      console.error("CareerOS source conflict resolution failed", error);
+      console.error("Resume Atelier source conflict resolution failed", error);
     } finally {
       edit.resolving = false;
       field.readOnly = false;
@@ -322,7 +322,7 @@ class SourceEditor {
       try {
         await this.backupSourceEdit(edit);
       } catch (error) {
-        console.error("CareerOS resume editor recovery failed", error);
+        console.error("Resume Atelier resume editor recovery failed", error);
         if (!edit.recovery) {
           edit.recovery = new SourceRecoveryModal(this, edit);
           edit.recovery.open();

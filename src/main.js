@@ -6,6 +6,7 @@ const { ResumeLayoutSettingTab } = require("./settings/tab");
 const { ResumeCatalog } = require("./resume/catalog");
 const { ResumeFiles } = require("./resume/files");
 const { ThemeLibrary } = require("./themes/library");
+const { ResumeStyleSheets } = require("./themes/scoped-css");
 const { ResumeLayouts } = require("./layout/resolution");
 const { ResumePresentation } = require("./obsidian/presentation");
 const { ResumeLayoutView } = require("./workbench/view");
@@ -31,7 +32,8 @@ class ResumeLayoutPlugin extends Plugin {
     this.themes = new ThemeLibrary(this.app, this.manifest.id, this.catalog, this.t, refresh);
     this.layouts = new ResumeLayouts(this.state, this.themes);
     this.files = new ResumeFiles(this.app, this.catalog, this.state, this.t, EXAMPLES[language], refresh);
-    this.presentation = new ResumePresentation(this.app, this.catalog, this.layouts, this.themes, this.t);
+    this.styles = new ResumeStyleSheets();
+    this.presentation = new ResumePresentation(this.app, this.catalog, this.layouts, this.themes, this.styles, this.t);
     await this.themes.loadTemplates();
 
     this.registerView(VIEW_TYPE, leaf => new ResumeLayoutView(leaf, this));
@@ -66,6 +68,7 @@ class ResumeLayoutPlugin extends Plugin {
 
   onunload() {
     this.presentation?.dispose();
+    this.styles?.dispose();
   }
 
   async open(path, allowPreview = false) {

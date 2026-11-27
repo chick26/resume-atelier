@@ -1,17 +1,17 @@
 const { MarkdownView } = require("obsidian");
 const { MARGINS, applyMargins, applyTypography } = require("../layout/geometry");
-const { applyTemplate } = require("../themes/scoped-css");
 const { editableBody } = require("../resume/markdown");
 const { decorateResumeMarkup } = require("../resume/rendered-markup");
 const { SectionLayout } = require("../resume/section-layout");
 const { applyAppearance } = require("../layout/appearance");
 
 class ResumePresentation {
-  constructor(app, catalog, layouts, themes, t) {
+  constructor(app, catalog, layouts, themes, styles, t) {
     this.app = app;
     this.catalog = catalog;
     this.layouts = layouts;
     this.themes = themes;
+    this.styles = styles;
     this.t = t;
     this.readingClasses = new WeakMap();
   }
@@ -21,7 +21,7 @@ class ResumePresentation {
     const file = this.app.vault.getAbstractFileByPath(sourcePath);
     if (root) {
       if (!element.closest(".internal-embed")) this.styleNativePrint(root, file);
-      if (root.dataset.careerosPrint) decorateResumeMarkup(element);
+      if (root.dataset.resumeAtelierPrint) decorateResumeMarkup(element);
     } else {
       const resume = this.catalog.resume(file);
       if (resume) decorateResumeMarkup(element);
@@ -137,7 +137,7 @@ class ResumePresentation {
     const layout = this.layouts.noteLayout(resume);
     applyMargins(root, layout);
     applyTypography(root, layout);
-    applyTemplate(root, this.themes.templates.get(layout.template)?.css);
+    this.styles.apply(root, this.themes.templates.get(layout.template)?.css);
     decorateResumeMarkup(root);
   }
 
@@ -153,11 +153,11 @@ class ResumePresentation {
     root.style.removeProperty("--resume-paper-height");
     root.style.removeProperty("--text-size");
     root.style.removeProperty("--line-height");
-    applyTemplate(root, null);
+    this.styles.apply(root);
   }
 
   styleNativePrint(root, file) {
-    if (root.dataset.careerosPrint) return;
+    if (root.dataset.resumeAtelierPrint) return;
     const request = this.printRequest;
     const fromStudio = request && request.file === file && request.studioLeaf === this.app.workspace.activeLeaf;
     const resume = this.catalog.resume(file, fromStudio);
@@ -166,19 +166,15 @@ class ResumePresentation {
     if (fromStudio) this.printRequest = null;
 
     // The print root is removed by Obsidian when this export finishes.
-    root.dataset.careerosPrint = "true";
+    root.dataset.resumeAtelierPrint = "true";
     root.classList.add("resume-layout-surface", "resume-layout-styled", ...resume.classes);
     applyMargins(root, layout);
     applyTypography(root, layout);
-    applyTemplate(root, this.themes.templates.get(layout.template)?.css);
+    this.styles.apply(root, this.themes.templates.get(layout.template)?.css, layout);
     decorateResumeMarkup(root);
     const content = root.querySelector(":scope > .markdown-preview-sizer") ?? root;
     const blocks = [...content.children].filter(node => !node.matches("style, .mod-ui, .mod-frontmatter, .mod-header, .mod-footer"));
     new SectionLayout(content, blocks).apply(layout);
-    const { top, right, bottom, left } = layout;
-    const style = root.ownerDocument.createElement("style");
-    style.textContent = `@media print { @page { size: ${layout.paper} portrait; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; } }`;
-    root.append(style);
   }
 }
 

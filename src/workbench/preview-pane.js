@@ -5,7 +5,6 @@ const { sourceParts, sourceText } = require("../resume/markdown");
 const { splitSectionBody } = require("../resume/structure");
 const { SectionLayout } = require("../resume/section-layout");
 const { decorateResumeMarkup, locatePreviewBlocks } = require("../resume/rendered-markup");
-const { applyTemplate } = require("../themes/scoped-css");
 
 class PreviewPane {
   constructor(view) {
@@ -22,10 +21,10 @@ class PreviewPane {
     for (const [value, label] of Object.entries(ZOOM_OPTIONS)) {
       this.zoomSelect.createEl("option", { value, text: this.t(label) });
     }
-    const zoom = this.app.loadLocalStorage("careeros-resume-zoom");
+    const zoom = this.app.loadLocalStorage("resume-atelier-zoom");
     this.zoomSelect.value = Object.hasOwn(ZOOM_OPTIONS, zoom) ? zoom : "page";
     this.zoomSelect.addEventListener("change", () => {
-      this.app.saveLocalStorage("careeros-resume-zoom", this.zoomSelect.value);
+      this.app.saveLocalStorage("resume-atelier-zoom", this.zoomSelect.value);
       this.measure();
     });
     const status = this.pageStatus = center.createDiv({ cls: "resume-layout-page-status" });
@@ -84,6 +83,7 @@ class PreviewPane {
     this.guides?.replaceChildren();
     if (this.rendered) {
       this.observer?.unobserve(this.rendered);
+      this.view.plugin.styles.apply(this.rendered);
       this.rendered.remove();
       this.rendered = null;
     }
@@ -143,10 +143,11 @@ class PreviewPane {
     } catch (error) {
       if (version === this.renderVersion) {
         this.setPageMeasurement(this.t("previewUnavailable"));
-        console.error("CareerOS resume preview failed", error);
+        console.error("Resume Atelier resume preview failed", error);
       }
     } finally {
       if (!swapped) {
+        this.view.plugin.styles.apply(next);
         next.remove();
         this.view.removeChild(renderer);
       }
@@ -163,7 +164,7 @@ class PreviewPane {
     const layout = this.view.layout.current;
     applyTypography(root, layout);
     const theme = this.view.plugin.themes.templates.get(layout.template);
-    applyTemplate(root, this.view.themeEditor.draft?.text ?? theme?.css);
+    this.view.plugin.styles.apply(root, this.view.themeEditor.draft?.text ?? theme?.css);
   }
 
   setPageMeasurement(label, detail = "") {

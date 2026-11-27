@@ -1,5 +1,5 @@
 /* ==========================================================================
- * Chinese Resume Variant (`cssclasses: [lapis-cv, careeros-resume, lapis-cv-zh]`)
+ * Chinese Resume Variant (`cssclasses: [lapis-cv, resume-atelier-note, lapis-cv-zh]`)
  * Uses serif headings and a matched Latin/CJK sans-serif body.
  * ========================================================================== */
 .lapis-cv:where(.resume-layout-styled).lapis-cv-zh,

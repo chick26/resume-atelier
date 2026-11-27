@@ -51,7 +51,7 @@ class SourceRecoveryModal extends Modal {
         await this.editor.backupSourceEdit(this.edit);
         this.finish();
       } catch (error) {
-        console.error("CareerOS resume editor recovery failed", error);
+        console.error("Resume Atelier resume editor recovery failed", error);
         feedback.setText(this.t("backupFailed"));
         retry.disabled = discard.disabled = false;
       }
