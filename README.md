@@ -14,20 +14,20 @@ Create a résumé in Obsidian with a live page preview beside your Markdown. Adj
 
 ## Manual installation
 
-Requires Obsidian desktop 1.5.0 or later. The plugin interface follows Obsidian and is available in English and Simplified Chinese.
+Requires Obsidian desktop 1.7.2 or later. The interface is available in English and Simplified Chinese.
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the release’s **Assets** section. To install a locally built candidate, use the same three files from its ZIP. [Latest published release](https://github.com/chick26/resume-atelier/releases/latest)
 2. In your vault, create the folder `.obsidian/plugins/careeros-resume-layout/` if it’s missing, then copy the three files directly into it. The `.obsidian` folder may be hidden in your file manager.
 3. Enable **Resume Atelier** in **Settings → Community plugins**.
 
-To upgrade from 0.7.0, close Obsidian, replace those three files in the same folder and reopen your vault. Keep `data.json` and `templates/` to retain your settings, recent note and custom CSS.
+To upgrade from 0.7.0, close Obsidian, replace those three files in the same folder and reopen your vault. Keep `data.json` and `templates/` to retain your settings, recent note and custom CSS. If an older note uses HTML for experience headings, use the Markdown heading format below to apply the date layouts.
 
 ## Open your first résumé
 
 Click **Open Resume Atelier** in the left ribbon, or right-click a folder and choose **New resume**. The command palette also has **Resume Atelier → Open workbench**.
 
 1. Double-click text on the page to edit the corresponding line. Start with `# Name`, use `##` for sections and write entries as `### Senior Designer · Example Studio | 2022 – Present`. For a master or confirmed application résumé, choose **Copy and edit**. A regular note stays in preview until you choose **Use resume layout**.
-2. Under **Layout**, try **Modern Sans** or **Light timeline**. Use **Sections** to reorder sections, display a list as tags or hide a section. The hidden count remains visible when the panel is closed.
+2. Under **Layout**, try **Modern Sans**, **Right-aligned dates**, or **Light timeline**. Use **Sections** to reorder sections, display a list as tags or hide a section. The hidden count remains visible when the panel is closed.
 3. To add a vault image, choose **Customize → Add photo** or use **Photo** beside the editor. After picking the image, keep typing. Click the portrait or **Photo** to change its ratio and corners. Press **Esc** to return to your text.
 4. Choose **A4** or **US Letter** and inspect the page labels. A standalone `---` with blank lines adds a manual break. **Export PDF** opens Obsidian’s native dialog. From the original note’s menu, select the same paper, portrait, 100% scale, no filename title and no extra margins.
 
@@ -41,13 +41,13 @@ Save an example in your vault to try the layouts. [English · Letter timeline](e
 
 ### 手动安装
 
-支持 Obsidian 桌面版 1.5.0 或更新版本。界面语言自动跟随 Obsidian。
+支持 Obsidian 桌面版 1.7.2 或更新版本。界面提供简体中文和英文。
 
 1. 在 Release 的 **Assets** 区下载 `main.js`、`manifest.json` 和 `styles.css`。本地候选安装包解压后也是这三个文件。[已发布版本](https://github.com/chick26/resume-atelier/releases/latest)
 2. 在 Obsidian 库内创建 `.obsidian/plugins/careeros-resume-layout/`，把三个文件直接放进去。`.obsidian` 可能是隐藏目录。
 3. 在「设置 → 第三方插件」启用 **Resume Atelier**。
 
-从 0.7.0 升级时，关闭 Obsidian，在原目录替换这三个文件，再重新打开库。保留 `data.json` 和 `templates/`，其中有设置、最近使用的笔记和自定义主题。
+从 0.7.0 升级时，关闭 Obsidian，在原目录替换这三个文件，再重新打开库。保留 `data.json` 和 `templates/`，其中有设置、最近使用的笔记和自定义主题。旧稿若用 HTML 写经历标题，可改用下方的 Markdown 标题来应用日期样式。
 
 ### 开始排版
 

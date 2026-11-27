@@ -8,7 +8,7 @@ npm run build
 npm run check
 ```
 
-`npm run build` 将 `src/` 和 `examples/` 打包成仓库根目录的 `main.js`，并按固定顺序合并 `src/styles/` 生成 `styles.css`。`npm run check` 校验安装文件是否和当前源码一致，然后运行测试。提交源码改动时，一并提交重新构建的安装文件。
+`npm run build` 将 `src/` 和 `examples/` 打包成带许可证声明的 `main.js`，并按固定顺序合并 `src/styles/` 生成 `styles.css`。`npm run check` 校验安装文件是否和当前源码一致，然后运行测试。提交源码改动时，一并提交重新构建的安装文件。
 
 ## 从哪里改
 
@@ -37,6 +37,8 @@ npm run check
 
 ## 验证和打包
 
+日常样式回归复用同一个测试库，在 Obsidian 工作台核对。下列新装、升级和 PDF 步骤用于相应的专项验收。
+
 1. 在干净库的 `.obsidian/plugins/careeros-resume-layout/` 放入根目录的三个安装文件。启用插件，从母版建立副本，显示技能标签、隐藏荣誉、点击纸面改字，再导出两页 PDF。复核母版与来源、编辑的行、分页处的栏目和 PDF 链接。
 2. 另建测试库，先安装 `0.7.0` 标签的三个文件，保存设置、主题、最近文件和已确认的投递稿。关闭测试库，只替换三个安装文件后重开，再重载插件。用三级 Markdown 标题核对职位与日期的排版，检查主题样式和原稿保护。[分步验收记录](v0.8-development-plan.md)
 3. 提交构建产物后，用同一提交生成 ZIP。在独立检出中重新执行构建和检查，比对三个安装文件的 SHA-256，并核对 ZIP 解压后只有这三个文件。提交相同时，以下命令生成的压缩包可逐字节比对。
@@ -47,4 +49,4 @@ git archive --format=zip --output=dist/resume-atelier-0.8.0.zip HEAD main.js man
 unzip -l dist/resume-atelier-0.8.0.zip
 ```
 
-发布时可将三份安装文件附到 GitHub Release。版本号与 `manifest.json` 对齐，并在 `versions.json` 核对最低桌面版本。[中文 A4 单栏示例](../examples/sample-resume.zh.md) · [英文 Letter 时间轴示例](../examples/sample-resume.en.md)
+发布时将三份安装文件分别附到 GitHub Release，并让标签与 `manifest.json` 的版本号一致。在 `versions.json` 核对最低桌面版本。0.8.0 的下限为 1.7.2，工作台使用这一版本公开的 `Workspace.revealLeaf()`。[中文 A4 单栏示例](../examples/sample-resume.zh.md) · [英文 Letter 时间轴示例](../examples/sample-resume.en.md)
