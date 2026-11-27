@@ -18,7 +18,6 @@ function mountPhotoControls(parent, view) {
   const round = shape.querySelector('[value="round"]');
   const ellipse = shape.createEl("option", { value: "legacy-round", text: t("legacyEllipse") });
   ellipse.disabled = true;
-  const position = select("avatarPosition", [["", t("headerRight")], ["sidebar", t("sidebar")]]);
   const actions = fields.createDiv({ cls: "resume-layout-photo-actions" });
   for (const [key, pick] of [["replacePhoto", true], ["removePhoto", false]]) {
     actions.createEl("button", { text: t(key) }).addEventListener("click", () => {
@@ -31,7 +30,6 @@ function mountPhotoControls(parent, view) {
     layout.setAppearance(next);
   });
   shape.addEventListener("change", () => layout.setAppearance({ ...layout.current.appearance, avatarShape: shape.value }));
-  position.addEventListener("change", () => layout.setAppearance({ ...layout.current.appearance, avatarPosition: position.value || undefined }));
 
   function update() {
     const resume = view.selected;
@@ -58,8 +56,6 @@ function mountPhotoControls(parent, view) {
     round.hidden = ratio.value !== "1:1";
     ellipse.hidden = !(round.hidden && effectiveShape === "round");
     shape.value = ellipse.hidden ? effectiveShape : "legacy-round";
-    position.parentElement.hidden = flow?.mode !== "sidebar";
-    position.value = values.avatarPosition ?? "";
     actions.hidden = !writable || !sourcePhoto;
   }
   return { update, focus: () => (fields.hidden ? add : ratio).focus({ preventScroll: true }) };

@@ -25,11 +25,11 @@ test("section and entry ranges follow Markdown headings and skip raw HTML, fence
 
 test("section controls change one property at a time and previous layouts stay usable for undo", () => {
   const original = { Skills: { display: "tags", extra: ["retained"] } };
-  const sidebar = changeSectionRule(original, "Skills", "region", "sidebar");
-  const hidden = changeSectionRule(sidebar, "Skills", "hidden", true);
-  assert.deepEqual(ruleFor(hidden, "Skills"), { display: "tags", extra: ["retained"], hidden: true, region: "sidebar" });
-  assert.deepEqual(ruleFor(sidebar, "Skills"), { display: "tags", extra: ["retained"], region: "sidebar" });
-  assert.deepEqual(changeSectionRule(sidebar, "Skills", "region", undefined), original);
+  const hidden = changeSectionRule(original, "Skills", "hidden", true);
+  const untagged = changeSectionRule(hidden, "Skills", "display", undefined);
+  assert.deepEqual(ruleFor(untagged, "Skills"), { extra: ["retained"], hidden: true });
+  assert.deepEqual(ruleFor(hidden, "Skills"), { display: "tags", extra: ["retained"], hidden: true });
+  assert.deepEqual(changeSectionRule(hidden, "Skills", "hidden", undefined), original);
   assert.deepEqual(changeSectionRule({ Other: { hidden: true } }, "Other", "hidden", undefined), {});
   assert.deepEqual(ruleFor({}, "constructor"), {});
 });

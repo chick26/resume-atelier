@@ -29,8 +29,6 @@ var require_localization = __commonJS({
       green: ["\u58A8\u7EFF", "Forest"],
       ink: ["\u58A8\u9ED1", "Charcoal"],
       copyBuiltIn: ["\u4ECE\u5185\u7F6E\u4E3B\u9898\u590D\u5236\u81EA\u5B9A\u4E49\u2026", "Customize a built-in theme\u2026"],
-      sidebarAutoHint: ["\u5DF2\u5C06\u300C{title}\u300D\u653E\u5165\u4FA7\u680F\uFF0C\u53EF\u5728\u300C\u680F\u76EE\u300D\u8C03\u6574\u6216\u64A4\u9500\u3002", "Placed \u201C{title}\u201D in the sidebar. Adjust in Sections or undo."],
-      sidebarEmptyHint: ["\u53EF\u5728\u300C\u680F\u76EE\u300D\u5206\u914D\u540C\u9875\u7684\u4FA7\u680F\u5185\u5BB9\u3002", "Assign a section on the same page to the sidebar in Sections."],
       sectionsTabHidden: ["\u680F\u76EE \xB7 {count} \u9690", "Sections \xB7 {count} hidden"],
       hiddenExportHint: ["\u5DF2\u9690\u85CF {count} \u680F", "{count} hidden"],
       mixedPages: ["\u9884\u8BA1 {pages} \u9875 \xB7 \u542B\u81EA\u52A8\u5206\u9875", "{pages} pages \xB7 auto break"],
@@ -209,7 +207,6 @@ var require_localization = __commonJS({
       moveSectionDown: ["\u4E0B\u79FB{title}", "Move \u201C{title}\u201D down"],
       sectionNameRequired: ["\u8BF7\u586B\u5199\u4E00\u884C\u680F\u76EE\u540D\u79F0\u3002", "Enter a section name on one line."],
       sectionNameDuplicate: ["\u5DF2\u7ECF\u6709\u540C\u540D\u680F\u76EE\u3002", "A section with this name already exists."],
-      themeSidebar: ["\u53CC\u680F\u73B0\u4EE3", "Modern sidebar"],
       themeTimeline: ["\u7ECF\u5386\u65F6\u95F4\u8F74", "Experience timeline"],
       sectionAsTags: ["\u5C06\u300C{title}\u300D\u6E05\u5355\u663E\u793A\u4E3A\u6807\u7B7E", "Show {title} list as tags"],
       sectionAsList: ["\u5C06\u300C{title}\u300D\u6807\u7B7E\u6062\u590D\u4E3A\u6E05\u5355", "Show {title} tags as a list"],
@@ -219,11 +216,8 @@ var require_localization = __commonJS({
       listGap: ["\u5217\u8868\u9879\u95F4\u8DDD", "List spacing"],
       avatarRatio: ["\u5934\u50CF\u6BD4\u4F8B", "Photo ratio"],
       avatarShape: ["\u5934\u50CF\u5706\u89D2", "Photo corners"],
-      avatarPosition: ["\u5934\u50CF\u4F4D\u7F6E", "Photo placement"],
       choosePhoto: ["\u9009\u62E9\u5E93\u5185\u5934\u50CF", "Choose vault photo"],
       searchImages: ["\u641C\u7D22\u5E93\u5185\u56FE\u7247", "Search vault images"],
-      headerRight: ["\u540D\u7247\u53F3\u4FA7", "Header right"],
-      sidebar: ["\u4FA7\u680F\u9876\u90E8", "Sidebar top"],
       square: ["\u76F4\u89D2", "Square"],
       rounded: ["\u5C0F\u5706\u89D2", "Rounded"],
       round: ["\u5706\u5F62", "Circle"],
@@ -231,8 +225,6 @@ var require_localization = __commonJS({
       resetAppearance: ["\u6062\u590D\u4E3B\u9898\u6837\u5F0F", "Restore theme styling"],
       hideSection: ["\u9690\u85CF\u300C{title}\u300D", "Hide {title}"],
       showSection: ["\u663E\u793A\u300C{title}\u300D", "Show {title}"],
-      sectionToSidebar: ["\u5C06\u300C{title}\u300D\u79FB\u5230\u4FA7\u680F", "Move {title} to the sidebar"],
-      sectionToMain: ["\u5C06\u300C{title}\u300D\u79FB\u5230\u4E3B\u680F", "Move {title} to the main column"],
       duplicateSectionRule: ["\u6709\u591A\u4E2A\u300C{title}\u300D\u680F\u76EE\u3002\u8BF7\u7528\u4E0D\u540C\u7684\u6807\u9898\u533A\u5206\u5B83\u4EEC\uFF0C\u518D\u6307\u5B9A\u680F\u4F4D\u6216\u663E\u9690\u3002", "Several sections are named \u201C{title}\u201D. Give them distinct headings to control their placement or visibility."],
       missingSectionRule: ["\u6B63\u6587\u4E2D\u5DF2\u6CA1\u6709\u300C{title}\u300D\u680F\u76EE\u3002", "Section \u201C{title}\u201D is no longer in the note."],
       sectionAdded: ["\u5DF2\u65B0\u589E\u680F\u76EE", "Section added"],
@@ -324,7 +316,7 @@ var require_appearance = __commonJS({
     var PHOTO_RATIOS = { "1:1": 1, "3:4": 4 / 3, "4:5": 1.25 };
     var PHOTO_CORNERS = { square: "0", rounded: "2mm", round: "50%" };
     var GAP_LIMITS = { sectionGap: 12, listGap: 4 };
-    var APPEARANCE_KEYS = ["accent", ...Object.keys(GAP_LIMITS), "avatarRatio", "avatarShape", "avatarPosition"];
+    var APPEARANCE_KEYS = ["accent", ...Object.keys(GAP_LIMITS), "avatarRatio", "avatarShape"];
     function appearanceFor(value = {}) {
       const result = {};
       if (!value || typeof value !== "object" || Array.isArray(value)) return result;
@@ -334,7 +326,6 @@ var require_appearance = __commonJS({
       }
       if (Object.hasOwn(PHOTO_RATIOS, value.avatarRatio)) result.avatarRatio = value.avatarRatio;
       if (Object.hasOwn(PHOTO_CORNERS, value.avatarShape)) result.avatarShape = value.avatarShape;
-      if (value.avatarPosition === "sidebar") result.avatarPosition = "sidebar";
       return result;
     }
     function savedAppearance(current, previous) {
@@ -1098,7 +1089,6 @@ var require_catalog = __commonJS({
 var require_built_ins = __commonJS({
   "src/themes/built-ins.js"(exports2, module2) {
     var { BASE_TEMPLATE } = require_geometry();
-    var SIDEBAR_TEMPLATE = "\u53CC\u680F\u73B0\u4EE3";
     var TIMELINE_TEMPLATE = "\u65F6\u95F4\u8F74";
     var THEME_LABELS = { [BASE_TEMPLATE]: "\u7ECF\u5178\u886C\u7EBF", "\u9ED1\u767D ATS": "\u9ED1\u767D\u7B80\u7EA6\uFF08ATS \u53CB\u597D\uFF09" };
     var BUILT_IN_THEME_MESSAGES = {
@@ -1106,17 +1096,10 @@ var require_built_ins = __commonJS({
       "\u7B80\u6D01\u84DD": "themeBlue",
       "\u73B0\u4EE3\u65E0\u886C\u7EBF": "themeSans",
       "\u9ED1\u767D ATS": "themeAts",
-      [SIDEBAR_TEMPLATE]: "themeSidebar",
       [TIMELINE_TEMPLATE]: "themeTimeline"
     };
     var BUILT_IN_TEMPLATE_CSS = {
       [BASE_TEMPLATE]: "",
-      [SIDEBAR_TEMPLATE]: `:scope {
-  --resume-structure: sidebar;
-  --title-font: var(--resume-sans-font);
-  --color-accent: #205c63;
-  --border-color: #a1bdbf;
-}`,
       [TIMELINE_TEMPLATE]: `:scope {
   --resume-structure: timeline;
   --timeline-date-width: 24mm;
@@ -1168,7 +1151,7 @@ span[alt="icon"] {
 `
     };
     var BUILT_IN_TEMPLATES = Object.keys(BUILT_IN_TEMPLATE_CSS);
-    module2.exports = { SIDEBAR_TEMPLATE, BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };
+    module2.exports = { BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };
   }
 });
 
@@ -1648,22 +1631,6 @@ var require_section_layout = __commonJS({
       delete next[title];
       return next;
     }
-    function defaultSidebarSection(sections, rules) {
-      if (Object.values(rules).some((rule) => rule?.region === "sidebar" || rule?.region === "main")) return;
-      const duplicates = new Set(sectionRuleIssues(sections, {}).duplicate);
-      const primary = /^(?:核心技能|专业技能|技能|技能特长|技术栈|skills|core skills|technical skills)$/i;
-      const secondary = /^(?:专业证书|证书|荣誉证书|语言能力|教育背景|教育经历|certifications|languages|education|awards)$/i;
-      const eligible = [];
-      let group = [];
-      for (const section of sections) {
-        if (!ruleFor(rules, section.title).hidden) group.push(section.title);
-        if (section.breaks?.length || section === sections.at(-1)) {
-          if (group.length >= 2) eligible.push(...group.filter((title) => !duplicates.has(title)));
-          group = [];
-        }
-      }
-      return eligible.find((title) => primary.test(title)) ?? eligible.find((title) => secondary.test(title));
-    }
     function blockHeading(block) {
       if (block.matches("h2[data-heading]")) return block;
       return block.matches("div") && block.firstElementChild?.matches("h2[data-heading]") ? block.firstElementChild : null;
@@ -1685,18 +1652,15 @@ var require_section_layout = __commonJS({
     function tagLists(nodes) {
       return nodes.map((node) => node.matches("ul") ? node : node.matches("div") ? node.firstElementChild : null).filter((list) => list?.matches("ul") && !list.querySelector("ul,ol,.task-list-item"));
     }
-    function addSection(section, nodes, timeline) {
+    function appendTimelineEntries(section, nodes) {
       let body = section;
       for (const node of nodes) {
         if (beginsEntry(node)) {
           const entry = container(section, "div", "resume-entry");
           section.append(entry);
           entry.append(node);
-          body = entry;
-          if (timeline) {
-            body = container(section, "div", "resume-entry-body");
-            entry.append(body);
-          }
+          body = container(section, "div", "resume-entry-body");
+          entry.append(body);
         } else {
           body.append(node);
         }
@@ -1731,13 +1695,11 @@ var require_section_layout = __commonJS({
       }
       apply(layout) {
         const declared = this.root.ownerDocument.defaultView.getComputedStyle(this.root).getPropertyValue("--resume-structure").trim();
-        const mode = declared === "sidebar" || declared === "timeline" ? declared : "single";
+        const timeline = declared === "timeline" && this.sections.length > 0;
         const rules = this.sections.map(({ title }) => this.duplicates.has(title) ? {} : ruleFor(layout.sections, title));
-        const sidePhoto = !!this.portrait && mode === "sidebar" && layout.appearance?.avatarPosition === "sidebar";
-        const key = JSON.stringify([mode, sidePhoto, rules.map((rule) => [rule.hidden === true, rule.region === "sidebar", rule.display === "tags"])]);
+        const key = JSON.stringify([timeline, rules.map((rule) => [rule.hidden === true, rule.display === "tags"])]);
         if (this.key === key) return;
         this.key = key;
-        this.mode = mode;
         if (this.wrapper) {
           this.wrapper.before(...this.blocks);
           this.wrapper.remove();
@@ -1747,52 +1709,25 @@ var require_section_layout = __commonJS({
           for (const node of nodes) node.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
           for (const list of lists) list.classList.toggle("resume-section-tags", rules[index].display === "tags");
         }
-        const structured = mode !== "single" && this.sections.length > 0;
-        if (!structured && !this.portrait) return;
+        if (!timeline && !this.portrait) return;
         const header = container(this.root, "header", "resume-header");
-        if (this.portrait && !(structured && sidePhoto)) header.classList.add("has-portrait");
-        const wrapper = structured ? container(this.root, "div", "resume-layout-document") : header;
+        if (this.portrait) header.classList.add("has-portrait");
+        const wrapper = timeline ? container(this.root, "div", "resume-layout-document resume-timeline") : header;
         this.blocks[0].before(wrapper);
         this.wrapper = wrapper;
         header.append(...this.intro);
-        if (!structured) return;
+        if (!timeline) return;
         wrapper.append(header);
-        const timeline = mode === "timeline";
-        wrapper.classList.toggle("resume-timeline", timeline);
-        let group = [];
-        let photo = sidePhoto ? this.portrait : null;
-        for (const [index, section] of this.sections.entries()) {
-          group.push({ section, rule: rules[index] });
-          if (section.breaks.length || index === this.sections.length - 1) {
-            wrapper.append(this.columnsFor(group, mode, photo), ...section.breaks);
-            group = [];
-            photo = null;
-          }
-        }
-      }
-      columnsFor(group, mode, photo) {
-        const columns = container(this.root, "div", "resume-layout-columns");
-        const main = container(this.root, "div", "resume-main");
-        const sidebar = container(this.root, "aside", "resume-sidebar");
-        if (photo) sidebar.append(photo);
-        for (const { section: { title, nodes }, rule } of group) {
-          const section = container(this.root, "section", "resume-section");
+        for (const [index, { title, nodes, breaks }] of this.sections.entries()) {
+          const section = container(wrapper, "section", "resume-section");
           section.dataset.resumeSection = title;
-          section.classList.toggle("resume-layout-section-hidden", rule.hidden === true);
-          addSection(section, nodes, mode === "timeline");
-          (mode === "sidebar" && rule.region === "sidebar" ? sidebar : main).append(section);
+          section.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
+          appendTimelineEntries(section, nodes);
+          wrapper.append(section, ...breaks);
         }
-        columns.append(main);
-        if (mode === "sidebar") {
-          if (main.querySelector("section:not(.resume-layout-section-hidden)") && (photo || sidebar.querySelector("section:not(.resume-layout-section-hidden)"))) {
-            columns.classList.add("has-sidebar");
-          }
-          columns.append(sidebar);
-        }
-        return columns;
       }
     };
-    module2.exports = { SectionLayout, changeSectionRule, ruleFor, defaultSidebarSection };
+    module2.exports = { SectionLayout, changeSectionRule, ruleFor };
   }
 });
 
@@ -2032,7 +1967,6 @@ var require_photo_controls = __commonJS({
       const round = shape.querySelector('[value="round"]');
       const ellipse = shape.createEl("option", { value: "legacy-round", text: t("legacyEllipse") });
       ellipse.disabled = true;
-      const position = select("avatarPosition", [["", t("headerRight")], ["sidebar", t("sidebar")]]);
       const actions = fields.createDiv({ cls: "resume-layout-photo-actions" });
       for (const [key, pick] of [["replacePhoto", true], ["removePhoto", false]]) {
         actions.createEl("button", { text: t(key) }).addEventListener("click", () => {
@@ -2045,7 +1979,6 @@ var require_photo_controls = __commonJS({
         layout.setAppearance(next);
       });
       shape.addEventListener("change", () => layout.setAppearance({ ...layout.current.appearance, avatarShape: shape.value }));
-      position.addEventListener("change", () => layout.setAppearance({ ...layout.current.appearance, avatarPosition: position.value || void 0 }));
       function update() {
         const resume = view.selected;
         const currentFile = view.preview.renderedFile === resume?.file;
@@ -2070,8 +2003,6 @@ var require_photo_controls = __commonJS({
         round.hidden = ratio.value !== "1:1";
         ellipse.hidden = !(round.hidden && effectiveShape === "round");
         shape.value = ellipse.hidden ? effectiveShape : "legacy-round";
-        position.parentElement.hidden = flow?.mode !== "sidebar";
-        position.value = values.avatarPosition ?? "";
         actions.hidden = !writable || !sourcePhoto;
       }
       return { update, focus: () => (fields.hidden ? add : ratio).focus({ preventScroll: true }) };
@@ -2138,7 +2069,7 @@ var require_layout_panel = __commonJS({
       sameLayout
     } = require_geometry();
     var { appearanceFor, withoutGapOverrides } = require_appearance();
-    var { defaultSidebarSection, changeSectionRule, ruleFor } = require_section_layout();
+    var { ruleFor } = require_section_layout();
     var { iconButton } = require_dom();
     var { mountAppearanceControls } = require_appearance_controls();
     var LayoutPanel = class {
@@ -2255,25 +2186,12 @@ var require_layout_panel = __commonJS({
           });
           this.paperButtons.set(value, button);
         }
-        this.sidebarHint = controls.createDiv({ cls: "resume-layout-hint", text: this.t("sidebarEmptyHint") });
         this.templateHint = controls.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
       }
       selectTemplate(template) {
         if (!this.view.selected || this.current.template === template) return;
-        const preview = this.view.preview;
-        const flow = preview.renderedFile === this.view.selected.file && preview.sectionLayout;
-        const previousMode = flow?.mode;
         this.current.template = template;
-        preview.updateLayout(this.current);
-        if (previousMode !== "sidebar" && flow?.mode === "sidebar") {
-          const title = defaultSidebarSection(flow.sections, this.current.sections);
-          if (title) {
-            this.current.sections = changeSectionRule(this.current.sections, title, "region", "sidebar");
-            new Notice2(this.t("sidebarAutoHint", { title }));
-          }
-        }
         this.commit();
-        this.view.sections.render();
       }
       setDensity(value) {
         if (!this.view.selected) return;
@@ -2481,7 +2399,6 @@ var require_layout_panel = __commonJS({
         const flow = preview.renderedFile === this.view.selected?.file ? preview.sectionLayout : null;
         this.appearance.update(this.current.appearance);
         if (this.view.editor.edit) this.view.editor.toolbar.updatePhoto();
-        this.sidebarHint.hidden = flow?.mode !== "sidebar" || !!preview.rendered?.querySelector(".has-sidebar");
         const hidden = (flow?.sections ?? []).filter(({ title }) => !flow.duplicates.has(title) && ruleFor(this.current.sections, title).hidden === true).length;
         this.view.updateHiddenSections(hidden);
       }
@@ -3945,10 +3862,6 @@ var require_sections_panel = __commonJS({
           const layout = this.view.layout.current;
           const rule = ruleFor(layout.sections, title);
           const flow = this.view.preview.sectionLayout;
-          if (flow?.mode === "sidebar") {
-            const sidebar = rule.region === "sidebar";
-            this.ruleButton(row, title, sidebar ? "sectionToMain" : "sectionToSidebar", "panel-left", "region", sidebar ? "main" : "sidebar");
-          }
           if (flow?.sections[index]?.lists.length || rule.display === "tags") {
             const tags = rule.display === "tags";
             this.ruleButton(row, title, tags ? "sectionAsList" : "sectionAsTags", "tags", "display", tags ? void 0 : "tags");
@@ -3969,7 +3882,7 @@ var require_sections_panel = __commonJS({
       }
       ruleButton(row, title, message, icon, key, value) {
         const label = this.t(message, { title });
-        const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === void 0 || key === "region" && value === "main") } });
+        const button = row.createEl("button", { attr: { "aria-label": label, title: label, "aria-pressed": String(value === void 0) } });
         setIcon(button, icon);
         button.addEventListener("click", () => {
           const layout = this.view.layout;
@@ -4390,7 +4303,7 @@ var require_sample_resume_en = __commonJS({
 // examples/sample-resume.zh.md
 var require_sample_resume_zh = __commonJS({
   "examples/sample-resume.zh.md"(exports2, module2) {
-    module2.exports = "---\ntype: resume-draft\nlanguage: zh\nresume_style: \u53CC\u680F\u73B0\u4EE3\nresume_density: comfortable\nresume_layout:\n  paper: A4\nresume_sections:\n  \u6838\u5FC3\u6280\u80FD:\n    region: sidebar\n    display: tags\n---\n\n# \u6797\u5B89\n\n> \u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u9999\u6E2F\n\n## \u4E2A\u4EBA\u7B80\u4ECB\n\n\u64C5\u957F\u4ECE\u7528\u6237\u8BBF\u8C08\u548C\u6570\u636E\u4E2D\u68B3\u7406\u95EE\u9898\uFF0C\u8D1F\u8D23\u4EA4\u4E92\u8BBE\u8BA1\u3001\u539F\u578B\u9A8C\u8BC1\u548C\u8BBE\u8BA1\u89C4\u8303\u3002\n\n## \u5DE5\u4F5C\u7ECF\u5386\n\n### \u9AD8\u7EA7\u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u793A\u4F8B\u5DE5\u4F5C\u5BA4 | 2022.06 \u2013 \u81F3\u4ECA\n\n- \u91CD\u65B0\u8BBE\u8BA1\u5BA2\u670D\u5DE5\u4F5C\u53F0\uFF0C\u5E2E\u52A9\u56E2\u961F\u5FEB\u901F\u627E\u5230\u5F85\u5904\u7406\u7684\u8BF7\u6C42\u3002\n- \u5EFA\u7ACB\u53EF\u590D\u7528\u7684\u7EC4\u4EF6\u4E0E\u4EA4\u4E92\u89C4\u8303\uFF0C\u6574\u7406\u5E38\u89C1\u573A\u666F\u7684\u4F7F\u7528\u793A\u4F8B\u3002\n\n### \u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u793A\u4F8B\u8BBE\u8BA1\u5B9E\u9A8C\u5BA4 | 2019.07 \u2013 2022.05\n\n- \u8BBF\u8C08\u65B0\u7528\u6237\uFF0C\u8BBE\u8BA1\u5E76\u9A8C\u8BC1\u5206\u6B65\u9AA4\u7684\u65B0\u624B\u5F15\u5BFC\u3002\n- \u4E0E\u4E1A\u52A1\u56E2\u961F\u68B3\u7406\u6307\u6807\u5B9A\u4E49\uFF0C\u8BBE\u8BA1\u8FD0\u8425\u5206\u6790\u4EEA\u8868\u76D8\u3002\n\n## \u9879\u76EE\u7ECF\u5386\n\n**\u7528\u6237\u7814\u7A76\u7D22\u5F15** \xB7 \u6574\u7406\u8BBF\u8C08\u8BB0\u5F55\u548C\u7814\u7A76\u7ED3\u8BBA\uFF0C\u65B9\u4FBF\u4EA7\u54C1\u56E2\u961F\u68C0\u7D22\u53CA\u590D\u7528\u3002\n\n## \u6838\u5FC3\u6280\u80FD\n\n- \u4EA4\u4E92\u8BBE\u8BA1\n- \u539F\u578B\u8BBE\u8BA1\n- \u7528\u6237\u7814\u7A76\n- \u8BBE\u8BA1\u7CFB\u7EDF\n";
+    module2.exports = "---\ntype: resume-draft\nlanguage: zh\nresume_style: \u73B0\u4EE3\u65E0\u886C\u7EBF\nresume_density: comfortable\nresume_layout:\n  paper: A4\nresume_sections:\n  \u6838\u5FC3\u6280\u80FD:\n    display: tags\n---\n\n# \u6797\u5B89\n\n> \u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u9999\u6E2F\n\n## \u4E2A\u4EBA\u7B80\u4ECB\n\n\u64C5\u957F\u4ECE\u7528\u6237\u8BBF\u8C08\u548C\u6570\u636E\u4E2D\u68B3\u7406\u95EE\u9898\uFF0C\u8D1F\u8D23\u4EA4\u4E92\u8BBE\u8BA1\u3001\u539F\u578B\u9A8C\u8BC1\u548C\u8BBE\u8BA1\u89C4\u8303\u3002\n\n## \u5DE5\u4F5C\u7ECF\u5386\n\n### \u9AD8\u7EA7\u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u793A\u4F8B\u5DE5\u4F5C\u5BA4 | 2022.06 \u2013 \u81F3\u4ECA\n\n- \u91CD\u65B0\u8BBE\u8BA1\u5BA2\u670D\u5DE5\u4F5C\u53F0\uFF0C\u5E2E\u52A9\u56E2\u961F\u5FEB\u901F\u627E\u5230\u5F85\u5904\u7406\u7684\u8BF7\u6C42\u3002\n- \u5EFA\u7ACB\u53EF\u590D\u7528\u7684\u7EC4\u4EF6\u4E0E\u4EA4\u4E92\u89C4\u8303\uFF0C\u6574\u7406\u5E38\u89C1\u573A\u666F\u7684\u4F7F\u7528\u793A\u4F8B\u3002\n\n### \u4EA7\u54C1\u8BBE\u8BA1\u5E08 \xB7 \u793A\u4F8B\u8BBE\u8BA1\u5B9E\u9A8C\u5BA4 | 2019.07 \u2013 2022.05\n\n- \u8BBF\u8C08\u65B0\u7528\u6237\uFF0C\u8BBE\u8BA1\u5E76\u9A8C\u8BC1\u5206\u6B65\u9AA4\u7684\u65B0\u624B\u5F15\u5BFC\u3002\n- \u4E0E\u4E1A\u52A1\u56E2\u961F\u68B3\u7406\u6307\u6807\u5B9A\u4E49\uFF0C\u8BBE\u8BA1\u8FD0\u8425\u5206\u6790\u4EEA\u8868\u76D8\u3002\n\n## \u9879\u76EE\u7ECF\u5386\n\n**\u7528\u6237\u7814\u7A76\u7D22\u5F15** \xB7 \u6574\u7406\u8BBF\u8C08\u8BB0\u5F55\u548C\u7814\u7A76\u7ED3\u8BBA\uFF0C\u65B9\u4FBF\u4EA7\u54C1\u56E2\u961F\u68C0\u7D22\u53CA\u590D\u7528\u3002\n\n## \u6838\u5FC3\u6280\u80FD\n\n- \u4EA4\u4E92\u8BBE\u8BA1\n- \u539F\u578B\u8BBE\u8BA1\n- \u7528\u6237\u7814\u7A76\n- \u8BBE\u8BA1\u7CFB\u7EDF\n";
   }
 });
 

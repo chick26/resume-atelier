@@ -1,7 +1,7 @@
 const PHOTO_RATIOS = { "1:1": 1, "3:4": 4 / 3, "4:5": 1.25 };
 const PHOTO_CORNERS = { square: "0", rounded: "2mm", round: "50%" };
 const GAP_LIMITS = { sectionGap: 12, listGap: 4 };
-const APPEARANCE_KEYS = ["accent", ...Object.keys(GAP_LIMITS), "avatarRatio", "avatarShape", "avatarPosition"];
+const APPEARANCE_KEYS = ["accent", ...Object.keys(GAP_LIMITS), "avatarRatio", "avatarShape"];
 
 function appearanceFor(value = {}) {
   const result = {};
@@ -12,7 +12,6 @@ function appearanceFor(value = {}) {
   }
   if (Object.hasOwn(PHOTO_RATIOS, value.avatarRatio)) result.avatarRatio = value.avatarRatio;
   if (Object.hasOwn(PHOTO_CORNERS, value.avatarShape)) result.avatarShape = value.avatarShape;
-  if (value.avatarPosition === "sidebar") result.avatarPosition = "sidebar";
   return result;
 }
 

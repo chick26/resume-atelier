@@ -1,5 +1,4 @@
 const { BASE_TEMPLATE } = require("../layout/geometry");
-const SIDEBAR_TEMPLATE = "双栏现代";
 const TIMELINE_TEMPLATE = "时间轴";
 
 const THEME_LABELS = { [BASE_TEMPLATE]: "经典衬线", "黑白 ATS": "黑白简约（ATS 友好）" };
@@ -8,18 +7,11 @@ const BUILT_IN_THEME_MESSAGES = {
   "简洁蓝": "themeBlue",
   "现代无衬线": "themeSans",
   "黑白 ATS": "themeAts",
-  [SIDEBAR_TEMPLATE]: "themeSidebar",
   [TIMELINE_TEMPLATE]: "themeTimeline",
 };
 
 const BUILT_IN_TEMPLATE_CSS = {
   [BASE_TEMPLATE]: "",
-  [SIDEBAR_TEMPLATE]: `:scope {
-  --resume-structure: sidebar;
-  --title-font: var(--resume-sans-font);
-  --color-accent: #205c63;
-  --border-color: #a1bdbf;
-}`,
   [TIMELINE_TEMPLATE]: `:scope {
   --resume-structure: timeline;
   --timeline-date-width: 24mm;
@@ -72,4 +64,4 @@ span[alt="icon"] {
 };
 const BUILT_IN_TEMPLATES = Object.keys(BUILT_IN_TEMPLATE_CSS);
 
-module.exports = { SIDEBAR_TEMPLATE, BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };
+module.exports = { BUILT_IN_TEMPLATE_CSS, BUILT_IN_TEMPLATES, THEME_LABELS, BUILT_IN_THEME_MESSAGES };

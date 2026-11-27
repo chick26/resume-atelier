@@ -3,7 +3,7 @@ const {
   PAPER_SIZES, paperSize, DENSITIES, MARGINS, MARGIN_PAIRS, TYPOGRAPHY, FIELDS, layoutFor, dimensions, geometryForSave, noteLayoutKey, sameLayout,
 } = require("../layout/geometry");
 const { appearanceFor, withoutGapOverrides } = require("../layout/appearance");
-const { defaultSidebarSection, changeSectionRule, ruleFor } = require("../resume/section-layout");
+const { ruleFor } = require("../resume/section-layout");
 const { iconButton } = require("./dom");
 const { mountAppearanceControls } = require("./appearance-controls");
 
@@ -128,26 +128,13 @@ class LayoutPanel {
       button.addEventListener("click", () => { this.current.paper = value; this.commit(); });
       this.paperButtons.set(value, button);
     }
-    this.sidebarHint = controls.createDiv({ cls: "resume-layout-hint", text: this.t("sidebarEmptyHint") });
     this.templateHint = controls.createDiv({ cls: "resume-layout-hint", attr: { role: "status" } });
   }
 
   selectTemplate(template) {
     if (!this.view.selected || this.current.template === template) return;
-    const preview = this.view.preview;
-    const flow = preview.renderedFile === this.view.selected.file && preview.sectionLayout;
-    const previousMode = flow?.mode;
     this.current.template = template;
-    preview.updateLayout(this.current);
-    if (previousMode !== "sidebar" && flow?.mode === "sidebar") {
-      const title = defaultSidebarSection(flow.sections, this.current.sections);
-      if (title) {
-        this.current.sections = changeSectionRule(this.current.sections, title, "region", "sidebar");
-        new Notice(this.t("sidebarAutoHint", { title }));
-      }
-    }
     this.commit();
-    this.view.sections.render();
   }
 
   setDensity(value) {
@@ -373,7 +360,6 @@ class LayoutPanel {
     const flow = preview.renderedFile === this.view.selected?.file ? preview.sectionLayout : null;
     this.appearance.update(this.current.appearance);
     if (this.view.editor.edit) this.view.editor.toolbar.updatePhoto();
-    this.sidebarHint.hidden = flow?.mode !== "sidebar" || !!preview.rendered?.querySelector(".has-sidebar");
     const hidden = (flow?.sections ?? []).filter(({ title }) =>
       !flow.duplicates.has(title) && ruleFor(this.current.sections, title).hidden === true).length;
     this.view.updateHiddenSections(hidden);

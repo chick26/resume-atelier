@@ -31,13 +31,13 @@ npm run check
 ## 渲染与笔记属性
 
 - `resume_style` 选主题，`resume_density` 选密度。`resume_layout.paper` 支持 `A4` 和 `Letter`，旧稿缺省 A4。`resume_layout.appearance` 可覆盖强调色、栏目与清单间距，以及头像比例、圆角和位置。「微调」中的统一重置可还原版面和外观，保留扩展字段。旧稿的栏目与清单间距仍可读取。主动切换密度、收紧成功或重置时才接管间距，撤销可恢复原值。
-- `resume_sections` 以二级标题为键，支持 `region: sidebar`、`display: tags` 和 `hidden: true`。切换双栏时，在同一个手动分页组内查找唯一、可见的技能等栏目作为侧栏。用户手动移回主栏的选择优先。重名栏目会提示消歧，失配的规则可从栏目面板清理。工作台预览和原生打印使用同一份语义归组，阅读视图只在块内增强，保留全部原文。
-- 在自定义主题的 `:scope` 规则中指定 `--resume-structure: sidebar` 或 `--resume-structure: timeline`，即可复用内置结构。单栏可继续使用原来的直接子标题选择器。列归属和显示方式属于稿件，栏宽、线条和默认色彩属于主题。默认将日期放在职位右侧约一个字符处，便于 PDF 纯文本顺序提取。在自定义主题设 `--resume-date-offset: auto` 可把日期推到行末，阅读器可能将其识别为独立文字列。
+- `resume_sections` 以二级标题为键，支持 `display: tags` 和 `hidden: true`。栏目按正文顺序排版，拖动栏目会调整正文顺序。重名栏目会提示消歧，失配的规则可从栏目面板清理。工作台预览和原生打印使用同一份语义归组，阅读视图只在块内增强，保留全部原文。
+- 在自定义主题的 `:scope` 规则中设置 `--resume-structure: timeline` 即可排版经历时间轴。默认按单栏排版。默认将日期放在职位右侧约一个字符处，便于 PDF 纯文本顺序提取。在自定义主题设 `--resume-date-offset: auto` 可把日期推到行末，阅读器可能将其识别为独立文字列。
 - 工作台按所选纸张的可用宽高，用浏览器的分栏排版估算自动页界并在多页时标出页码与分页类型。手动分页可用前后留空行的 `---`。验收以原生 PDF 逐页结果为准；从笔记菜单导出时选与工作台相同的纸张、纵向、100%、无附加边距并关闭文件名标题。
 
 ## 验证和打包
 
-1. 在干净库的 `.obsidian/plugins/careeros-resume-layout/` 放入根目录的三个安装文件。启用插件，从母版建立副本，在双栏中移动技能、隐藏荣誉、点击纸面改字，再导出两页 PDF。复核母版与来源、侧栏修改的行及 PDF 中的页面与链接。
+1. 在干净库的 `.obsidian/plugins/careeros-resume-layout/` 放入根目录的三个安装文件。启用插件，从母版建立副本，显示技能标签、隐藏荣誉、点击纸面改字，再导出两页 PDF。复核母版与来源、编辑的行、分页处的栏目和 PDF 链接。
 2. 另建测试库，先安装 `0.7.0` 标签的三个文件，保存设置、主题、最近文件和已确认的投递稿。关闭测试库，只替换三个安装文件后重开，再重载插件。用三级 Markdown 标题核对职位与日期的排版，检查主题样式和原稿保护。[分步验收记录](v0.8-development-plan.md)
 3. 提交构建产物后，用同一提交生成 ZIP。在独立检出中重新执行构建和检查，比对三个安装文件的 SHA-256，并核对 ZIP 解压后只有这三个文件。提交相同时，以下命令生成的压缩包可逐字节比对。
 
@@ -47,4 +47,4 @@ git archive --format=zip --output=dist/resume-atelier-0.8.0.zip HEAD main.js man
 unzip -l dist/resume-atelier-0.8.0.zip
 ```
 
-发布时可将三份安装文件附到 GitHub Release。版本号与 `manifest.json` 对齐，并在 `versions.json` 核对最低桌面版本。[中文 A4 双栏示例](../examples/sample-resume.zh.md) · [英文 Letter 时间轴示例](../examples/sample-resume.en.md)
+发布时可将三份安装文件附到 GitHub Release。版本号与 `manifest.json` 对齐，并在 `versions.json` 核对最低桌面版本。[中文 A4 单栏示例](../examples/sample-resume.zh.md) · [英文 Letter 时间轴示例](../examples/sample-resume.en.md)

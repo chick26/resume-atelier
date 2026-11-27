@@ -1,13 +1,12 @@
 ---
 type: resume-draft
 language: zh
-resume_style: 双栏现代
+resume_style: 现代无衬线
 resume_density: comfortable
 resume_layout:
   paper: A4
 resume_sections:
   核心技能:
-    region: sidebar
     display: tags
 ---
 

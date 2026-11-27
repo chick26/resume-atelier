@@ -98,19 +98,6 @@ body.theme-light .lapis-cv:where(.resume-layout-styled).lapis-cv-zh {
   box-shadow: none !important;
 }
 .resume-layout-styled .resume-layout-section-hidden { display: none !important; }
-.resume-layout-styled .resume-layout-columns.has-sidebar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr);
-  column-gap: 7mm;
-  align-items: start;
-}
-.resume-layout-styled .resume-layout-columns.has-sidebar > .resume-main { grid-area: 1 / 2; }
-.resume-layout-styled .resume-layout-columns.has-sidebar > .resume-sidebar {
-  grid-area: 1 / 1;
-  border-inline-end: 0.5pt solid var(--border-color);
-  padding-inline-end: 3mm;
-}
-
 .resume-layout-styled .resume-timeline .resume-entry {
   --timeline-indent: calc(var(--timeline-date-width, 24mm) + 5mm);
   position: relative;

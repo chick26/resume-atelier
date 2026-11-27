@@ -267,7 +267,7 @@ test("atomic source edits preserve the YAML and reject concurrent edits", async 
 
 test("layout save, undo and editable copies preserve paper, section rules and geometry extensions", async () => {
   const body = "# Example\n\n## Skills\n- Writing\n";
-  const rules = { Skills: { region: "sidebar", display: "tags", future: ["keep"] }, Honors: { hidden: true } };
+  const rules = { Skills: { display: "tags", future: ["keep"] }, Honors: { hidden: true } };
   const initial = { type: "resume-draft", custom: "untouched",
     resume_layout: { top: 10, paper: "Letter", future: { spacing: 2 } }, resume_sections: rules };
   const file = note("Source.md", structuredClone(initial), body);
@@ -442,8 +442,8 @@ test("all trial layouts undo locally and interleaved source changes undo in orde
 
 test("legacy themes resolve for notes and defaults while new choices omit Minimal Blue", async () => {
   const { plugin } = await loadPlugin({ data: { settings: { defaultTemplate: "简洁蓝" } } });
-  assert.equal(plugin.themes.visibleTemplates().length, 5);
-  assert.equal(plugin.themes.visibleTemplates("简洁蓝").length, 6);
+  assert.equal(plugin.themes.visibleTemplates().length, 4);
+  assert.equal(plugin.themes.visibleTemplates("简洁蓝").length, 5);
   assert.equal(plugin.themes.templateId("简洁蓝"), "简洁蓝");
   assert.equal(plugin.layouts.noteLayout({ classes: [], sections: {} }).template, "简洁蓝");
 });
