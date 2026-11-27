@@ -440,10 +440,14 @@ test("all trial layouts undo locally and interleaved source changes undo in orde
   assert.equal(panel.layoutUndo.get(file).length, 0);
 });
 
-test("legacy themes resolve for notes and defaults while new choices omit Minimal Blue", async () => {
+test("both date layouts are built in and Minimal Blue remains available on existing notes", async () => {
   const { plugin } = await loadPlugin({ data: { settings: { defaultTemplate: "简洁蓝" } } });
-  assert.equal(plugin.themes.visibleTemplates().length, 4);
-  assert.equal(plugin.themes.visibleTemplates("简洁蓝").length, 5);
+  const visible = plugin.themes.visibleTemplates();
+  assert.deepEqual(Array.from(visible, theme => theme.id), ["LapisCV", "时间轴", "现代无衬线", "日期靠右", "黑白 ATS"]);
+  const rightAligned = visible.find(theme => theme.id === "日期靠右");
+  assert.equal(rightAligned.builtIn, true);
+  assert.equal(plugin.themes.themeName(rightAligned), "Right-aligned dates");
+  assert.equal(plugin.themes.visibleTemplates("简洁蓝").length, visible.length + 1);
   assert.equal(plugin.themes.templateId("简洁蓝"), "简洁蓝");
   assert.equal(plugin.layouts.noteLayout({ classes: [], sections: {} }).template, "简洁蓝");
 });

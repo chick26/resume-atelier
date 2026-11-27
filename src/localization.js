@@ -66,6 +66,7 @@ const MESSAGES = {
   themeClassicCredit: ["经典衬线（基于 LapisCV）", "Classic Serif (LapisCV)"],
   themeBlue: ["简洁蓝", "Minimal Blue"],
   themeSans: ["现代无衬线", "Modern Sans"],
+  themeRightAlignedDates: ["日期靠右", "Right-aligned dates"],
   themeAts: ["黑白简约（ATS 友好）", "Monochrome (ATS-friendly)"],
   copyAndCustomize: ["复制并自定义", "Copy and customize"],
   themeUseOne: ["{count} 份简历使用中", "Used by {count} resume"],

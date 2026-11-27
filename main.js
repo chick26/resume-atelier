@@ -81,6 +81,7 @@ var require_localization = __commonJS({
       themeClassicCredit: ["\u7ECF\u5178\u886C\u7EBF\uFF08\u57FA\u4E8E LapisCV\uFF09", "Classic Serif (LapisCV)"],
       themeBlue: ["\u7B80\u6D01\u84DD", "Minimal Blue"],
       themeSans: ["\u73B0\u4EE3\u65E0\u886C\u7EBF", "Modern Sans"],
+      themeRightAlignedDates: ["\u65E5\u671F\u9760\u53F3", "Right-aligned dates"],
       themeAts: ["\u9ED1\u767D\u7B80\u7EA6\uFF08ATS \u53CB\u597D\uFF09", "Monochrome (ATS-friendly)"],
       copyAndCustomize: ["\u590D\u5236\u5E76\u81EA\u5B9A\u4E49", "Copy and customize"],
       themeUseOne: ["{count} \u4EFD\u7B80\u5386\u4F7F\u7528\u4E2D", "Used by {count} resume"],
@@ -1095,10 +1096,11 @@ var require_built_ins = __commonJS({
       [BASE_TEMPLATE]: "themeClassic",
       "\u7B80\u6D01\u84DD": "themeBlue",
       "\u73B0\u4EE3\u65E0\u886C\u7EBF": "themeSans",
+      "\u65E5\u671F\u9760\u53F3": "themeRightAlignedDates",
       "\u9ED1\u767D ATS": "themeAts",
       [TIMELINE_TEMPLATE]: "themeTimeline"
     };
-    var MODERN_CSS = `:scope {
+    var MODERN_TYPOGRAPHY_CSS = `:scope {
   --title-font: var(--resume-sans-font);
   --text-font: var(--resume-sans-font);
   --color-accent: #23476b;
@@ -1113,6 +1115,14 @@ h3.resume-entry-heading a {
   font-size: inherit;
 }
 
+a {
+  text-decoration: underline;
+  text-decoration-thickness: 0.45pt;
+  text-underline-offset: 0.13em;
+  text-decoration-color: color-mix(in srgb, var(--color-accent), transparent 45%);
+}
+`;
+    var MODERN_CSS = `${MODERN_TYPOGRAPHY_CSS}
 h3.resume-entry-heading:has(> .entry-date) {
   flex-flow: column nowrap;
   align-items: flex-start;
@@ -1122,13 +1132,6 @@ h3.resume-entry-heading:has(> .entry-date) {
 h3.resume-entry-heading > .entry-date {
   flex: none;
   margin-inline-start: 0;
-}
-
-a {
-  text-decoration: underline;
-  text-decoration-thickness: 0.45pt;
-  text-underline-offset: 0.13em;
-  text-decoration-color: color-mix(in srgb, var(--color-accent), transparent 45%);
 }
 `;
     var BUILT_IN_TEMPLATE_CSS = {
@@ -1192,6 +1195,13 @@ h2 {
 }
 `,
       "\u73B0\u4EE3\u65E0\u886C\u7EBF": MODERN_CSS,
+      "\u65E5\u671F\u9760\u53F3": `${MODERN_TYPOGRAPHY_CSS}
+:scope { --resume-date-offset: auto; }
+
+h3.resume-entry-heading > .entry-date {
+  text-align: end;
+}
+`,
       "\u9ED1\u767D ATS": `:scope {
   --title-font: var(--resume-sans-font);
   --text-font: var(--resume-sans-font);

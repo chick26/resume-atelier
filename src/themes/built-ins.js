@@ -6,11 +6,12 @@ const BUILT_IN_THEME_MESSAGES = {
   [BASE_TEMPLATE]: "themeClassic",
   "简洁蓝": "themeBlue",
   "现代无衬线": "themeSans",
+  "日期靠右": "themeRightAlignedDates",
   "黑白 ATS": "themeAts",
   [TIMELINE_TEMPLATE]: "themeTimeline",
 };
 
-const MODERN_CSS = `:scope {
+const MODERN_TYPOGRAPHY_CSS = `:scope {
   --title-font: var(--resume-sans-font);
   --text-font: var(--resume-sans-font);
   --color-accent: #23476b;
@@ -25,6 +26,15 @@ h3.resume-entry-heading a {
   font-size: inherit;
 }
 
+a {
+  text-decoration: underline;
+  text-decoration-thickness: 0.45pt;
+  text-underline-offset: 0.13em;
+  text-decoration-color: color-mix(in srgb, var(--color-accent), transparent 45%);
+}
+`;
+
+const MODERN_CSS = `${MODERN_TYPOGRAPHY_CSS}
 h3.resume-entry-heading:has(> .entry-date) {
   flex-flow: column nowrap;
   align-items: flex-start;
@@ -34,13 +44,6 @@ h3.resume-entry-heading:has(> .entry-date) {
 h3.resume-entry-heading > .entry-date {
   flex: none;
   margin-inline-start: 0;
-}
-
-a {
-  text-decoration: underline;
-  text-decoration-thickness: 0.45pt;
-  text-underline-offset: 0.13em;
-  text-decoration-color: color-mix(in srgb, var(--color-accent), transparent 45%);
 }
 `;
 
@@ -105,6 +108,13 @@ h2 {
 }
 `,
   "现代无衬线": MODERN_CSS,
+  "日期靠右": `${MODERN_TYPOGRAPHY_CSS}
+:scope { --resume-date-offset: auto; }
+
+h3.resume-entry-heading > .entry-date {
+  text-align: end;
+}
+`,
   "黑白 ATS": `:scope {
   --title-font: var(--resume-sans-font);
   --text-font: var(--resume-sans-font);
