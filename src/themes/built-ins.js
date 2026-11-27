@@ -25,6 +25,17 @@ h3.resume-entry-heading a {
   font-size: inherit;
 }
 
+h3.resume-entry-heading:has(> .entry-date) {
+  flex-flow: column nowrap;
+  align-items: flex-start;
+  gap: 0.35mm;
+}
+
+h3.resume-entry-heading > .entry-date {
+  flex: none;
+  margin-inline-start: 0;
+}
+
 a {
   text-decoration: underline;
   text-decoration-thickness: 0.45pt;
@@ -41,16 +52,11 @@ const BUILT_IN_TEMPLATE_CSS = {
 
 h3.resume-entry-heading:has(> .entry-date) {
   position: relative;
-  flex-flow: column nowrap;
-  align-items: flex-start;
-  gap: 0.35mm;
   padding-inline-start: var(--timeline-inset);
 }
 
 h3.resume-entry-heading > .entry-date {
   order: -1;
-  flex: none;
-  margin-inline-start: 0;
   font-size: calc(var(--text-size) * 0.92);
   font-weight: 500;
   line-height: 1.3;
