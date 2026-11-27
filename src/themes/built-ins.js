@@ -10,14 +10,79 @@ const BUILT_IN_THEME_MESSAGES = {
   [TIMELINE_TEMPLATE]: "themeTimeline",
 };
 
+const MODERN_CSS = `:scope {
+  --title-font: var(--resume-sans-font);
+  --text-font: var(--resume-sans-font);
+  --color-accent: #23476b;
+  --border-color: color-mix(in srgb, var(--color-accent), transparent 48%);
+}
+
+h1, h2 {
+  letter-spacing: 0.025em;
+}
+
+h3.resume-entry-heading a {
+  font-size: inherit;
+}
+
+a {
+  text-decoration: underline;
+  text-decoration-thickness: 0.45pt;
+  text-underline-offset: 0.13em;
+  text-decoration-color: color-mix(in srgb, var(--color-accent), transparent 45%);
+}
+`;
+
 const BUILT_IN_TEMPLATE_CSS = {
   [BASE_TEMPLATE]: "",
-  [TIMELINE_TEMPLATE]: `:scope {
-  --resume-structure: timeline;
-  --timeline-date-width: 24mm;
-  --title-font: var(--resume-sans-font);
-  --color-accent: #3d5968;
-}`,
+  [TIMELINE_TEMPLATE]: `${MODERN_CSS}
+
+:scope { --timeline-inset: 4.5mm; }
+
+h3.resume-entry-heading:has(> .entry-date) {
+  position: relative;
+  flex-flow: column nowrap;
+  align-items: flex-start;
+  gap: 0.35mm;
+  padding-inline-start: var(--timeline-inset);
+}
+
+h3.resume-entry-heading > .entry-date {
+  order: -1;
+  flex: none;
+  margin-inline-start: 0;
+  font-size: calc(var(--text-size) * 0.92);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--color-accent);
+}
+
+h3.resume-entry-heading:has(> .entry-date)::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0.45mm;
+  inset-block-start: 1.1mm;
+  inline-size: 1.45mm;
+  block-size: 1.45mm;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+h3.resume-entry-heading:has(> .entry-date)::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 1.08mm;
+  inset-block: 3mm 0.4mm;
+  border-inline-start: 0.5pt solid var(--border-color);
+}
+
+h3.resume-entry-heading:has(> .entry-date) + :is(p, ul, ol),
+h3.resume-entry-heading:has(> .entry-date) + p + :is(ul, ol),
+div:has(> h3.resume-entry-heading > .entry-date) + div > :is(p, ul, ol),
+div:has(> h3.resume-entry-heading > .entry-date) + div:has(> p) + div > :is(ul, ol) {
+  margin-inline-start: var(--timeline-inset) !important;
+}
+`,
   "简洁蓝": `:scope {
   --color-accent: #254f78;
   --h2-color: var(--color-accent);
@@ -33,18 +98,7 @@ h2 {
   border-bottom-width: 1pt;
 }
 `,
-  "现代无衬线": `:scope {
-  --title-font: var(--resume-sans-font);
-  --text-font: var(--resume-sans-font);
-  --color-accent: #245269;
-  --border-color: #afc5ce;
-}
-
-h1,
-h2 {
-  letter-spacing: 0.025em;
-}
-`,
+  "现代无衬线": MODERN_CSS,
   "黑白 ATS": `:scope {
   --title-font: var(--resume-sans-font);
   --text-font: var(--resume-sans-font);

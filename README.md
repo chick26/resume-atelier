@@ -27,7 +27,7 @@ To upgrade from 0.7.0, close Obsidian, replace those three files in the same fol
 Click **Open Resume Atelier** in the left ribbon, or right-click a folder and choose **New resume**. The command palette also has **Resume Atelier → Open workbench**.
 
 1. Double-click text on the page to edit the corresponding line. Start with `# Name`, use `##` for sections and write entries as `### Senior Designer · Example Studio | 2022 – Present`. For a master or confirmed application résumé, choose **Copy and edit**. A regular note stays in preview until you choose **Use resume layout**.
-2. Under **Layout**, try **Modern Sans** or **Experience timeline**. Use **Sections** to reorder sections, display a list as tags or hide a section. The hidden count remains visible when the panel is closed.
+2. Under **Layout**, try **Modern Sans** or **Light timeline**. Use **Sections** to reorder sections, display a list as tags or hide a section. The hidden count remains visible when the panel is closed.
 3. To add a vault image, choose **Customize → Add photo** or use **Photo** beside the editor. After picking the image, keep typing. Click the portrait or **Photo** to change its ratio and corners. Press **Esc** to return to your text.
 4. Choose **A4** or **US Letter** and inspect the page labels. A standalone `---` with blank lines adds a manual break. **Export PDF** opens Obsidian’s native dialog. From the original note’s menu, select the same paper, portrait, 100% scale, no filename title and no extra margins.
 
@@ -54,7 +54,7 @@ Save an example in your vault to try the layouts. [English · Letter timeline](e
 点左侧功能区的「打开简历工坊」，或在文件树右键目标文件夹，选「新建简历」。命令面板也可运行「Resume Atelier → 打开工作台」。
 
 1. 双击纸面文字即可编辑对应源码行。用 `# 姓名` 写姓名，`##` 分栏目，`### 高级产品设计师 · 示例工作室 | 2022 – 至今` 写经历。母版或已确认的投递稿先选「创建副本并编辑」。普通笔记可先试排，选「应用简历排版」后才写入。
-2. 在「版式」选「现代无衬线」或「经历时间轴」。在「栏目」可调整顺序、把列表显示为标签，或隐藏本次投递用不到的栏目。收起面板后顶栏仍会提醒已隐藏几栏。
+2. 在「版式」选「现代无衬线」或「轻量时间轴」。在「栏目」可调整顺序、把列表显示为标签，或隐藏本次投递用不到的栏目。收起面板后顶栏仍会提醒已隐藏几栏。
 3. 在「微调 → 添加头像」或正文工具栏的「头像」选库内图片，选完即可接着打字。点纸面照片或工具栏「头像」就能调比例、圆角。按 `Esc` 回到正文。
 4. 选 A4 或 US Letter 后查看纸面页标。前后各留空行的 `---` 表示手动分页。「导出 PDF」打开 Obsidian 原生窗口。从原笔记菜单导出时，选相同纸张、纵向、100% 缩放，关闭文件名标题，附加页边距选「无」。
 

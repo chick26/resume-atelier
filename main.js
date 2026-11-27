@@ -207,7 +207,7 @@ var require_localization = __commonJS({
       moveSectionDown: ["\u4E0B\u79FB{title}", "Move \u201C{title}\u201D down"],
       sectionNameRequired: ["\u8BF7\u586B\u5199\u4E00\u884C\u680F\u76EE\u540D\u79F0\u3002", "Enter a section name on one line."],
       sectionNameDuplicate: ["\u5DF2\u7ECF\u6709\u540C\u540D\u680F\u76EE\u3002", "A section with this name already exists."],
-      themeTimeline: ["\u7ECF\u5386\u65F6\u95F4\u8F74", "Experience timeline"],
+      themeTimeline: ["\u8F7B\u91CF\u65F6\u95F4\u8F74", "Light timeline"],
       sectionAsTags: ["\u5C06\u300C{title}\u300D\u6E05\u5355\u663E\u793A\u4E3A\u6807\u7B7E", "Show {title} list as tags"],
       sectionAsList: ["\u5C06\u300C{title}\u300D\u6807\u7B7E\u6062\u590D\u4E3A\u6E05\u5355", "Show {title} tags as a list"],
       quickStyles: ["\u5FEB\u6377\u6837\u5F0F\u4E0E\u5934\u50CF", "Quick styles and photo"],
@@ -1098,14 +1098,78 @@ var require_built_ins = __commonJS({
       "\u9ED1\u767D ATS": "themeAts",
       [TIMELINE_TEMPLATE]: "themeTimeline"
     };
+    var MODERN_CSS = `:scope {
+  --title-font: var(--resume-sans-font);
+  --text-font: var(--resume-sans-font);
+  --color-accent: #23476b;
+  --border-color: color-mix(in srgb, var(--color-accent), transparent 48%);
+}
+
+h1, h2 {
+  letter-spacing: 0.025em;
+}
+
+h3.resume-entry-heading a {
+  font-size: inherit;
+}
+
+a {
+  text-decoration: underline;
+  text-decoration-thickness: 0.45pt;
+  text-underline-offset: 0.13em;
+  text-decoration-color: color-mix(in srgb, var(--color-accent), transparent 45%);
+}
+`;
     var BUILT_IN_TEMPLATE_CSS = {
       [BASE_TEMPLATE]: "",
-      [TIMELINE_TEMPLATE]: `:scope {
-  --resume-structure: timeline;
-  --timeline-date-width: 24mm;
-  --title-font: var(--resume-sans-font);
-  --color-accent: #3d5968;
-}`,
+      [TIMELINE_TEMPLATE]: `${MODERN_CSS}
+
+:scope { --timeline-inset: 4.5mm; }
+
+h3.resume-entry-heading:has(> .entry-date) {
+  position: relative;
+  flex-flow: column nowrap;
+  align-items: flex-start;
+  gap: 0.35mm;
+  padding-inline-start: var(--timeline-inset);
+}
+
+h3.resume-entry-heading > .entry-date {
+  order: -1;
+  flex: none;
+  margin-inline-start: 0;
+  font-size: calc(var(--text-size) * 0.92);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--color-accent);
+}
+
+h3.resume-entry-heading:has(> .entry-date)::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0.45mm;
+  inset-block-start: 1.1mm;
+  inline-size: 1.45mm;
+  block-size: 1.45mm;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+h3.resume-entry-heading:has(> .entry-date)::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 1.08mm;
+  inset-block: 3mm 0.4mm;
+  border-inline-start: 0.5pt solid var(--border-color);
+}
+
+h3.resume-entry-heading:has(> .entry-date) + :is(p, ul, ol),
+h3.resume-entry-heading:has(> .entry-date) + p + :is(ul, ol),
+div:has(> h3.resume-entry-heading > .entry-date) + div > :is(p, ul, ol),
+div:has(> h3.resume-entry-heading > .entry-date) + div:has(> p) + div > :is(ul, ol) {
+  margin-inline-start: var(--timeline-inset) !important;
+}
+`,
       "\u7B80\u6D01\u84DD": `:scope {
   --color-accent: #254f78;
   --h2-color: var(--color-accent);
@@ -1121,18 +1185,7 @@ h2 {
   border-bottom-width: 1pt;
 }
 `,
-      "\u73B0\u4EE3\u65E0\u886C\u7EBF": `:scope {
-  --title-font: var(--resume-sans-font);
-  --text-font: var(--resume-sans-font);
-  --color-accent: #245269;
-  --border-color: #afc5ce;
-}
-
-h1,
-h2 {
-  letter-spacing: 0.025em;
-}
-`,
+      "\u73B0\u4EE3\u65E0\u886C\u7EBF": MODERN_CSS,
       "\u9ED1\u767D ATS": `:scope {
   --title-font: var(--resume-sans-font);
   --text-font: var(--resume-sans-font);
@@ -1635,14 +1688,6 @@ var require_section_layout = __commonJS({
       if (block.matches("h2[data-heading]")) return block;
       return block.matches("div") && block.firstElementChild?.matches("h2[data-heading]") ? block.firstElementChild : null;
     }
-    function beginsEntry(block) {
-      return block.matches("h3[data-heading]") || block.matches("div") && block.firstElementChild?.matches("h3[data-heading]");
-    }
-    function container(root, tag, className) {
-      const element = root.ownerDocument.createElement(tag);
-      element.className = className;
-      return element;
-    }
     function paragraphWithPortrait(block) {
       const paragraph = block.matches("p") ? block : block.firstElementChild;
       if (!paragraph?.matches("p")) return false;
@@ -1652,27 +1697,11 @@ var require_section_layout = __commonJS({
     function tagLists(nodes) {
       return nodes.map((node) => node.matches("ul") ? node : node.matches("div") ? node.firstElementChild : null).filter((list) => list?.matches("ul") && !list.querySelector("ul,ol,.task-list-item"));
     }
-    function appendTimelineEntries(section, nodes) {
-      let body = section;
-      for (const node of nodes) {
-        if (beginsEntry(node)) {
-          const entry = container(section, "div", "resume-entry");
-          section.append(entry);
-          entry.append(node);
-          body = container(section, "div", "resume-entry-body");
-          entry.append(body);
-        } else {
-          body.append(node);
-        }
-      }
-    }
     var SectionLayout = class {
       constructor(root, blocks, titles) {
-        this.root = root;
-        this.intro = [];
+        const intro = [];
         this.sections = [];
-        this.blocks = blocks;
-        let nodes = this.intro;
+        let nodes = intro;
         for (const block of blocks) {
           const heading = blockHeading(block);
           const title = titles ? titles.get(heading) : heading && sectionTitle(heading.dataset.heading);
@@ -1682,48 +1711,27 @@ var require_section_layout = __commonJS({
           }
           nodes.push(block);
         }
-        this.portrait = this.intro.find(paragraphWithPortrait);
-        this.portrait?.classList.add("resume-portrait-block");
+        this.portrait = intro.find(paragraphWithPortrait);
+        if (this.portrait) {
+          this.portrait.classList.add("resume-portrait-block");
+          const header = root.ownerDocument.createElement("header");
+          header.className = "resume-header has-portrait";
+          intro[0].before(header);
+          header.append(...intro);
+        }
         for (const [index, section] of this.sections.entries()) {
-          section.breaks = [];
           if (index < this.sections.length - 1) {
-            while (section.nodes.at(-1)?.matches("hr,.el-hr")) section.breaks.unshift(section.nodes.pop());
+            while (section.nodes.at(-1)?.matches("hr,.el-hr")) section.nodes.pop();
           }
           section.lists = tagLists(section.nodes);
         }
         this.duplicates = new Set(sectionRuleIssues(this.sections, {}).duplicate);
       }
-      apply(layout) {
-        const declared = this.root.ownerDocument.defaultView.getComputedStyle(this.root).getPropertyValue("--resume-structure").trim();
-        const timeline = declared === "timeline" && this.sections.length > 0;
-        const rules = this.sections.map(({ title }) => this.duplicates.has(title) ? {} : ruleFor(layout.sections, title));
-        const key = JSON.stringify([timeline, rules.map((rule) => [rule.hidden === true, rule.display === "tags"])]);
-        if (this.key === key) return;
-        this.key = key;
-        if (this.wrapper) {
-          this.wrapper.before(...this.blocks);
-          this.wrapper.remove();
-          this.wrapper = null;
-        }
-        for (const [index, { nodes, lists }] of this.sections.entries()) {
-          for (const node of nodes) node.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
-          for (const list of lists) list.classList.toggle("resume-section-tags", rules[index].display === "tags");
-        }
-        if (!timeline && !this.portrait) return;
-        const header = container(this.root, "header", "resume-header");
-        if (this.portrait) header.classList.add("has-portrait");
-        const wrapper = timeline ? container(this.root, "div", "resume-layout-document resume-timeline") : header;
-        this.blocks[0].before(wrapper);
-        this.wrapper = wrapper;
-        header.append(...this.intro);
-        if (!timeline) return;
-        wrapper.append(header);
-        for (const [index, { title, nodes, breaks }] of this.sections.entries()) {
-          const section = container(wrapper, "section", "resume-section");
-          section.dataset.resumeSection = title;
-          section.classList.toggle("resume-layout-section-hidden", rules[index].hidden === true);
-          appendTimelineEntries(section, nodes);
-          wrapper.append(section, ...breaks);
+      apply({ sections }) {
+        for (const { title, nodes, lists } of this.sections) {
+          const { hidden, display } = this.duplicates.has(title) ? {} : ruleFor(sections, title);
+          for (const node of nodes) node.classList.toggle("resume-layout-section-hidden", hidden === true);
+          for (const list of lists) list.classList.toggle("resume-section-tags", display === "tags");
         }
       }
     };

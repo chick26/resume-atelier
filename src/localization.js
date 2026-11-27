@@ -192,7 +192,7 @@ const MESSAGES = {
   moveSectionDown: ["下移{title}", "Move “{title}” down"],
   sectionNameRequired: ["请填写一行栏目名称。", "Enter a section name on one line."],
   sectionNameDuplicate: ["已经有同名栏目。", "A section with this name already exists."],
-  themeTimeline: ["经历时间轴", "Experience timeline"],
+  themeTimeline: ["轻量时间轴", "Light timeline"],
   sectionAsTags: ["将「{title}」清单显示为标签", "Show {title} list as tags"],
   sectionAsList: ["将「{title}」标签恢复为清单", "Show {title} tags as a list"],
   quickStyles: ["快捷样式与头像", "Quick styles and photo"],
